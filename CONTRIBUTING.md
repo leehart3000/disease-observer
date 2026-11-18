@@ -56,6 +56,8 @@ Run these from the repository root:
 - `pnpm build`: create a production build.
 - `pnpm start`: serve the production build (run `pnpm build` first).
 - `pnpm lint`: run ESLint.
+- `pnpm typecheck`: generate the Next.js route types and run the
+  TypeScript compiler without emitting files.
 
 Commands for tests, formatting and documentation will be added when those
 tools are set up.
