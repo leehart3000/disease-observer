@@ -22,11 +22,12 @@ The first version covers:
 - Drizzle ORM, PostgreSQL with PostGIS (Neon in production)
 - MapLibre GL and deck.gl, with base maps from OpenFreeMap or Protomaps
 - ECharts for time-series charts
-- ETL: TypeScript scripts using Drizzle, Zod and Turf.js, run on GitLab
-  scheduled pipelines
+- ETL: TypeScript scripts using Drizzle, Zod and Turf.js, run on GitHub
+  Actions scheduled workflows
 - Testing: Vitest, React Testing Library and Playwright
 - Code quality: ESLint, Prettier and TypeDoc
-- Hosting: Vercel. CI: GitLab CI.
+- Hosting: Vercel. CI: GitHub Actions.
+- Dependency updates: Dependabot (see `.github/dependabot.yml`).
 - Package manager: pnpm. Runtime: Node.js 24 (see `.node-version`).
 
 The project does not use Mapbox, Leaflet, TimescaleDB or Google
