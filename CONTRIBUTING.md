@@ -48,4 +48,13 @@ it.
 
 ## Commands
 
-To be added once the app is set up.
+Run these from the repository root:
+
+- `pnpm install`: install dependencies.
+- `pnpm dev`: start the development server at http://localhost:3000.
+- `pnpm build`: create a production build.
+- `pnpm start`: serve the production build (run `pnpm build` first).
+- `pnpm lint`: run ESLint.
+
+Commands for tests, formatting and documentation will be added when those
+tools are set up.

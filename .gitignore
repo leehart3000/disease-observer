@@ -17,6 +17,25 @@ test-results/
 
 # Logs
 *.log
+.pnpm-debug.log*
+
+# Production build output
+build/
+
+# Vercel
+.vercel
+
+# Certificates and keys
+*.pem
+
+# Yarn and Plug'n'Play (not used, but ignore stray files)
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
 # macOS
 .DS_Store
