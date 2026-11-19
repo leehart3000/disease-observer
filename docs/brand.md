@@ -11,9 +11,15 @@ use them in the site.
   on the `i` are in the accent red.
 - In running text, write the name as "Disease Observer".
 - On the site, the wordmark is live text, not an image. The red `i` dot is
-  made by using a dotless `ı` (U+0131) with a small red circle placed above
-  it. Give the whole wordmark an accessible name of "disease.observer" and
-  hide the decorative parts from screen readers.
+  the font's own dot: the `i` is drawn in blue, and a red copy of the same
+  `i` is laid over it and clipped with CSS `clip-path` so that only its dot
+  shows. The period is the font's own period in red. The clip position
+  depends on the metrics of IBM Plex Sans Medium (see the comment in
+  `src/components/Wordmark.tsx`), so recheck it if the font changes. Give
+  the whole wordmark an accessible name of "disease.observer" and hide the
+  decorative parts from screen readers.
+- In the header, the wordmark is 1.5rem on small screens and 1.75rem from
+  the `sm` breakpoint.
 
 ## Mark
 
@@ -86,3 +92,10 @@ Both stay distinguishable for people with colour vision deficiency.
 
 The site supports light and dark themes and follows the visitor's system
 setting by default. Every page must work at 375 px wide (iPhone SE).
+
+A toggle button at the top right of the header switches theme. The choice
+is stored in `localStorage` (key `theme`) and sets `data-theme` on `<html>`
+to `light` or `dark`. A small inline script in the root layout applies it
+before the first paint, so there is no flash of the wrong theme. When
+nothing is stored, there is no `data-theme` attribute and the colour tokens
+and Tailwind's `dark:` variant fall back to `prefers-color-scheme`.

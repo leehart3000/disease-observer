@@ -1,31 +1,95 @@
 @import "tailwindcss";
 
+/* Interface colour tokens. See docs/brand.md. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light dark;
+
+  --paper: #f3f5f8;
+  --surface: #fbfcfd;
+  --ink: #24303d;
+  --muted: #5a6675;
+  --line: #d7dde4;
+  --brand: #2b5c9e;
+  --accent: #bc4034;
+
+  /* Logo mark colours. */
+  --mark-oval: #2b5c9e;
+  --mark-detail: #f7f9fb;
+  --mark-top-dot: #ffb4a8;
 }
 
-/* System font stacks. Brand fonts will be chosen later. */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans:
-    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
-    monospace;
+/*
+ * The theme is set by data-theme on <html> once the visitor has chosen one.
+ * Until then, the system setting applies. The dark tokens appear twice
+ * because CSS cannot share them between a media query and a selector.
+ */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --paper: #172029;
+  --surface: #1e2933;
+  --ink: #d6dde5;
+  --muted: #95a2b1;
+  --line: #2e3b48;
+  --brand: #84aee6;
+  --accent: #f08a7e;
+
+  --mark-oval: #84aee6;
+  --mark-detail: #172029;
+  --mark-top-dot: #9e2e24;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme]) {
+    --paper: #172029;
+    --surface: #1e2933;
+    --ink: #d6dde5;
+    --muted: #95a2b1;
+    --line: #2e3b48;
+    --brand: #84aee6;
+    --accent: #f08a7e;
+
+    --mark-oval: #84aee6;
+    --mark-detail: #172029;
+    --mark-top-dot: #9e2e24;
   }
 }
 
+/* Tailwind's dark: variant follows the same rules as the tokens. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme]), :root:not([data-theme]) *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-accent: var(--accent);
+  --font-sans:
+    var(--font-plex-sans), system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-sans);
 }
