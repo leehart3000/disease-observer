@@ -35,6 +35,9 @@ faint curve that suggests the serpent. It sits inside a narrow oval.
 | `src/app/favicon.ico` | Fallback favicon (16, 32 and 48 px) |
 | `src/app/apple-icon.png` | Home screen icon on Apple devices (180 px) |
 
+After changing the mark, update all of the files above. Rebuild the two
+image files from `mark-light.svg` with `pnpm icons` (`scripts/icons.mts`).
+
 Rules:
 
 - Minimum size: 16 px tall.
@@ -66,10 +69,12 @@ Mark colours:
 | --- | --- | --- |
 | Oval | `#2B5C9E` | `#84AEE6` |
 | Rod, dots, curve | `#F7F9FB` | `#172029` |
-| Top dot | `#FFB4A8` | `#9E2E24` |
+| Top dot | `#BC4034` | `#F08A7E` |
+| Top dot ring | `#F7F9FB` | `#172029` |
 
-The top dot is a paler red in light mode because the accent red has too
-little contrast against the blue oval.
+The top dot is the accent red, the same as the dots in the wordmark. It has
+a ring in the inner colour, 2.5 units wide in the rod's coordinates (about
+1.5 units of the 64-unit mark), so that it stands out on the blue oval.
 
 Data colours are separate from interface colours:
 

@@ -58,6 +58,14 @@ Run these from the repository root:
 - `pnpm lint`: run ESLint.
 - `pnpm typecheck`: generate the Next.js route types and run the
   TypeScript compiler without emitting files.
+- `pnpm test:e2e`: run the Playwright end-to-end tests at desktop (1280 px)
+  and iPhone SE (375 px) sizes. The site starts automatically with
+  `pnpm dev` (or `pnpm start` when `CI` is set, after `pnpm build`). Run
+  `pnpm exec playwright install chromium` once first, or set
+  `CHROMIUM_PATH` to use a Chromium you already have.
+- `pnpm icons`: rebuild `src/app/favicon.ico` and `src/app/apple-icon.png`
+  from `public/brand/mark-light.svg`. It uses the same Chromium as the
+  tests.
 
-Commands for tests, formatting and documentation will be added when those
-tools are set up.
+Commands for unit tests, formatting and documentation will be added when
+those tools are set up.

@@ -15,7 +15,7 @@
   /* Logo mark colours. */
   --mark-oval: #2b5c9e;
   --mark-detail: #f7f9fb;
-  --mark-top-dot: #ffb4a8;
+  --mark-top-dot: #bc4034;
 }
 
 /*
@@ -40,7 +40,7 @@
 
   --mark-oval: #84aee6;
   --mark-detail: #172029;
-  --mark-top-dot: #9e2e24;
+  --mark-top-dot: #f08a7e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -55,7 +55,7 @@
 
     --mark-oval: #84aee6;
     --mark-detail: #172029;
-    --mark-top-dot: #9e2e24;
+    --mark-top-dot: #f08a7e;
   }
 }
 

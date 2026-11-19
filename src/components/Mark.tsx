@@ -38,7 +38,7 @@ export function Mark({ label, className }: MarkProps) {
         <path d="M22 36C22 31.5 42 31.5 42 27" {...detailCurve} />
         <path d="M42 27C42 23.0 22 23.0 22 19" {...detailCurve} />
         <path
-          d="M32 16V58"
+          d="M32 7V58"
           stroke="var(--mark-detail)"
           strokeWidth="4.5"
           strokeLinecap="round"
@@ -48,6 +48,8 @@ export function Mark({ label, className }: MarkProps) {
         <circle cx="22" cy="36" r="5.5" fill="var(--mark-detail)" />
         <circle cx="42" cy="27" r="4.4" fill="var(--mark-detail)" />
         <circle cx="22" cy="19" r="2.86" fill="var(--mark-detail)" />
+        {/* Ring in the inner colour, so the red dot stands out on the oval. */}
+        <circle cx="32" cy="7" r="7" fill="var(--mark-detail)" />
         <circle cx="32" cy="7" r="4.5" fill="var(--mark-top-dot)" />
       </g>
     </svg>
