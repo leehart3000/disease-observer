@@ -119,3 +119,18 @@ which returns the PostGIS library version.
 CI does not use a database yet. The build, lint, type check and end-to-end
 tests must pass without `DATABASE_URL`, so nothing may query the database
 at build time.
+
+### Running migrations on Neon
+
+The "Database: migrate and seed" workflow applies the migrations and the
+seed to a Neon database. It only runs from `main`, and only when you start
+it by hand:
+
+1. Open the Actions tab on GitHub, choose "Database: migrate and seed" and
+   select "Run workflow" on `main`.
+2. Choose the `target`. Try `db-dev` first.
+3. `db-prod` waits for a required reviewer to approve it before it runs.
+
+Each target is a GitHub environment that holds its own
+`DATABASE_URL_UNPOOLED` secret. The workflow passes it only to the
+migrate and seed steps.

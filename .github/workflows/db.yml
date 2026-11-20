@@ -1,0 +1,59 @@
+name: "Database: migrate and seed"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Database environment to migrate and seed"
+        type: choice
+        required: true
+        default: db-dev
+        options:
+          - db-dev
+          - db-prod
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  migrate-and-seed:
+    name: migrate and seed (${{ inputs.target }})
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: ${{ inputs.target }}
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check migrations for quoted geography types
+        run: "! grep -nE '\"geography\\(' drizzle/*.sql"
+
+      - name: Run migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+
+      - name: Seed the database
+        run: pnpm db:seed
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
