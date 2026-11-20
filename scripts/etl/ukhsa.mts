@@ -7,13 +7,16 @@
  * Run with `pnpm etl:ukhsa`. It uses the direct connection
  * (`DATABASE_URL_UNPOOLED`) and needs `pnpm db:seed` to have run.
  *
+ * With no options (the default mode) it loads COVID-19 for the current
+ * year, plus last year in January. Measles always loads its full history.
+ *
  * Options:
- * - `--from=YYYY`: backfill COVID-19 from that year (default: this year,
- *   plus last year in January). Measles always loads its full history.
+ * - `--from=YYYY`: backfill COVID-19 from that year instead.
  * - `--limit=N`: only load the first N local authorities, for testing.
  *
- * The run is recorded in `etl_runs`. It fails if more than 5% of the
- * geographies of one type fail.
+ * The run is recorded in `etl_runs`. It fails, and the process exits with
+ * a non-zero code, if more than 5% of the geographies of one type fail or
+ * if anything else goes wrong.
  */
 import { parseArgs } from "node:util";
 import { and, eq, lt, sql } from "drizzle-orm";
@@ -32,7 +35,7 @@ import {
   dedupeObservations,
   toObservationFields,
   yearsForBackfill,
-  yearsForDailyRun,
+  yearsForDefaultRun,
   type DatasetConfig,
   type ObservationFields,
 } from "./ukhsa-transform.mts";
@@ -299,7 +302,7 @@ async function main(): Promise<void> {
   const fromYear = readIntegerOption("from", args.from, 2019);
   const limit = readIntegerOption("limit", args.limit, 1);
   const now = new Date();
-  const years = fromYear === undefined ? yearsForDailyRun(now) : yearsForBackfill(fromYear, now);
+  const years = fromYear === undefined ? yearsForDefaultRun(now) : yearsForBackfill(fromYear, now);
 
   const { db, pool } = createDb(process.env.DATABASE_URL_UNPOOLED, { max: 1 });
   let runId: number | undefined;

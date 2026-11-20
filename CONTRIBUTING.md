@@ -72,8 +72,10 @@ Run these from the repository root:
 
 - `pnpm etl:ukhsa`: load UKHSA data (COVID-19 by local authority and
   measles by region) into the database. It needs `DATABASE_URL_UNPOOLED`
-  and `pnpm db:seed` first. `--from=YYYY` backfills COVID-19 from that
-  year, and `--limit=N` loads only the first N local authorities.
+  and `pnpm db:seed` first. With no options it loads the current year
+  (plus last year in January). `--from=YYYY` backfills COVID-19 from that
+  year, and `--limit=N` loads only the first N local authorities. The
+  command exits with an error if the run is marked failed.
 
 Commands for unit tests, formatting and documentation will be added when
 those tools are set up.
@@ -139,3 +141,26 @@ it by hand:
 Each target is a GitHub environment that holds its own
 `DATABASE_URL_UNPOOLED` secret. The workflow passes it only to the
 migrate and seed steps.
+
+### Running the UKHSA ETL on GitHub
+
+The "ETL: UKHSA" workflow runs `pnpm etl:ukhsa` every Friday at 07:37 UTC
+against the `etl-prod` environment, in the default mode (the current
+year). A failed run shows as failed in GitHub and sends the usual failure
+email.
+
+To run it by hand, open the Actions tab, choose "ETL: UKHSA" and select
+"Run workflow" on `main`:
+
+- `target`: `db-dev` or `etl-prod`.
+- `from`: a four-digit year to backfill COVID-19 from, or empty for the
+  default mode.
+- `limit`: a whole number to load only the first N local authorities, or
+  empty for all of them.
+
+Test on `db-dev` with a small `limit` first, for example 5. A backfill
+makes about 600 requests for each year, so it can take a long time.
+
+GitHub pauses scheduled workflows in a public repository after 60 days
+without commits. If that happens, re-enable the workflow from the Actions
+tab.

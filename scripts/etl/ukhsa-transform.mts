@@ -164,10 +164,10 @@ export function dedupeObservations(rows: ObservationFields[]): ObservationFields
 }
 
 /**
- * The calendar years to fetch for a daily run: this year, plus last year in
- * January, because late data for December can still arrive.
+ * The calendar years to fetch in the default mode: this year, plus last
+ * year in January, because late data for December can still arrive.
  */
-export function yearsForDailyRun(now: Date): number[] {
+export function yearsForDefaultRun(now: Date): number[] {
   const year = now.getUTCFullYear();
   return now.getUTCMonth() === 0 ? [year - 1, year] : [year];
 }
