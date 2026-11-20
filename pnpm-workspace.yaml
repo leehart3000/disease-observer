@@ -1,3 +1,10 @@
+# drizzle-kit pulls in esbuild 0.18.20 through @esbuild-kit/core-utils,
+# which is affected by a CORS issue in esbuild's serve feature (fixed in
+# 0.25.0). Use the 0.25.12 copy that drizzle-kit already depends on.
+# Remove this when drizzle-kit no longer pulls in esbuild <= 0.24.2.
+overrides:
+  "@esbuild-kit/core-utils>esbuild": "0.25.12"
+
 allowBuilds:
   esbuild: false
   sharp: false
