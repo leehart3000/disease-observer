@@ -14,6 +14,13 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # @types/node must match the Node major version we run (24, set in
+      # .node-version and package.json engines). Bump it by hand when we
+      # move to a new Node major.
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
