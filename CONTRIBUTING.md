@@ -19,7 +19,8 @@ The first version covers:
 ## Tech stack
 
 - Next.js (App Router), React, TypeScript, Tailwind CSS
-- Drizzle ORM, PostgreSQL with PostGIS (Neon in production)
+- Drizzle ORM and the `pg` driver, PostgreSQL with PostGIS (Neon in
+  production)
 - MapLibre GL and deck.gl, with base maps from OpenFreeMap or Protomaps
 - ECharts for time-series charts
 - ETL: TypeScript scripts using Drizzle, Zod and Turf.js, run on GitHub
@@ -66,6 +67,55 @@ Run these from the repository root:
 - `pnpm icons`: rebuild `src/app/favicon.ico` and `src/app/apple-icon.png`
   from `public/brand/mark-light.svg`. It uses the same Chromium as the
   tests.
+- `pnpm db:generate`, `pnpm db:migrate` and `pnpm db:seed`: work with the
+  database (see [Database](#database)).
 
 Commands for unit tests, formatting and documentation will be added when
 those tools are set up.
+
+## Database
+
+The schema is in `src/db/schema.ts`, and the server-side client is in
+`src/db/index.ts` (it imports `server-only`, so client components cannot
+use it). Migrations are generated into `drizzle/`. The first one is a
+custom migration (`pnpm exec drizzle-kit generate --custom`) that creates
+the PostGIS extension, so it runs before the tables.
+
+Drizzle Kit writes the type of a `geography` column in quotes when a
+migration adds a `geography` column or changes its type, and PostgreSQL
+rejects that. Remove the quotes by hand before you apply the migration,
+for example `"centroid" geography(Point,4326)`. CI fails if a migration
+still contains a quoted `geography` type. Never edit a migration that has
+already been applied, and never edit the snapshots in `drizzle/meta`.
+
+App code (route handlers and server components) gets its database client
+from `getDb` in `@/db`. Scripts that run outside Next.js, such as the seed
+and the ETL, use `createDb` from `src/db/client.ts`, because `server-only`
+stops them importing `@/db`. ESLint stops files in `src/app` and
+`src/components` importing the client file.
+
+- `pnpm db:generate`: generate a migration after changing the schema.
+  Commit the new files in `drizzle/`.
+- `pnpm db:migrate`: apply migrations to the database.
+- `pnpm db:seed`: add the data sources and diseases. It is safe to run
+  more than once.
+
+Both `DATABASE_URL` and `DATABASE_URL_UNPOOLED` are needed to work with
+the database. The app uses `DATABASE_URL` (Neon's pooled connection in
+production). Migrations and the seed script use `DATABASE_URL_UNPOOLED`
+(the direct connection). Because the pooler runs in transaction mode,
+code must not rely on session state such as `SET`, advisory locks or
+temporary tables.
+
+For local development, the dev container has a Postgres 18 and PostGIS
+3.6 database in a container called `db`. `.env.local` points both URLs at
+it. `.env.local` holds local development values only: never put
+production credentials in it. Production values are set in Vercel and
+GitHub, and `.env.example` shows the variable names.
+
+Check that the database is reachable at http://localhost:3000/api/health,
+which returns the PostGIS library version.
+
+CI does not use a database yet. The build, lint, type check and end-to-end
+tests must pass without `DATABASE_URL`, so nothing may query the database
+at build time.

@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check migrations for quoted geography types
+        run: "! grep -nE '\"geography\\(' drizzle/*.sql"
+
       - name: Lint
         run: pnpm lint
 
