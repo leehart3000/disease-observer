@@ -1,7 +1,7 @@
 /**
  * A small HTTP client for ETL scripts: requests go one at a time with a
  * pause between them, and failures that are likely to be temporary are
- * retried with exponential backoff.
+ * retried with a growing wait (about 5 s, 15 s, then 45 s) and some jitter.
  *
  * Erasable TypeScript only, with relative imports that end in `.ts`, so
  * Node can run it directly.
@@ -32,15 +32,43 @@ export class HttpError extends Error {
 export type HttpClientOptions = {
   /** Least time between the starts of two requests. Default 500. */
   minIntervalMs?: number;
-  /** Tries per request, including the first. Default 3. */
+  /** Tries per request, including the first. Default 4. */
   maxAttempts?: number;
-  /** Wait before the second try, doubled for each later one. Default 1000. */
+  /**
+   * Wait before the second try, tripled for each later one (so about 5 s,
+   * 15 s and 45 s by default), plus a little jitter. Default 5000.
+   */
   baseDelayMs?: number;
   /** Longest wait the server can ask for with `Retry-After`. Default 60000. */
   maxRetryAfterMs?: number;
   /** How long to wait for one response. Default 30000. */
   timeoutMs?: number;
+  /** Returns a number from 0 up to (not including) 1. Default `Math.random`. */
+  random?: () => number;
 };
+
+/** The most jitter added to a wait, as a share of the wait. */
+const MAX_JITTER_SHARE = 0.1;
+
+/**
+ * Works out how long to wait before the next try: the backoff for this
+ * attempt plus up to 10% jitter. If the server sent `Retry-After`, wait at
+ * least that long, but no more than `maxRetryAfterMs`.
+ *
+ * @param attempt - The try that just failed, counting from 1.
+ */
+export function retryDelayMs(
+  attempt: number,
+  retryAfterMs: number | undefined,
+  options: Pick<HttpClientOptions, "baseDelayMs" | "maxRetryAfterMs" | "random"> = {},
+): number {
+  const baseDelayMs = options.baseDelayMs ?? 5000;
+  const maxRetryAfterMs = options.maxRetryAfterMs ?? 60_000;
+  const random = options.random ?? Math.random;
+  const backoff = baseDelayMs * 3 ** (attempt - 1);
+  const wait = backoff + random() * MAX_JITTER_SHARE * backoff;
+  return Math.min(Math.max(wait, retryAfterMs ?? 0), Math.max(wait, maxRetryAfterMs));
+}
 
 /** A client that fetches JSON politely. */
 export type HttpClient = {
@@ -84,9 +112,7 @@ export function parseRetryAfter(
  */
 export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   const minIntervalMs = options.minIntervalMs ?? 500;
-  const maxAttempts = options.maxAttempts ?? 3;
-  const baseDelayMs = options.baseDelayMs ?? 1000;
-  const maxRetryAfterMs = options.maxRetryAfterMs ?? 60_000;
+  const maxAttempts = options.maxAttempts ?? 4;
   const timeoutMs = options.timeoutMs ?? 30_000;
   let lastStart = 0;
   let requests = 0;
@@ -133,11 +159,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
         if (attempt >= maxAttempts) {
           throw new Error(`Gave up after ${attempt} tries: ${result.reason}: ${url}`);
         }
-        const backoff = baseDelayMs * 2 ** (attempt - 1);
-        const delay = Math.min(
-          Math.max(backoff, result.retryAfterMs ?? 0),
-          Math.max(backoff, maxRetryAfterMs),
-        );
+        const delay = retryDelayMs(attempt, result.retryAfterMs, options);
         console.warn(
           `  Retrying in ${Math.round(delay / 100) / 10} s after ${result.reason} (try ${attempt} of ${maxAttempts})`,
         );
