@@ -11,6 +11,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   customType,
   date,
@@ -178,7 +179,12 @@ export const observations = pgTable(
     periodEnd: date("period_end", { mode: "string" }).notNull(),
     periodType: periodType("period_type").notNull(),
     value: doublePrecision("value").notNull(),
-    /** When the value was downloaded from the source. */
+    /**
+     * True while the source says the value may still be revised, for
+     * example because the period is inside its reporting delay.
+     */
+    provisional: boolean("provisional").notNull().default(false),
+    /** When the stored value (or its provisional flag) last changed. */
     retrievedAt: timestamp("retrieved_at", { withTimezone: true })
       .notNull()
       .default(sql`now()`),

@@ -70,6 +70,11 @@ Run these from the repository root:
 - `pnpm db:generate`, `pnpm db:migrate` and `pnpm db:seed`: work with the
   database (see [Database](#database)).
 
+- `pnpm etl:ukhsa`: load UKHSA data (COVID-19 by local authority and
+  measles by region) into the database. It needs `DATABASE_URL_UNPOOLED`
+  and `pnpm db:seed` first. `--from=YYYY` backfills COVID-19 from that
+  year, and `--limit=N` loads only the first N local authorities.
+
 Commands for unit tests, formatting and documentation will be added when
 those tools are set up.
 
