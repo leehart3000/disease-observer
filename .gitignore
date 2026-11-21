@@ -10,6 +10,9 @@ out/
 .env.*
 !.env.example
 
+# Raw ONS boundary downloads (see data/ons/README.md)
+data/ons/raw/
+
 # Test output
 coverage/
 playwright-report/

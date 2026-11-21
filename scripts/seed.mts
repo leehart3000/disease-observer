@@ -31,6 +31,16 @@ const sourceRows = [
       "Contains public sector information licensed under the Open Government Licence v3.0.",
   },
   {
+    slug: "ons-geography",
+    name: "Office for National Statistics: Open Geography Portal",
+    url: "https://geoportal.statistics.gov.uk/",
+    licenceName: "Open Government Licence v3.0",
+    licenceUrl:
+      "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    attribution:
+      "Source: Office for National Statistics licensed under the Open Government Licence v.3.0. Contains OS data © Crown copyright and database right 2022.",
+  },
+  {
     slug: "who-flunet",
     name: "WHO FluNet",
     url: "https://www.who.int/tools/flunet",

@@ -70,6 +70,10 @@ Run these from the repository root:
 - `pnpm db:generate`, `pnpm db:migrate` and `pnpm db:seed`: work with the
   database (see [Database](#database)).
 
+- `pnpm boundaries:prepare`: rebuild the England-only boundary files in
+  `data/ons/` from the raw ONS downloads (see `data/ons/README.md`).
+- `pnpm db:boundaries`: load those boundaries into the `areas` table. Run
+  it after `pnpm db:seed`. It is safe to run more than once.
 - `pnpm etl:ukhsa`: load UKHSA data (COVID-19 by local authority and
   measles by region) into the database. It needs `DATABASE_URL_UNPOOLED`
   and `pnpm db:seed` first. With no options it loads the current year

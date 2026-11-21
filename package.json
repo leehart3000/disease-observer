@@ -13,6 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed.mts",
+    "db:boundaries": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/boundaries/load.mts",
+    "boundaries:prepare": "node scripts/boundaries/prepare.mts",
     "etl:ukhsa": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/etl/ukhsa.mts"
   },
   "dependencies": {
