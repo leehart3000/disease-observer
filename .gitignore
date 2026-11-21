@@ -13,6 +13,10 @@ out/
 # Raw ONS boundary downloads (see data/ons/README.md)
 data/ons/raw/
 
+# Files for the map, built by `pnpm boundaries:web` and `pnpm maplibre:worker`
+public/boundaries/
+public/maplibre/
+
 # Test output
 coverage/
 playwright-report/

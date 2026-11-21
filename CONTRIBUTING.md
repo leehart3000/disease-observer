@@ -53,8 +53,10 @@ it.
 Run these from the repository root:
 
 - `pnpm install`: install dependencies.
-- `pnpm dev`: start the development server at http://localhost:3000.
-- `pnpm build`: create a production build.
+- `pnpm dev`: start the development server at http://localhost:3000. It
+  first builds the files that the map page loads (see
+  [The map page](#the-map-page)).
+- `pnpm build`: create a production build. It builds the same files first.
 - `pnpm start`: serve the production build (run `pnpm build` first).
 - `pnpm lint`: run ESLint.
 - `pnpm typecheck`: generate the Next.js route types and run the
@@ -63,7 +65,15 @@ Run these from the repository root:
   and iPhone SE (375 px) sizes. The site starts automatically with
   `pnpm dev` (or `pnpm start` when `CI` is set, after `pnpm build`). Run
   `pnpm exec playwright install chromium` once first, or set
-  `CHROMIUM_PATH` to use a Chromium you already have.
+  `CHROMIUM_PATH` to use a Chromium you already have. The map page tests
+  need the test database (see [End-to-end test database](#end-to-end-test-database)).
+- `pnpm test:e2e:db`: create and prepare the local test database
+  `disease_observer_test` for the end-to-end tests. Safe to run more than
+  once.
+- `pnpm e2e:fixtures`: load the fixture observations into the test
+  database. It refuses any other database.
+- `pnpm boundaries:web` and `pnpm maplibre:worker`: build the files that
+  the map page loads. `pnpm dev` and `pnpm build` run them for you.
 - `pnpm icons`: rebuild `src/app/favicon.ico` and `src/app/apple-icon.png`
   from `public/brand/mark-light.svg`. It uses the same Chromium as the
   tests.
@@ -127,9 +137,58 @@ GitHub, and `.env.example` shows the variable names.
 Check that the database is reachable at http://localhost:3000/api/health,
 which returns the PostGIS library version.
 
-CI does not use a database yet. The build, lint, type check and end-to-end
-tests must pass without `DATABASE_URL`, so nothing may query the database
-at build time.
+The build, lint and type check must pass without `DATABASE_URL`, so
+nothing may query the database at build time. Only the end-to-end tests use
+a database (see below).
+
+### End-to-end test database
+
+The map page tests need data, so they use a separate database called
+`disease_observer_test`, never the development one.
+
+- Locally, run `pnpm test:e2e:db` once, and again whenever the schema
+  changes. It creates the database in the same local `db` container (using
+  the server and login in `.env.local`), runs the migrations, the seed and
+  the boundary loader, and loads a small set of fixture observations (12
+  local authorities for COVID-19 and the 9 regions for measles, with dates
+  worked out from today). `pnpm test:e2e` then points the site at that
+  database. Because of this, it starts its own server, so stop `pnpm dev`
+  first.
+- The fixture loader (`e2e/fixtures/load.mts`) deletes every observation
+  in its database before it loads, so it refuses to run unless the host is
+  local and the database is called exactly `disease_observer_test`. Never
+  load fixtures into `disease_observer`.
+- In CI, the end-to-end job has its own PostGIS service container, with
+  the image pinned by digest like the actions. Dependabot does not update
+  service images, so update the digest in `.github/workflows/ci.yml` by hand
+  now and then, for example with
+  `docker buildx imagetools inspect postgis/postgis:18-3.6`. The job builds
+  the site with no database URL, then migrates, seeds, loads the boundaries
+  and fixtures, and runs the tests.
+
+## The map page
+
+The map page (`/map`) shows the latest COVID-19 rate by local authority and
+the latest complete week of measles cases by region, on an OpenFreeMap base
+map drawn with MapLibre GL JS.
+
+- MapLibre is only loaded in the browser, and only on this page.
+- The boundaries come from the committed files in `data/ons/`.
+  `pnpm boundaries:web` turns them into `public/boundaries/` (ignored by
+  Git): codes and names follow UKHSA (see `scripts/boundaries/ukhsa-codes.mts`),
+  and coordinates are rounded to 5 decimal places. They are static files
+  with long cache headers, so no geometry is queried from the database.
+- `pnpm maplibre:worker` copies MapLibre's web worker to `public/maplibre/`
+  (ignored by Git), because the bundler moves the library and it can no
+  longer find the worker beside it.
+- The values come from `src/lib/map/data.ts`, cached with `"use cache:
+  remote"` and `cacheLife("days")`. **New data appears on the map within
+  about a day of the ETL**, because the cache refreshes in the background
+  once a day. If the cache fails or is slow, the page queries the database
+  directly, and if that fails too it shows "Data unavailable" and the rest
+  of the page still works.
+- The base map follows the theme toggle, switching between OpenFreeMap's
+  positron (light) and dark styles without reloading the page.
 
 ### Running migrations on Neon
 

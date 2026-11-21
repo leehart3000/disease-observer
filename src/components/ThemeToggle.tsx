@@ -1,33 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { THEME_STORAGE_KEY } from "./theme";
-
-type Theme = "light" | "dark";
-
-const darkQuery = "(prefers-color-scheme: dark)";
-
-/** Re-renders when the theme attribute or the system setting changes. */
-function subscribe(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
-  const media = window.matchMedia(darkQuery);
-  media.addEventListener("change", onChange);
-  return () => {
-    observer.disconnect();
-    media.removeEventListener("change", onChange);
-  };
-}
-
-/** The theme in effect: the chosen one, else the system setting. */
-function getTheme(): Theme {
-  const chosen = document.documentElement.dataset.theme;
-  if (chosen === "light" || chosen === "dark") return chosen;
-  return window.matchMedia(darkQuery).matches ? "dark" : "light";
-}
+import { useTheme, type Theme } from "./useTheme";
 
 const iconProps = {
   xmlns: "http://www.w3.org/2000/svg",
@@ -49,8 +23,7 @@ const iconProps = {
  * icon is correct before the page hydrates.
  */
 export function ThemeToggle() {
-  // The server cannot know the theme, so it renders the light-theme label.
-  const theme = useSyncExternalStore(subscribe, getTheme, () => "light");
+  const theme = useTheme();
   const next: Theme = theme === "dark" ? "light" : "dark";
 
   function choose() {

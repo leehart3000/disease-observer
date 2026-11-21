@@ -55,6 +55,22 @@ jobs:
     timeout-minutes: 15
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    services:
+      # A throwaway database for the map page tests. The image is pinned by
+      # digest, like the actions. Dependabot does not update service images,
+      # so update the digest by hand (see CONTRIBUTING.md).
+      postgis:
+        image: postgis/postgis:18-3.6@sha256:4a43e3c3e5d55b9208240fc71db543b79c638766280c625a425bd0a2390989c4 # 18-3.6
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: disease_observer_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -72,11 +88,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The build has no database URL, which proves that it never queries one.
       - name: Build
         run: pnpm build
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Prepare the test database
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+          pnpm db:boundaries
+          pnpm e2e:fixtures
+        env:
+          DATABASE_URL_UNPOOLED: postgres://postgres:postgres@localhost:5432/disease_observer_test
+
       - name: Run end-to-end tests
         run: pnpm test:e2e
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/disease_observer_test

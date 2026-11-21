@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 
 /** Placeholder home page. */
@@ -12,12 +14,16 @@ export default function Home() {
         <p className="mt-4 max-w-xl text-lg text-muted">
           This site is being built. Please check back soon.
         </p>
+        <p className="mt-6">
+          <Link
+            href="/map"
+            className="rounded-md font-medium text-brand underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            View the map
+          </Link>
+        </p>
       </main>
-      <footer className="border-t border-line">
-        <div className="mx-auto max-w-5xl px-4 py-6 text-sm text-muted sm:px-6">
-          © 2026 Disease Observer
-        </div>
-      </footer>
+      <SiteFooter />
     </>
   );
 }
