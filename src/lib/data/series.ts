@@ -1,0 +1,134 @@
+/**
+ * A disease's weekly series for the chart: England and the nine UKHSA
+ * regions, one point a week. Server-side only.
+ *
+ * Nothing here may run at build time, because the build has no database:
+ * callers wait for a real request first (`connection()`).
+ */
+import "server-only";
+import { sql } from "drizzle-orm";
+import { cacheLife } from "next/cache";
+import { getDb } from "@/db";
+import { getDataset, getDisease } from "@/lib/datasets/registry";
+import type { DiseaseSeries, SeriesLine, SeriesPeriod } from "@/lib/series-types";
+import { loadWithFallback, NoDataError, type LoadResult } from "./load";
+
+/** The ONS code for England. */
+const ENGLAND_CODE = "E92000001";
+
+type Row = {
+  code: string;
+  name: string;
+  level: "nation" | "region";
+  value: number;
+  provisional: boolean;
+  period_start: string;
+  period_end: string;
+};
+
+/**
+ * Reads England and the regions for a disease's headline dataset, from the
+ * chart's start date to England's latest period. Only periods that end a
+ * whole number of weeks before England's latest are kept, so the daily
+ * COVID-19 rate rows become one point a week (see `queryHeadlines`). Not
+ * cached.
+ *
+ * @throws {NoDataError} If England has no values, so an empty result is not
+ *   cached for a day.
+ * @throws On any database error, so a failure is never cached.
+ */
+export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
+  const disease = getDisease(slug);
+  const dataset = disease && getDataset(disease.headline.datasetId);
+  if (!disease || !dataset) throw new Error(`Unknown disease ${slug}`);
+
+  const ended = dataset.completePeriodsOnly ? sql`and o.period_end < current_date` : sql``;
+  const result = await getDb().execute<Row>(sql`
+    with latest as (
+      select o.period_end
+      from observations o
+      join diseases d on d.id = o.disease_id
+      join sources s on s.id = o.source_id
+      join areas a on a.id = o.area_id
+      where d.slug = ${dataset.diseaseSlug}
+        and s.slug = ${dataset.sourceSlugs[0]}
+        and o.metric = ${dataset.metric}
+        and o.stratum = 'all'
+        and o.period_type = ${dataset.periodType}
+        and a.code_scheme = 'ons'
+        and a.code = ${ENGLAND_CODE}
+        ${ended}
+      order by o.period_start desc
+      limit 1
+    )
+    select a.code, a.name, a.level, o.value, o.provisional,
+           o.period_start::text as period_start, o.period_end::text as period_end
+    from latest l
+    join observations o on o.period_end <= l.period_end
+      and (l.period_end - o.period_end) % 7 = 0
+      and o.period_end >= ${disease.chart.since}::date
+    join diseases d on d.id = o.disease_id
+    join sources s on s.id = o.source_id
+    join areas a on a.id = o.area_id
+    where d.slug = ${dataset.diseaseSlug}
+      and s.slug = ${dataset.sourceSlugs[0]}
+      and o.metric = ${dataset.metric}
+      and o.stratum = 'all'
+      and o.period_type = ${dataset.periodType}
+      and a.code_scheme = 'ons'
+      and a.level in ('nation', 'region')
+    order by o.period_end, a.name`);
+
+  const england = result.rows.filter((row) => row.code === ENGLAND_CODE);
+  if (england.length === 0) throw new NoDataError(`series for ${slug}`);
+  const periods: SeriesPeriod[] = england.map((row) => ({
+    start: row.period_start,
+    end: row.period_end,
+    provisional: row.provisional,
+  }));
+  const indexOfEnd = new Map(periods.map((period, index) => [period.end, index]));
+
+  const byCode = new Map<string, SeriesLine>();
+  for (const row of result.rows) {
+    const index = indexOfEnd.get(row.period_end);
+    if (index === undefined) continue;
+    let line = byCode.get(row.code);
+    if (!line) {
+      line = {
+        code: row.code,
+        name: row.name,
+        level: row.level,
+        values: periods.map(() => null),
+      };
+      byCode.set(row.code, line);
+    }
+    line.values[index] = Number(row.value);
+  }
+  const lines = [...byCode.values()].sort((a, b) =>
+    a.code === ENGLAND_CODE ? -1 : b.code === ENGLAND_CODE ? 1 : a.name.localeCompare(b.name, "en-GB"),
+  );
+  return { diseaseSlug: slug, datasetId: dataset.id, periods, lines };
+}
+
+/**
+ * The same series, from the shared runtime cache (refreshed about once a
+ * day). The slug is the cache key, so callers must only pass slugs that
+ * were checked against the registry.
+ */
+async function getCachedDiseaseSeries(slug: string): Promise<DiseaseSeries> {
+  "use cache: remote";
+  cacheLife("days");
+  return queryDiseaseSeries(slug);
+}
+
+/**
+ * Loads the series without ever throwing: from the cache, else from the
+ * database, else as an "error" or "empty" result.
+ */
+export function loadDiseaseSeries(slug: string): Promise<LoadResult<DiseaseSeries>> {
+  return loadWithFallback(
+    "Disease series",
+    () => getCachedDiseaseSeries(slug),
+    () => queryDiseaseSeries(slug),
+  );
+}

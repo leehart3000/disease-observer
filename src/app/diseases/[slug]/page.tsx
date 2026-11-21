@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { DiseaseChart } from "@/components/DiseaseChart";
 import { DiseaseHeadline } from "@/components/Headline";
 import { strongLink, textLink } from "@/components/link-styles";
 import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
@@ -48,7 +49,10 @@ export default async function DiseasePage({ params }: PageProps<"/diseases/[slug
         <h2 className="text-sm font-medium">Latest figure</h2>
         <DiseaseHeadline slug={disease.slug} id="headline" />
       </div>
-      <div className="mt-6 grid max-w-2xl gap-3">
+      <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Over time</h2>
+      <DiseaseChart slug={disease.slug} name={disease.name} />
+
+      <div className="mt-10 grid max-w-2xl gap-3">
         {disease.about.map((paragraph) => (
           <p key={paragraph}>{paragraph}</p>
         ))}

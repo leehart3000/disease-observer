@@ -48,6 +48,20 @@ export function englandMeaslesCases(weeksBack: number): number {
 }
 
 /**
+ * A region's COVID-19 rate `weeksBack` weeks before the latest. The nine
+ * regions, in the order of `REGIONS` in the loader, sit 0.5 apart around
+ * England's value.
+ */
+export function regionCovidRate(regionIndex: number, weeksBack: number): number {
+  return Math.round((englandCovidRate(weeksBack) + (regionIndex - 4) * 0.5) * 10) / 10;
+}
+
+/** A region's measles cases in an older week. The latest week's values are set by the loader. */
+export function regionMeaslesCases(regionIndex: number, weeksBack: number): number {
+  return (regionIndex + weeksBack) % 4;
+}
+
+/**
  * The England rows for COVID-19 and measles: a weekly series, plus rows that
  * must not appear in a weekly series. COVID-19 also has a row for the day
  * before the latest, as the real data has one a day. Measles also has a

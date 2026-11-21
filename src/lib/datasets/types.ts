@@ -79,4 +79,9 @@ export type DiseaseDef = {
    * the dataset's whole place (England), in the dataset's metric and unit.
    */
   headline: { datasetId: string };
+  /**
+   * The chart on the disease page shows the headline dataset's metric for
+   * England and the regions, one point a week, from this date (`YYYY-MM-DD`).
+   */
+  chart: { since: string };
 };

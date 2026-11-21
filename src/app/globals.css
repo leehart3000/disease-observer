@@ -12,6 +12,16 @@
   --brand: #2b5c9e;
   --accent: #bc4034;
 
+  /*
+   * Colours for the regions picked on a chart: orange, aqua and violet from
+   * the data-viz palette. They pass the palette checks together, in both
+   * themes, against --surface. Aqua is under 3:1 on light, so a region is
+   * always named in the legend and the readout as well.
+   */
+  --chart-1: #eb6834;
+  --chart-2: #1baf7a;
+  --chart-3: #6250d6;
+
   /* Logo mark colours. */
   --mark-oval: #2b5c9e;
   --mark-detail: #f7f9fb;
@@ -38,6 +48,10 @@
   --brand: #84aee6;
   --accent: #f08a7e;
 
+  --chart-1: #d95926;
+  --chart-2: #199e70;
+  --chart-3: #9085e9;
+
   --mark-oval: #84aee6;
   --mark-detail: #172029;
   --mark-top-dot: #f08a7e;
@@ -52,6 +66,10 @@
     --line: #2e3b48;
     --brand: #84aee6;
     --accent: #f08a7e;
+
+    --chart-1: #d95926;
+    --chart-2: #199e70;
+    --chart-3: #9085e9;
 
     --mark-oval: #84aee6;
     --mark-detail: #172029;

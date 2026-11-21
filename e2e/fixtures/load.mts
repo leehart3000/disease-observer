@@ -17,7 +17,14 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { createDb } from "../../src/db/client.ts";
 import { areas, diseases, observations, sources } from "../../src/db/schema.ts";
-import { englandRows, fixtureDates } from "./dates.mts";
+import {
+  addDays,
+  ENGLAND_WEEKS,
+  englandRows,
+  fixtureDates,
+  regionCovidRate,
+  regionMeaslesCases,
+} from "./dates.mts";
 
 export const TEST_DATABASE_NAME = "disease_observer_test";
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "db"];
@@ -180,6 +187,35 @@ async function main() {
           value: 99,
           provisional: true,
         });
+      });
+
+      // The charts show 30 weeks for each region: COVID-19 rates, and measles
+      // cases for the weeks before the latest one that is set above.
+      REGIONS.forEach((code, index) => {
+        for (let back = 0; back < ENGLAND_WEEKS; back++) {
+          rows.push({
+            ...base,
+            diseaseId: covid.id,
+            areaId: idOf(code),
+            metric: "rate_per_100k",
+            periodStart: addDays(dates.covidLatest.start, -7 * back),
+            periodEnd: addDays(dates.covidLatest.end, -7 * back),
+            value: regionCovidRate(index, back),
+            provisional: back === 0,
+          });
+          if (back > 0) {
+            rows.push({
+              ...base,
+              diseaseId: measles.id,
+              areaId: idOf(code),
+              metric: "cases",
+              periodStart: addDays(dates.measlesComplete.start, -7 * back),
+              periodEnd: addDays(dates.measlesComplete.end, -7 * back),
+              value: regionMeaslesCases(index, back),
+              provisional: false,
+            });
+          }
+        }
       });
 
       // England is not in the boundary files, so the loader creates it, as the ETL does.

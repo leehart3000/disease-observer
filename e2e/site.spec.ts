@@ -183,3 +183,24 @@ test("the map page has a canonical link to /map", async ({ page }) => {
     "https://disease.observer/map",
   );
 });
+
+test("the disease check runs only for disease pages", async ({ request }) => {
+  // A known disease goes through the check, which marks the response.
+  const disease = await request.get("/diseases/covid-19");
+  expect(disease.status()).toBe(200);
+  expect(disease.headers()["x-disease-checked"]).toBe("1");
+
+  // Other pages, assets and images do not.
+  for (const path of ["/", "/diseases", "/map", "/about", "/sources", "/icon.svg", "/boundaries/rgn-dec-2022.json"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    expect(response.headers()["x-disease-checked"], path).toBeUndefined();
+  }
+});
+
+test("an unknown or malformed disease slug is a 404, not an error", async ({ request }) => {
+  for (const path of ["/diseases/not-a-disease", "/diseases/%E0%A4%A", "/diseases/covid-19%20"]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(404);
+  }
+});

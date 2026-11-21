@@ -194,6 +194,20 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   England has no data, or "Figure unavailable" if the database can't be
   read. The sparkline is an inline SVG hidden from screen readers, with a
   sentence for them.
+- Each disease page also has a weekly line chart of England and the nine
+  UKHSA regions since the date in the disease's `chart.since`
+  (`src/components/charts/`, with the maths in `src/lib/chart-math.ts` and
+  the data in `src/lib/data/series.ts`). It is hand-built SVG, drawn on the
+  server and then at the size of its box. England is a thick line in the
+  text colour and the regions are thin muted lines; pressing a region in the
+  legend highlights it, in one of three colours (`--chart-1` to `--chart-3`
+  in `globals.css`, checked together in both themes). Pointing at or
+  touching the chart, or using the arrow, Page Up, Page Down, Home and End
+  keys on it, moves a marker and shows that week's values. A table of the
+  same numbers is under it.
+- `src/proxy.ts` runs only for `/diseases/<slug>` (its matcher), and marks
+  a known disease with an `x-disease-checked` header so the tests can see
+  where it ran.
 - `/sources` and the sources on each disease page list only the sources
   that a registry dataset uses (`sourceSlugs`), read from the `sources`
   table, plus the base map credit in `src/lib/credits.ts`. If the table

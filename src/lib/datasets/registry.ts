@@ -20,6 +20,7 @@ export const DISEASES = [
       "The map shows the rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people. Rates allow areas of different sizes to be compared.",
     ],
     headline: { datasetId: "covid-19-rate" },
+    chart: { since: "2023-01-01" },
   },
   {
     slug: "measles",
@@ -30,6 +31,7 @@ export const DISEASES = [
       "The map shows the number of confirmed cases in each UKHSA region for the latest complete week, by the week that symptoms began. Recent weeks are provisional because cases are still being reported.",
     ],
     headline: { datasetId: "measles-cases" },
+    chart: { since: "2023-01-01" },
   },
 ] as const satisfies readonly DiseaseDef[];
 
