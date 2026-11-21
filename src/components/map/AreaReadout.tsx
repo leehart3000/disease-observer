@@ -1,5 +1,6 @@
-import { formatPeriod, formatValue } from "@/lib/map/layers";
-import type { AreaValue, LayerKey, MapDataset } from "@/lib/map/types";
+import type { DatasetDef } from "@/lib/datasets/types";
+import { formatPeriod, formatValue } from "@/lib/format";
+import type { AreaValue, MapDataset } from "@/lib/map/types";
 import type { SelectedArea } from "./ChoroplethMap";
 
 /**
@@ -8,13 +9,13 @@ import type { SelectedArea } from "./ChoroplethMap";
  * tapping it (or choosing it in the table) pins it, so the readout stays.
  */
 export function AreaReadout({
-  layer,
   dataset,
+  values,
   area,
   pinned,
 }: {
-  layer: LayerKey;
-  dataset: MapDataset | null;
+  dataset: DatasetDef;
+  values: MapDataset;
   area: SelectedArea | null;
   /** True if `area` is pinned rather than just pointed at. */
   pinned: boolean;
@@ -26,15 +27,15 @@ export function AreaReadout({
       </p>
     );
   }
-  const found: AreaValue | undefined = dataset?.values.find((entry) => entry.code === area.code);
+  const found: AreaValue | undefined = values.values.find((entry) => entry.code === area.code);
   return (
     <div>
       <p className="font-medium">{area.name}</p>
-      {found && dataset ? (
+      {found ? (
         <>
-          <p>{formatValue(layer, found.value)}</p>
+          <p>{formatValue(dataset, found.value)}</p>
           <p className="text-sm text-muted">
-            {formatPeriod(layer, dataset.periodStart, dataset.periodEnd)}
+            {formatPeriod(dataset, values.periodStart, values.periodEnd)}
           </p>
           {found.provisional ? <p className="text-sm font-medium">Provisional</p> : null}
         </>

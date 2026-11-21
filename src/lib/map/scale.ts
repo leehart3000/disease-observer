@@ -2,7 +2,8 @@
  * The colour scale for the map: viridis, in a handful of stepped classes.
  * Safe to import from both server and client code.
  */
-import { formatNumber, type LayerConfig } from "./layers";
+import type { ScaleConfig } from "../datasets/types.ts";
+import { formatNumber } from "../format.ts";
 
 /** Viridis at nine evenly spaced points, dark purple (low) to yellow (high). */
 const VIRIDIS = [
@@ -16,8 +17,6 @@ const VIRIDIS = [
   "#aadc32",
   "#fde725",
 ] as const;
-
-const MAX_CLASSES = 6;
 
 function channels(hex: string): number[] {
   return [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
@@ -54,14 +53,14 @@ function quantile(sorted: number[], fraction: number): number {
 }
 
 /** Works out where the classes start. Thresholds are strictly ascending. */
-function chooseThresholds(values: number[], kind: LayerConfig["valueKind"]): number[] {
+function chooseThresholds(values: number[], config: ScaleConfig): number[] {
   const sorted = [...values].sort((a, b) => a - b);
   if (sorted.length === 0) return [];
   const thresholds: number[] = [];
-  let classesLeft = MAX_CLASSES;
+  let classesLeft = config.classes;
 
   let positives = sorted;
-  if (kind === "count" && sorted[0] === 0) {
+  if (config.zeroClass && sorted[0] === 0) {
     // Zero gets a class of its own.
     thresholds.push(1);
     classesLeft -= 1;
@@ -70,9 +69,8 @@ function chooseThresholds(values: number[], kind: LayerConfig["valueKind"]): num
 
   for (let i = 1; i < classesLeft && positives.length > 0; i += 1) {
     const raw = quantile(positives, i / classesLeft);
-    // Rates are rounded to two significant figures, so the legend reads
-    // cleanly. Counts are whole numbers.
-    const rounded = kind === "rate" ? Number(raw.toPrecision(2)) : Math.ceil(raw);
+    // Class boundaries are rounded so the legend reads cleanly.
+    const rounded = config.rounding === "2sf" ? Number(raw.toPrecision(2)) : Math.ceil(raw);
     const previous = thresholds[thresholds.length - 1] ?? -Infinity;
     if (rounded > previous && rounded > sorted[0] && rounded <= sorted[sorted.length - 1]) {
       thresholds.push(rounded);
@@ -82,35 +80,31 @@ function chooseThresholds(values: number[], kind: LayerConfig["valueKind"]): num
 }
 
 /** Describes the range of one class in words. */
-function labelFor(
-  index: number,
-  thresholds: number[],
-  kind: LayerConfig["valueKind"],
-): string {
+function labelFor(index: number, thresholds: number[], config: ScaleConfig): string {
   const low = index === 0 ? undefined : thresholds[index - 1];
   const high = index === thresholds.length ? undefined : thresholds[index];
   if (low === undefined) {
-    if (kind === "count" && high === 1) return "0";
+    if (config.zeroClass && high === 1) return "0";
     return `Under ${formatNumber(high!)}`;
   }
   if (high === undefined) return `${formatNumber(low)} or more`;
-  if (kind === "count") {
+  if (config.rounding === "integer") {
     return high - 1 === low ? formatNumber(low) : `${formatNumber(low)} to ${formatNumber(high - 1)}`;
   }
   return `${formatNumber(low)} to under ${formatNumber(high)}`;
 }
 
 /**
- * Builds the colour scale for a set of values. There are at most six
- * classes, fewer if the values don't vary enough. For counts, zero is its
- * own class.
+ * Builds the colour scale for a set of values, with the settings of the
+ * dataset. There are at most `config.classes` classes, fewer if the values
+ * don't vary enough. If `config.zeroClass` is set, zero is its own class.
  */
-export function buildScale(values: number[], kind: LayerConfig["valueKind"]): Scale {
-  const thresholds = chooseThresholds(values, kind);
+export function buildScale(values: number[], config: ScaleConfig): Scale {
+  const thresholds = chooseThresholds(values, config);
   const count = thresholds.length + 1;
   const classes: LegendClass[] = Array.from({ length: count }, (_, index) => ({
     colour: viridisAt(count === 1 ? 0.5 : index / (count - 1)),
-    label: count === 1 ? "All values" : labelFor(index, thresholds, kind),
+    label: count === 1 ? "All values" : labelFor(index, thresholds, config),
   }));
   return {
     thresholds,

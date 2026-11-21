@@ -10,8 +10,11 @@ export const metadata: Metadata = {
     "Latest COVID-19 case rates by local authority and measles cases by region in England, from UKHSA.",
 };
 
-/** The map page. The header and heading are static; the map and table stream in. */
-export default function MapPage() {
+/**
+ * The map page. The header and heading are static; the map and table stream
+ * in. The dataset is chosen in the URL: `/map?d=measles-cases`.
+ */
+export default function MapPage({ searchParams }: PageProps<"/map">) {
   return (
     <>
       <SiteHeader />
@@ -31,7 +34,7 @@ export default function MapPage() {
             </div>
           }
         >
-          <MapSection />
+          <MapSection searchParams={searchParams} />
         </Suspense>
       </main>
       <SiteFooter />

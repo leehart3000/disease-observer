@@ -22,7 +22,7 @@ The first version covers:
 - Drizzle ORM and the `pg` driver, PostgreSQL with PostGIS (Neon in
   production)
 - MapLibre GL and deck.gl, with base maps from OpenFreeMap or Protomaps
-- ECharts for time-series charts
+- Hand-built, accessible SVG for time-series charts (no charting library)
 - ETL: TypeScript scripts using Drizzle, Zod and Turf.js, run on GitHub
   Actions scheduled workflows
 - Testing: Vitest, React Testing Library and Playwright
@@ -173,6 +173,20 @@ The map page (`/map`) shows the latest COVID-19 rate by local authority and
 the latest complete week of measles cases by region, on an OpenFreeMap base
 map drawn with MapLibre GL JS.
 
+- **The dataset registry** (`src/lib/datasets/registry.ts`) lists the
+  diseases and the datasets that the map can show: each dataset's id, label,
+  metric, unit, column heading, period rules, boundary file, colour scale
+  and sources. The picker, the table, the legend and the credits all read
+  from it, so adding a dataset is mostly adding an entry to `DATASETS`
+  (and the disease to `DISEASES`, if it is new). A disease appears only when
+  the site has data for it. The registry is erasable TypeScript with no `@/`
+  imports, so scripts can import it too.
+- **The dataset is in the URL:** `/map?d=measles-cases`. The page checks the
+  value against the registry, and shows the default dataset if it is
+  missing or unknown. The checked values are the only arguments of the
+  cached data function, so the cache stays small.
+- Choosing a dataset in the picker navigates without reloading the page,
+  and the map itself is not recreated.
 - MapLibre is only loaded in the browser, and only on this page.
 - The boundaries come from the committed files in `data/ons/`.
   `pnpm boundaries:web` turns them into `public/boundaries/` (ignored by
@@ -182,12 +196,14 @@ map drawn with MapLibre GL JS.
 - `pnpm maplibre:worker` copies MapLibre's web worker to `public/maplibre/`
   (ignored by Git), because the bundler moves the library and it can no
   longer find the worker beside it.
-- The values come from `src/lib/map/data.ts`, cached with `"use cache:
-  remote"` and `cacheLife("days")`. **New data appears on the map within
-  about a day of the ETL**, because the cache refreshes in the background
-  once a day. If the cache fails or is slow, the page queries the database
-  directly, and if that fails too it shows "Data unavailable" and the rest
-  of the page still works.
+- The values come from `src/lib/data/map-values.ts`, cached with `"use
+  cache: remote"` and `cacheLife("days")`, one entry per dataset. **New data
+  appears on the map within about a day of the ETL**, because the cache
+  refreshes in the background once a day. `loadWithFallback` in
+  `src/lib/data/load.ts` is the pattern for every data function: if the
+  cache fails or is slow, the page queries the database directly, and if
+  that fails too it shows "Data unavailable" (with the dataset picker still
+  there) and the rest of the page still works.
 - The base map follows the theme toggle, switching between OpenFreeMap's
   positron (light) and dark styles without reloading the page. The style
   files are not edited: `transformStyle` (in `ChoroplethMap.tsx`) raises

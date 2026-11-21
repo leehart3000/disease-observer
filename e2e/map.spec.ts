@@ -62,9 +62,17 @@ async function openMap(page: Page) {
   await expect(mapCanvas(page)).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
 }
 
-/** Picks a layer with the toggle and waits for the map to draw it. */
+/** The registry id of each dataset, by the text in the picker. */
+const DATASET_IDS: Record<string, string> = {
+  "COVID-19 rate by local authority": "covid-19-rate",
+  "Measles cases by region": "measles-cases",
+};
+
+/** Picks a dataset in the picker and waits for the map to draw it. */
 async function chooseLayer(page: Page, label: string) {
-  await page.locator("label", { hasText: label }).click();
+  await page.getByLabel("Dataset").selectOption({ label });
+  await expect(page).toHaveURL(new RegExp(`[?&]d=${DATASET_IDS[label]}`));
+  await expect(mapCanvas(page)).toHaveAttribute("data-dataset", DATASET_IDS[label], { timeout: 30_000 });
   await expect(mapCanvas(page)).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
 }
 
@@ -101,6 +109,82 @@ test("the map renders", async ({ page }) => {
   expect(box?.width).toBeGreaterThan(200);
   expect(box?.height).toBeGreaterThan(200);
   await expect(page.getByRole("region", { name: /^Map: COVID-19 cases per 100,000/ })).toBeVisible();
+});
+
+test("the dataset picker lists the datasets in groups, by disease", async ({ page }) => {
+  await openMap(page);
+
+  const picker = page.getByLabel("Dataset");
+  await expect(picker).toBeVisible();
+  await expect(picker).toHaveValue("covid-19-rate");
+  await expect(picker.locator("optgroup")).toHaveCount(2);
+  await expect(picker.locator("optgroup").nth(0)).toHaveAttribute("label", "COVID-19");
+  await expect(picker.locator("optgroup").nth(1)).toHaveAttribute("label", "Measles");
+  await expect(picker.locator("optgroup").nth(0).locator("option")).toHaveText([
+    "COVID-19 rate by local authority",
+  ]);
+  await expect(picker.locator("optgroup").nth(1).locator("option")).toHaveText(["Measles cases by region"]);
+  // The old radio buttons are gone.
+  await expect(page.getByRole("radio")).toHaveCount(0);
+});
+
+test("choosing a dataset changes the URL and the page without reloading or recreating the map", async ({
+  page,
+}) => {
+  await openMap(page);
+  await expect(page.getByRole("list", { name: /COVID-19 cases per 100,000/ })).toBeVisible();
+  // Mark the page and the map's own canvas, to see that neither is replaced.
+  await page.evaluate(() => {
+    const w = window as unknown as { stillHere: boolean; canvas: Element | null };
+    w.stillHere = true;
+    w.canvas = document.querySelector(".maplibregl-canvas");
+  });
+
+  await chooseLayer(page, "Measles cases by region");
+
+  await expect(page).toHaveURL(/\/map\?d=measles-cases$/);
+  await expect(page.getByLabel("Dataset")).toHaveValue("measles-cases");
+  await expect(table(page).locator("caption")).toContainText("Measles");
+  await expect(table(page).locator("caption")).toContainText("Week of onset");
+  await expect(page.getByRole("list", { name: /Measles cases/ })).toBeVisible();
+  expect(
+    await page.evaluate(() => {
+      const w = window as unknown as { stillHere?: boolean; canvas: Element | null };
+      return {
+        samePage: w.stillHere === true,
+        sameMap: w.canvas !== null && w.canvas === document.querySelector(".maplibregl-canvas"),
+      };
+    }),
+  ).toEqual({ samePage: true, sameMap: true });
+
+  // And back again.
+  await chooseLayer(page, "COVID-19 rate by local authority");
+  await expect(page).toHaveURL(/\/map\?d=covid-19-rate$/);
+  await expect(table(page).locator("caption")).toContainText("COVID-19");
+});
+
+test("a link to a dataset opens it, and an unknown one shows the default", async ({ page }) => {
+  await page.goto("/map?d=measles-cases");
+  await expect(mapCanvas(page)).toHaveAttribute("data-dataset", "measles-cases", { timeout: 30_000 });
+  await expect(mapCanvas(page)).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
+  await expect(page.getByLabel("Dataset")).toHaveValue("measles-cases");
+  await expect(table(page).locator("caption")).toContainText("Measles");
+
+  // An unknown dataset, or a period that the dataset does not offer, is ignored.
+  await page.goto("/map?d=not-a-dataset&p=12w");
+  await expect(mapCanvas(page)).toHaveAttribute("data-dataset", "covid-19-rate", { timeout: 30_000 });
+  await expect(page.getByLabel("Dataset")).toHaveValue("covid-19-rate");
+  await expect(table(page).locator("caption")).toContainText("COVID-19");
+});
+
+test("the server sends the chosen dataset in the HTML", async ({ request }) => {
+  const html = await (await request.get("/map?d=measles-cases")).text();
+
+  expect(html).toContain("Week of onset");
+  expect(html).toContain("Cases (week)");
+  expect(html.match(/<tr[ >]/g)).toHaveLength(10); // 9 regions and the heading row
+  // Only the chosen dataset's values are sent.
+  expect(html).not.toContain("Cases per 100,000 (7 days)");
 });
 
 test("the legend and the table show values", async ({ page }) => {

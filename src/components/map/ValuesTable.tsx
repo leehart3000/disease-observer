@@ -1,8 +1,9 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
-import { formatNumber, formatPeriod, LAYERS } from "@/lib/map/layers";
-import type { LayerKey, MapDataset } from "@/lib/map/types";
+import type { DatasetDef } from "@/lib/datasets/types";
+import { formatNumber, formatPeriod } from "@/lib/format";
+import type { MapDataset } from "@/lib/map/types";
 import type { SelectedArea } from "./ChoroplethMap";
 
 type SortKey = "name" | "value";
@@ -70,22 +71,23 @@ function PageControls({
  * the page controls, the table, then the page controls again.
  */
 export function ValuesTable({
-  layer,
-  dataset,
+  dataset: config,
+  values: dataset,
   areaCount,
   pinned,
   onPin,
 }: {
-  layer: LayerKey;
-  dataset: MapDataset;
-  /** How many areas the map draws for this layer, once known. */
+  /** The dataset's registry entry: its title and column heading. */
+  dataset: DatasetDef;
+  /** The values to show. */
+  values: MapDataset;
+  /** How many areas the map draws for this dataset, once known. */
   areaCount: number | null;
   /** The pinned area, if any. */
   pinned: SelectedArea | null;
   /** Called with an area to pin it (or unpin it, if it is already pinned). */
   onPin: (area: SelectedArea) => void;
 }) {
-  const config = LAYERS[layer];
   const ids = useId();
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "value",
@@ -131,7 +133,7 @@ export function ValuesTable({
   const filtered = query.trim() !== "";
   const columns: { key: SortKey; label: string; numeric: boolean }[] = [
     { key: "name", label: "Area", numeric: false },
-    { key: "value", label: config.valueHeading, numeric: true },
+    { key: "value", label: config.columnHeading.latest, numeric: true },
   ];
 
   return (
@@ -194,7 +196,7 @@ export function ValuesTable({
           <caption className="px-3 py-3 text-left">
             <span className="block font-medium">{config.title}</span>
             <span className="block text-muted">
-              {formatPeriod(layer, dataset.periodStart, dataset.periodEnd)}
+              {formatPeriod(config, dataset.periodStart, dataset.periodEnd)}
             </span>
           </caption>
           <thead>

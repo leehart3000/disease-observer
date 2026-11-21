@@ -14,9 +14,8 @@ import type {
   StyleSpecification,
   TransformStyleFunction,
 } from "maplibre-gl";
-import { LAYERS } from "@/lib/map/layers";
 import type { Scale } from "@/lib/map/scale";
-import type { LayerKey, MapDataset } from "@/lib/map/types";
+import type { MapDataset } from "@/lib/map/types";
 import { useTheme, type Theme } from "../useTheme";
 
 /** An area that the visitor is pointing at, has tapped or has chosen in the table. */
@@ -36,7 +35,10 @@ export type AreaRect = {
 };
 
 type Props = {
-  layer: LayerKey;
+  /** The registry id of the dataset being drawn. */
+  datasetId: string;
+  /** The static boundary file for the dataset's areas. */
+  boundaryUrl: string;
   dataset: MapDataset | null;
   scale: Scale | null;
   /** The area to outline, if any. */
@@ -56,8 +58,8 @@ type Props = {
   onHover: (area: SelectedArea | null) => void;
   /** Called when an area is clicked or tapped, or empty map is (`null`). */
   onSelect: (area: SelectedArea | null) => void;
-  /** Called with the number of areas in a layer's boundary file once it has loaded. */
-  onAreaCount: (layer: LayerKey, count: number) => void;
+  /** Called with the number of areas in a dataset's boundary file once it has loaded. */
+  onAreaCount: (datasetId: string, count: number) => void;
 };
 
 /** The OpenFreeMap base maps: positron for the light theme and dark for the dark theme. */
@@ -388,7 +390,8 @@ function applyBaseStyle(map: MapLibreMap, state: MapState, theme: Theme) {
  * rendering, so the nearest error boundary can show a fallback.
  */
 export function ChoroplethMap({
-  layer,
+  datasetId,
+  boundaryUrl,
   dataset,
   scale,
   highlightCode,
@@ -405,7 +408,8 @@ export function ChoroplethMap({
   const [map, setMap] = useState<MapLibreMap | null>(null);
   const [failure, setFailure] = useState<Error | null>(null);
   const [baseStyle, setBaseStyle] = useState<string | null>(null);
-  const [dataLayer, setDataLayer] = useState<LayerKey | null>(null);
+  /** The dataset that the map has finished drawing. */
+  const [drawnDataset, setDrawnDataset] = useState<string | null>(null);
 
   const stateRef = useRef<MapState>({
     theme,
@@ -578,23 +582,23 @@ export function ChoroplethMap({
     callbacksRef.current.onHighlightRect(areaRect(map, stateRef.current.collection, highlightCode));
   }, [map, highlightCode]);
 
-  // Draw the current layer's values.
+  // Draw the current dataset's values.
   useEffect(() => {
     if (!map) return;
     let cancelled = false;
-    loadBoundaries(LAYERS[layer].boundaryUrl)
+    loadBoundaries(boundaryUrl)
       .then(async (boundaries) => {
         if (cancelled) return;
         const state = stateRef.current;
         state.collection = joinValues(boundaries, dataset, scale);
-        callbacksRef.current.onAreaCount(layer, boundaries.features.length);
+        callbacksRef.current.onAreaCount(datasetId, boundaries.features.length);
         // If a style change is in progress, the new style picks this data up.
         const source = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
         await source?.setData(state.collection as unknown as MapLibreData);
         if (cancelled) return;
-        // Report the layer as ready once the map has drawn it.
-        if (map.loaded()) setDataLayer(layer);
-        else map.once("idle", () => !cancelled && setDataLayer(layer));
+        // Report the dataset as ready once the map has drawn it.
+        if (map.loaded()) setDrawnDataset(datasetId);
+        else map.once("idle", () => !cancelled && setDrawnDataset(datasetId));
       })
       .catch((error: unknown) => {
         if (!cancelled) setFailure(error instanceof Error ? error : new Error(String(error)));
@@ -602,15 +606,16 @@ export function ChoroplethMap({
     return () => {
       cancelled = true;
     };
-  }, [map, layer, dataset, scale]);
+  }, [map, datasetId, boundaryUrl, dataset, scale]);
 
-  const ready = baseStyle !== null && dataLayer === layer;
+  const ready = baseStyle !== null && drawnDataset === datasetId;
 
   return (
     <div
       ref={containerRef}
       className="h-full w-full"
       data-testid="map-canvas"
+      data-dataset={datasetId}
       data-base-style={baseStyle ?? undefined}
       data-map-ready={ready ? "true" : "false"}
       data-highlight={highlightCode ?? undefined}

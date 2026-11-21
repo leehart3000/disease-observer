@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { formatNumber } from "@/lib/map/layers";
+import { formatNumber } from "@/lib/format";
 import type { Scale } from "@/lib/map/scale";
 
 const buttonClass =

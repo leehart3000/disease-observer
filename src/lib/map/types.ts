@@ -1,8 +1,5 @@
 /** Types shared by the server (which loads the values) and the client (which draws them). */
 
-/** The two things the map can show. */
-export type LayerKey = "covid" | "measles";
-
 /** One area's value for a period. */
 export type AreaValue = {
   /** The area code that UKHSA uses (matches `code` in the boundary files). */
@@ -13,7 +10,7 @@ export type AreaValue = {
   provisional: boolean;
 };
 
-/** The values for one layer, all for the same period. */
+/** The values for one dataset, all for the same period. */
 export type MapDataset = {
   /** First day of the period, as `YYYY-MM-DD`. */
   periodStart: string;
@@ -30,11 +27,4 @@ export type SourceCredit = {
   licenceName: string;
   licenceUrl: string;
   attribution: string;
-};
-
-/** Everything the map page needs. A dataset is `null` if it has no values yet. */
-export type MapData = {
-  covid: MapDataset | null;
-  measles: MapDataset | null;
-  sources: SourceCredit[];
 };
