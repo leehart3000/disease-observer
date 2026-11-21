@@ -1,5 +1,5 @@
 import { DiseaseCard, MapCard } from "@/components/DiseaseCard";
-import { DISEASES } from "@/lib/datasets/registry";
+import { DISEASES, coverageSentence } from "@/lib/datasets/registry";
 
 /** The home page: one card for each disease in the registry, and one for the map. */
 export default function Home() {
@@ -9,8 +9,8 @@ export default function Home() {
         Maps and charts for infectious disease surveillance
       </h1>
       <p className="mt-4 max-w-xl text-lg text-muted">
-        Figures for England from the UK Health Security Agency, shown as soon as
-        they are published.
+        Disease Observer brings public figures on infectious diseases together
+        in one place. {coverageSentence()}
       </p>
       <h2 className="mt-10 mb-4 text-2xl font-medium tracking-tight">Explore</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

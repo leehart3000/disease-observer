@@ -53,6 +53,8 @@ export const DATASETS = [
       areaNoun: "local authorities",
     },
     scale: { classes: 6, rounding: "2sf", zeroClass: false },
+    place: "England",
+    publisher: "UK Health Security Agency",
     sourceSlugs: ["ukhsa", "ons-geography"],
   },
   {
@@ -74,6 +76,8 @@ export const DATASETS = [
       areaNoun: "regions",
     },
     scale: { classes: 6, rounding: "integer", zeroClass: true },
+    place: "England",
+    publisher: "UK Health Security Agency",
     sourceSlugs: ["ukhsa", "ons-geography"],
   },
 ] as const satisfies readonly DatasetDef[];
@@ -119,6 +123,39 @@ export function sourceSlugsForDisease(slug: string): string[] {
  */
 export function usedSourceSlugs(): string[] {
   return [...new Set(datasetList.flatMap((dataset) => dataset.sourceSlugs))];
+}
+
+/** Joins items as "a", "a and b" or "a, b and c". */
+function joinList(items: readonly string[]): string {
+  if (items.length <= 1) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/**
+ * A sentence on what the site covers now, built from the registry so that it
+ * updates itself when a dataset is added. Datasets with the same place and
+ * publisher are grouped, for example "Currently covers COVID-19 and measles
+ * in England, from the UK Health Security Agency."
+ */
+export function coverageSentence(): string {
+  const groups = new Map<string, { place: string; publisher: string; diseases: string[] }>();
+  for (const dataset of datasetList) {
+    const key = `${dataset.place}|${dataset.publisher}`;
+    const group = groups.get(key) ?? {
+      place: dataset.place,
+      publisher: dataset.publisher,
+      diseases: [],
+    };
+    const name = getDisease(dataset.diseaseSlug)?.name;
+    // Mid-sentence, "Measles" becomes "measles", but "COVID-19" stays as it is.
+    const inSentence = name && /[A-Z]/.test(name.slice(1)) ? name : name?.toLowerCase();
+    if (inSentence && !group.diseases.includes(inSentence)) group.diseases.push(inSentence);
+    groups.set(key, group);
+  }
+  const parts = [...groups.values()].map(
+    ({ diseases, place, publisher }) => `${joinList(diseases)} in ${place}, from the ${publisher}`,
+  );
+  return `Currently covers ${parts.join("; ")}.`;
 }
 
 /** True if `period` is one of the choices that a dataset offers. */

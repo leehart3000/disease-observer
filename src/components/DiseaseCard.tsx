@@ -49,7 +49,7 @@ export function DiseaseCard({
 export function MapCard({ headingLevel }: { headingLevel: "h2" | "h3" }) {
   return (
     <Card href="/map" title="Map" headingLevel={headingLevel}>
-      See where cases are being reported, by local authority and by region.
+      See where cases are being reported, area by area.
     </Card>
   );
 }

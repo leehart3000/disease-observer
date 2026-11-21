@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     default: "Disease Observer",
     template: "%s | Disease Observer",
   },
-  description: "Maps and charts for infectious disease surveillance in England.",
+  description: "Maps and charts for infectious disease surveillance.",
 };
 
 export const viewport: Viewport = {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { strongLink } from "@/components/link-styles";
+import { coverageSentence } from "@/lib/datasets/registry";
 
 export const metadata: Metadata = {
   title: "About",
@@ -19,8 +20,8 @@ export default function AboutPage() {
             What this site is
           </h2>
           <p className="mt-2">
-            Disease Observer shows maps and charts of infectious disease cases in England, so
-            that anyone can see what is being reported and where.
+            Disease Observer shows maps and charts of infectious disease cases, so that anyone
+            can see what is being reported and where. {coverageSentence()}
           </p>
         </section>
         <section aria-labelledby="data">
@@ -28,8 +29,8 @@ export default function AboutPage() {
             Where the data comes from
           </h2>
           <p className="mt-2">
-            The figures come from the UK Health Security Agency (UKHSA) data dashboard, and the
-            area boundaries from the Office for National Statistics. See{" "}
+            The figures come from public health agencies and other open sources, and the area
+            boundaries from official mapping agencies. See{" "}
             <Link href="/sources" className={strongLink}>
               sources and licences
             </Link>{" "}
@@ -42,8 +43,8 @@ export default function AboutPage() {
           </h2>
           <p className="mt-2">
             Cases take time to be reported, so the most recent figures are marked as
-            provisional and are usually revised upwards. This site refreshes its data about
-            once a day, and the sources publish new figures weekly.
+            provisional and are often revised. This site checks for new data about once a
+            day, and each source publishes on its own schedule.
           </p>
         </section>
         <section aria-labelledby="advice">
@@ -52,7 +53,7 @@ export default function AboutPage() {
           </h2>
           <p className="mt-2">
             This site is for information only. It cannot tell you whether you are ill or at
-            risk. If you are worried about your health, speak to a doctor or call NHS 111.
+            risk. If you are worried about your health, contact a doctor or your local health service.
           </p>
         </section>
       </div>

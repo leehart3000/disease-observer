@@ -57,6 +57,10 @@ export type DatasetDef = {
     areaNoun: string;
   };
   scale: ScaleConfig;
+  /** The country or area the data covers, such as "England". Used in the coverage line. */
+  place: string;
+  /** Who publishes the data, such as "UK Health Security Agency". Used in the coverage line. */
+  publisher: string;
   /** The `sources` rows to credit: the data source first, then the boundaries. */
   sourceSlugs: readonly string[];
 };

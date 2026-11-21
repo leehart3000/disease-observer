@@ -83,6 +83,45 @@ test("the footer links to the sources and about pages", async ({ page }) => {
   await expect(page.getByText("© 2026 Disease Observer")).toBeVisible();
 });
 
+test("the footer has the copyright on the left and the links on the right on a wide screen", async ({
+  page,
+}) => {
+  await page.goto("/about");
+  const copyright = page.getByText("© 2026 Disease Observer");
+  const footer = page.getByRole("navigation", { name: "Footer" });
+  const links = footer.getByRole("link");
+
+  const copyrightBox = (await copyright.boundingBox())!;
+  const sources = (await links.first().boundingBox())!;
+  const about = (await links.last().boundingBox())!;
+  expect(sources.height).toBeGreaterThanOrEqual(44);
+  expect(about.height).toBeGreaterThanOrEqual(44);
+  if (isPhone()) {
+    // The links wrap beneath the copyright line.
+    expect(sources.y).toBeGreaterThanOrEqual(copyrightBox.y + copyrightBox.height);
+  } else {
+    // One line, with the copyright first and the links at the right.
+    expect(sources.y).toBeLessThan(copyrightBox.y + copyrightBox.height);
+    expect(sources.x).toBeGreaterThan(copyrightBox.x + copyrightBox.width);
+    // The content is 1024 px wide, centred, with 24 px of padding: it ends at 1128.
+    expect(about.x + about.width).toBeGreaterThan(1100);
+  }
+});
+
+test("the home page and the about page say what the site covers now, from the registry", async ({
+  page,
+}) => {
+  const line = "Currently covers COVID-19 and measles in England, from the UK Health Security Agency.";
+  await page.goto("/");
+  await expect(page.getByText(line)).toBeVisible();
+  await expect(page.getByText("shown as soon as they are published")).toHaveCount(0);
+
+  await page.goto("/about");
+  await expect(page.getByText(line)).toBeVisible();
+  await expect(page.getByText("contact a doctor or your local health service")).toBeVisible();
+  await expect(page.getByText("NHS 111")).toHaveCount(0);
+});
+
 test("the home page has one card for each disease, and one for the map", async ({ page }) => {
   await page.goto("/");
 
