@@ -22,6 +22,19 @@ import { useTheme, type Theme } from "../useTheme";
 /** An area that the visitor is pointing at, has tapped or has chosen in the table. */
 export type SelectedArea = { code: string; name: string };
 
+/**
+ * Where an area is on the screen, in pixels from the top left of the map,
+ * and how big the map is.
+ */
+export type AreaRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  mapWidth: number;
+  mapHeight: number;
+};
+
 type Props = {
   layer: LayerKey;
   dataset: MapDataset | null;
@@ -34,6 +47,11 @@ type Props = {
   onToggleExpanded: () => void;
   /** Called with the full screen button once it exists, so focus can return to it. */
   onFullscreenButton: (button: HTMLButtonElement | null) => void;
+  /**
+   * Called with where the outlined area is on the screen (or `null` if
+   * there is none), and again whenever the map moves or is resized.
+   */
+  onHighlightRect: (rect: AreaRect | null) => void;
   /** Called when the pointer moves over an area, or off all of them (`null`). */
   onHover: (area: SelectedArea | null) => void;
   /** Called when an area is clicked or tapped, or empty map is (`null`). */
@@ -198,6 +216,35 @@ function highlightFilter(code: string | null): ExpressionSpecification {
   return ["==", ["get", "code"], code ?? ""];
 }
 
+/** The box around an area, on the screen. `null` if there is no such area on the map. */
+function areaRect(map: MapLibreMap, collection: JoinedCollection | null, code: string | null): AreaRect | null {
+  const feature = code ? collection?.features.find((f) => f.properties.code === code) : undefined;
+  if (!feature) return null;
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  for (const polygon of feature.geometry.coordinates) {
+    for (const [lng, lat] of polygon[0]) {
+      west = Math.min(west, lng);
+      east = Math.max(east, lng);
+      south = Math.min(south, lat);
+      north = Math.max(north, lat);
+    }
+  }
+  const topLeft = map.project([west, north]);
+  const bottomRight = map.project([east, south]);
+  const { clientWidth, clientHeight } = map.getContainer();
+  return {
+    left: Math.round(topLeft.x),
+    top: Math.round(topLeft.y),
+    right: Math.round(bottomRight.x),
+    bottom: Math.round(bottomRight.y),
+    mapWidth: clientWidth,
+    mapHeight: clientHeight,
+  };
+}
+
 /** Outlines one area, or none. */
 function setHighlight(map: MapLibreMap, code: string | null) {
   for (const id of [HIGHLIGHT_UNDER_ID, HIGHLIGHT_OVER_ID]) {
@@ -348,6 +395,7 @@ export function ChoroplethMap({
   expanded,
   onToggleExpanded,
   onFullscreenButton,
+  onHighlightRect,
   onHover,
   onSelect,
   onAreaCount,
@@ -375,10 +423,18 @@ export function ChoroplethMap({
     onAreaCount,
     onToggleExpanded,
     onFullscreenButton,
+    onHighlightRect,
   });
   useEffect(() => {
     themeRef.current = theme;
-    callbacksRef.current = { onHover, onSelect, onAreaCount, onToggleExpanded, onFullscreenButton };
+    callbacksRef.current = {
+      onHover,
+      onSelect,
+      onAreaCount,
+      onToggleExpanded,
+      onFullscreenButton,
+      onHighlightRect,
+    };
   });
 
   if (failure) throw failure;
@@ -466,6 +522,13 @@ export function ChoroplethMap({
           );
         });
 
+        // Keep the parent told where the outlined area is, as the map moves
+        // or changes size.
+        const reportRect = () =>
+          callbacksRef.current.onHighlightRect(areaRect(instance, state.collection, state.highlight));
+        instance.on("moveend", reportRect);
+        instance.on("resize", reportRect);
+
         applyBaseStyle(instance, state, themeRef.current);
         setMap(instance);
       } catch (error) {
@@ -510,7 +573,9 @@ export function ChoroplethMap({
   // Outline the highlighted area.
   useEffect(() => {
     stateRef.current.highlight = highlightCode;
-    if (map) setHighlight(map, highlightCode);
+    if (!map) return;
+    setHighlight(map, highlightCode);
+    callbacksRef.current.onHighlightRect(areaRect(map, stateRef.current.collection, highlightCode));
   }, [map, highlightCode]);
 
   // Draw the current layer's values.

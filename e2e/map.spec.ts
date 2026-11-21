@@ -505,6 +505,189 @@ test.describe("without the Fullscreen API (as on iPhone Safari)", () => {
   });
 });
 
+/** Removes the Fullscreen API before the page loads, as on iPhone Safari. */
+async function withoutFullscreenApi(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(Document.prototype, "fullscreenEnabled", { get: () => false, configurable: true });
+    delete (Element.prototype as { requestFullscreen?: unknown }).requestFullscreen;
+  });
+}
+
+const showLegend = (page: Page) => page.getByRole("button", { name: "Show legend" });
+const hideLegend = (page: Page) => page.getByRole("button", { name: "Hide legend" });
+
+test("the legend can be collapsed to a slim bar and expanded again", async ({ page }) => {
+  await openMap(page);
+
+  // Expanded by default outside full screen, on every screen size.
+  await expect(hideLegend(page)).toHaveAttribute("aria-expanded", "true");
+  const listId = await hideLegend(page).getAttribute("aria-controls");
+  expect(listId).toBeTruthy();
+  const list = page.locator(`[id="${listId}"]`);
+  await expect(list).toBeVisible();
+  await expect(list.getByRole("listitem").first()).toContainText(/Under \d/);
+
+  // Collapsed: a colour strip with the lowest and highest values only.
+  await hideLegend(page).click();
+  await expect(showLegend(page)).toHaveAttribute("aria-expanded", "false");
+  await expect(showLegend(page)).toHaveAttribute("aria-controls", listId!);
+  await expect(list).toBeHidden();
+  const bar = page.getByRole("group", { name: "Legend, lowest value 1, highest value 410.5" });
+  await expect(bar).toBeVisible();
+  await expect(bar).toContainText("1");
+  await expect(bar).toContainText("410.5");
+  await expect(bar).not.toContainText("Under");
+
+  await showLegend(page).click();
+  await expect(hideLegend(page)).toHaveAttribute("aria-expanded", "true");
+  await expect(list).toBeVisible();
+});
+
+test("native full screen: the legend starts collapsed on a narrow screen only", async ({ page }) => {
+  await openMap(page);
+  await expect(hideLegend(page)).toBeVisible();
+
+  await page.getByRole("button", { name: "Enter fullscreen" }).click();
+  await expect(page.locator(".map-frame")).toHaveAttribute("data-mode", "native");
+  if (isPhone()) {
+    await expect(showLegend(page)).toBeVisible();
+  } else {
+    await expect(hideLegend(page)).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Exit fullscreen" }).click();
+  // Leaving full screen puts the default back: expanded outside it.
+  await expect(hideLegend(page)).toBeVisible();
+});
+
+test.describe("full screen without the Fullscreen API (CSS mode)", () => {
+  test.beforeEach(async ({ page }) => {
+    await withoutFullscreenApi(page);
+  });
+
+  test("the legend starts collapsed on a narrow screen and expanded on a wide one", async ({ page }) => {
+    await openMap(page);
+    await expect(hideLegend(page)).toBeVisible();
+
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(page.locator(".map-frame")).toHaveAttribute("data-mode", "css");
+    if (isPhone()) {
+      await expect(showLegend(page)).toBeVisible();
+      await expect(page.getByRole("group", { name: /^Legend, lowest value/ })).toBeVisible();
+    } else {
+      await expect(hideLegend(page)).toBeVisible();
+      await expect(page.getByRole("list", { name: /COVID-19 cases per 100,000/ })).toBeVisible();
+    }
+  });
+
+  test("the visitor's choice is kept, in and out of full screen", async ({ page }) => {
+    await openMap(page);
+    const frame = page.locator(".map-frame");
+
+    // Collapse it on the page. Full screen keeps it collapsed (even on a wide
+    // screen, where the default is expanded), and so does leaving it.
+    await hideLegend(page).click();
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-mode", "css");
+    await expect(showLegend(page)).toBeVisible();
+    await page.getByRole("button", { name: "Exit fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-expanded", "false");
+    await expect(showLegend(page)).toBeVisible();
+
+    // Expand it in full screen. It stays expanded (even on a narrow screen,
+    // where the default is collapsed), and after leaving and entering again.
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await showLegend(page).click();
+    await expect(hideLegend(page)).toBeVisible();
+    await page.getByRole("button", { name: "Exit fullscreen" }).click();
+    await expect(hideLegend(page)).toBeVisible();
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-mode", "css");
+    await expect(hideLegend(page)).toBeVisible();
+
+    // Nothing is stored in the browser.
+    expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
+  });
+
+  test("the map fills the screen edge to edge", async ({ page }) => {
+    await openMap(page);
+    const viewport = page.viewportSize()!;
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(page.locator(".map-frame")).toHaveAttribute("data-mode", "css");
+
+    const frame = page.locator(".map-frame");
+    const region = page.locator(".map-region");
+    await expect(frame).toHaveCSS("padding", "0px");
+    await expect(region).toHaveCSS("border-top-width", "0px");
+    await expect(region).toHaveCSS("border-bottom-left-radius", "0px");
+    await expect(region).toHaveCSS("box-shadow", "none");
+    await expect
+      .poll(async () => (await region.boundingBox())!.height)
+      .toBeGreaterThanOrEqual(viewport.height - 1);
+    expect(await region.boundingBox()).toMatchObject({ x: 0, y: 0, width: viewport.width });
+    const canvas = (await page.locator(".maplibregl-canvas").boundingBox())!;
+    expect(canvas).toMatchObject({ x: 0, y: 0, width: viewport.width });
+  });
+
+  test("an expanded legend covers at most about a quarter of a narrow map", async ({ page }) => {
+    test.skip(!isPhone(), "This is about the 375 px layout.");
+    await openMap(page);
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await showLegend(page).click();
+    await expect(hideLegend(page)).toBeVisible();
+
+    const map = (await page.locator(".map-region").boundingBox())!;
+    const legend = (await page.locator(".map-legend").boundingBox())!;
+    expect((legend.width * legend.height) / (map.width * map.height)).toBeLessThanOrEqual(0.25);
+    // It is inside the map, and every item can be read.
+    expect(legend.x).toBeGreaterThanOrEqual(map.x);
+    expect(legend.y + legend.height).toBeLessThanOrEqual(map.y + map.height);
+    await expect(page.getByRole("list", { name: /COVID-19 cases per 100,000/ }).getByRole("listitem")).toHaveCount(7);
+  });
+
+  test("on a narrow screen the readout is compact and keeps clear of the pinned area", async ({ page }) => {
+    test.skip(!isPhone(), "This is about the 375 px layout.");
+    await openMap(page);
+    await chooseLayer(page, "Measles cases by region");
+    const frame = page.locator(".map-frame");
+
+    // North East is at the top of the map, where the readout usually sits.
+    await page.getByRole("button", { name: "Pin North East on the map" }).click();
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-mode", "css");
+    await expect(frame).toHaveAttribute("data-readout", "bottom");
+    let map = (await page.locator(".map-region").boundingBox())!;
+    const readoutBox = (await readout(page).boundingBox())!;
+    expect(readoutBox.y).toBeGreaterThan(map.y + map.height / 2);
+    expect((readoutBox.width * readoutBox.height) / (map.width * map.height)).toBeLessThanOrEqual(0.12);
+    // It does not overlap the key.
+    const legendBox = (await page.locator(".map-legend").boundingBox())!;
+    expect(readoutBox.y + readoutBox.height).toBeLessThanOrEqual(legendBox.y + 1);
+    await page.getByRole("button", { name: "Exit fullscreen" }).click();
+
+    // London is in the south, so the readout stays at the top.
+    await page.getByRole("button", { name: "Unpin North East from the map" }).click();
+    await page.getByRole("button", { name: "Pin London on the map" }).click();
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-readout", "top");
+    map = (await page.locator(".map-region").boundingBox())!;
+    expect((await readout(page).boundingBox())!.y).toBeLessThan(map.y + map.height / 3);
+  });
+});
+
+test("native full screen also fills the screen edge to edge", async ({ page }) => {
+  await openMap(page);
+  const viewport = page.viewportSize()!;
+  await page.getByRole("button", { name: "Enter fullscreen" }).click();
+  await expect(page.locator(".map-frame")).toHaveAttribute("data-mode", "native");
+
+  await expect(page.locator(".map-frame")).toHaveCSS("padding", "0px");
+  await expect(page.locator(".map-region")).toHaveCSS("border-top-width", "0px");
+  await expect(page.locator(".map-region")).toHaveCSS("border-bottom-left-radius", "0px");
+  const region = page.locator(".map-region");
+  await expect.poll(async () => (await region.boundingBox())!.width).toBe(viewport.width);
+  expect(await region.boundingBox()).toMatchObject({ x: 0, y: 0 });
+});
+
 test("the attribution is visible and readable in both themes", async ({ page }) => {
   await openMap(page);
 

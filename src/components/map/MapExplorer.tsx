@@ -1,16 +1,42 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LAYER_KEYS, LAYERS } from "@/lib/map/layers";
 import { buildScale } from "@/lib/map/scale";
 import type { LayerKey, MapData } from "@/lib/map/types";
 import { AreaReadout } from "./AreaReadout";
-import { ChoroplethMap, type SelectedArea } from "./ChoroplethMap";
+import { ChoroplethMap, type AreaRect, type SelectedArea } from "./ChoroplethMap";
 import { Legend } from "./Legend";
 import { MapErrorBoundary } from "./MapErrorBoundary";
 import { Sources } from "./Sources";
 import { useExpandable } from "./useExpandable";
 import { ValuesTable } from "./ValuesTable";
+
+/** Screens narrower than this (Tailwind's `sm`) are "narrow". */
+const NARROW_QUERY = "(max-width: 639.98px)";
+
+/** True on a narrow screen. The server cannot know, so it renders `false`. */
+function useNarrowScreen(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const media = window.matchMedia(NARROW_QUERY);
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
+    },
+    () => window.matchMedia(NARROW_QUERY).matches,
+    () => false,
+  );
+}
+
+/**
+ * About how much room the readout takes at the top left of a full screen
+ * map (its size plus the gap to the edge, which can include a notch), in
+ * pixels. If the pinned area is under that, the readout goes to the bottom.
+ */
+const READOUT_ROOM = {
+  narrow: { width: 64 + 224, height: 64 + 130 },
+  wide: { width: 64 + 256, height: 64 + 160 },
+};
 
 /**
  * The map page's interactive part: the layer toggle, the map with its key
@@ -23,7 +49,11 @@ import { ValuesTable } from "./ValuesTable";
  * empty map, or choosing the pinned area again unpins it.
  *
  * The full screen button expands one wrapper that holds the map, the key
- * and the readout (see `useExpandable`).
+ * and the readout (see `useExpandable`). In full screen on a narrow screen,
+ * the key starts collapsed to a slim bar, and the readout moves to the
+ * bottom if the pinned area would be under it. Once the visitor chooses to
+ * hide or show the key, that choice is kept for the rest of the visit, in
+ * both modes. Nothing is stored in the browser.
  */
 export function MapExplorer({ data }: { data: MapData }) {
   const available = LAYER_KEYS.filter((key) => data[key] !== null);
@@ -36,6 +66,11 @@ export function MapExplorer({ data }: { data: MapData }) {
   const expand = useExpandable(frameRef, buttonRef);
   // While the frame fills the viewport with CSS, the rest of the page is out of reach.
   const behind = expand.mode === "css";
+  const narrow = useNarrowScreen();
+  // `null` until the visitor chooses. Then it decides, whatever the screen.
+  const [legendChoice, setLegendChoice] = useState<boolean | null>(null);
+  const legendCollapsed = legendChoice ?? (expand.expanded && narrow);
+  const [pinnedRect, setPinnedRect] = useState<AreaRect | null>(null);
 
   const dataset = data[layer];
   const config = LAYERS[layer];
@@ -53,6 +88,21 @@ export function MapExplorer({ data }: { data: MapData }) {
   const credits = config.sourceSlugs.flatMap((slug) =>
     data.sources.filter((source) => source.slug === slug),
   );
+  const values = dataset?.values.map((area) => area.value) ?? [];
+  const lowest = values.length ? Math.min(...values) : 0;
+  const highest = values.length ? Math.max(...values) : 0;
+
+  // In full screen, put the readout at the bottom if the pinned area is
+  // where it would sit at the top.
+  const room = narrow ? READOUT_ROOM.narrow : READOUT_ROOM.wide;
+  const readoutAtBottom =
+    expand.expanded &&
+    pinned !== null &&
+    pinnedRect !== null &&
+    pinnedRect.right > 0 &&
+    pinnedRect.bottom > 0 &&
+    pinnedRect.left < room.width &&
+    pinnedRect.top < room.height;
 
   const onAreaCount = useCallback((key: LayerKey, count: number) => {
     setAreaCounts((current) => (current[key] === count ? current : { ...current, [key]: count }));
@@ -119,6 +169,7 @@ export function MapExplorer({ data }: { data: MapData }) {
         ref={frameRef}
         data-expanded={expand.expanded}
         data-mode={expand.mode ?? undefined}
+        data-readout={readoutAtBottom ? "bottom" : "top"}
         className="map-frame lg:relative"
       >
         <div
@@ -137,25 +188,38 @@ export function MapExplorer({ data }: { data: MapData }) {
               onFullscreenButton={(button) => {
                 buttonRef.current = button;
               }}
+              onHighlightRect={setPinnedRect}
               onHover={setHovered}
               onSelect={togglePin}
               onAreaCount={onAreaCount}
             />
           </MapErrorBoundary>
         </div>
-        <div
-          data-testid="area-readout"
-          data-empty={shown === null}
-          aria-live={pinned ? "polite" : "off"}
-          className="map-readout mt-3 rounded-md border border-line bg-surface p-3 lg:absolute lg:top-3 lg:left-3 lg:mt-0 lg:w-64 lg:bg-surface/95 lg:shadow-sm lg:data-[empty=true]:hidden"
-        >
-          <AreaReadout layer={layer} dataset={dataset} area={shown} pinned={pinned !== null} />
-        </div>
-        {scale ? (
-          <div className="map-legend mt-3 lg:absolute lg:bottom-9 lg:left-3 lg:mt-0">
-            <Legend scale={scale} heading={config.title} />
+        {/* Outside full screen this adds no box: the readout and key lay out
+            as before (below the map, or over it on a wide screen). In full
+            screen, it is one container inside the safe area (see map.css). */}
+        <div className="map-overlays contents">
+          <div
+            data-testid="area-readout"
+            data-empty={shown === null}
+            aria-live={pinned ? "polite" : "off"}
+            className="map-readout mt-3 rounded-md border border-line bg-surface p-3 lg:absolute lg:top-3 lg:left-3 lg:mt-0 lg:w-64 lg:bg-surface/95 lg:shadow-sm lg:data-[empty=true]:hidden"
+          >
+            <AreaReadout layer={layer} dataset={dataset} area={shown} pinned={pinned !== null} />
           </div>
-        ) : null}
+          {scale ? (
+            <div className="map-legend mt-3 lg:absolute lg:bottom-9 lg:left-3 lg:mt-0">
+              <Legend
+                scale={scale}
+                heading={config.title}
+                lowest={lowest}
+                highest={highest}
+                collapsed={legendCollapsed}
+                onToggle={() => setLegendChoice(!legendCollapsed)}
+              />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <section

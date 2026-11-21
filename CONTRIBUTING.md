@@ -204,7 +204,17 @@ map drawn with MapLibre GL JS.
   viewport, above everything, with the page behind it unscrollable and
   `inert`. Escape or the same button leaves either mode and focus returns to
   the button. The e2e tests cover the CSS mode by removing the API before
-  the page loads.
+  the page loads. In both modes the map fills the screen edge to edge, with
+  no padding, border, rounding or shadow of our own: the only space is the
+  device's safe area (`env(safe-area-inset-*)`), and the key, readout and
+  MapLibre's buttons sit inside it.
+- The key can be collapsed to a slim bar (a colour strip with the lowest
+  and highest values). In full screen on a screen narrower than 640 px it
+  starts collapsed, and otherwise expanded. Once the visitor chooses, that
+  choice is kept for the rest of the page visit, in and out of full screen
+  (it is not stored in the browser). On a narrow full screen map, the
+  readout is compact, and moves to the bottom if the pinned area would be
+  under it.
 - The table can be searched, sorted and paged (25 rows by default). The
   credits under it are only those of the dataset that is shown.
 - The server renders the first page of the table into the HTML. React
