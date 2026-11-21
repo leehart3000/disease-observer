@@ -18,11 +18,56 @@ const fieldClass =
   "min-h-11 rounded-md border border-line bg-surface px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 
 /**
+ * Previous and Next buttons with the page number. It is used above and
+ * below the table, and both copies show the same page. It renders nothing
+ * when there is only one page. It is not a live region: the result count
+ * above the table is the one that is announced.
+ */
+function PageControls({
+  label,
+  page,
+  pageCount,
+  onPage,
+}: {
+  label: string;
+  page: number;
+  pageCount: number;
+  onPage: (page: number) => void;
+}) {
+  if (pageCount <= 1) return null;
+  return (
+    <nav aria-label={label} className="flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        className={buttonClass}
+        disabled={page <= 1}
+        onClick={() => onPage(page - 1)}
+      >
+        Previous
+      </button>
+      <span className="text-sm text-muted">
+        Page {page} of {pageCount}
+      </span>
+      <button
+        type="button"
+        className={buttonClass}
+        disabled={page >= pageCount}
+        onClick={() => onPage(page + 1)}
+      >
+        Next
+      </button>
+    </nav>
+  );
+}
+
+/**
  * The same values as the map, as a table that can be searched, sorted and
  * paged. It is the way to read the figures with a keyboard or a screen
- * reader, and a keyboard user can pin an area from it. It is also in the
- * page's first HTML (the first 25 rows), so it is there before the map has
- * loaded.
+ * reader, and a keyboard user can pin an area from it. The server renders
+ * the first 25 rows into the page's HTML.
+ *
+ * From top to bottom: the search box and page size, the result count with
+ * the page controls, the table, then the page controls again.
  */
 export function ValuesTable({
   layer,
@@ -94,7 +139,7 @@ export function ValuesTable({
       <div className="mb-3 flex flex-wrap items-end gap-x-4 gap-y-3">
         <div className="grid gap-1">
           <label htmlFor={`${ids}-search`} className="text-sm font-medium text-muted">
-            Search by area name
+            Search table by area name
           </label>
           <input
             id={`${ids}-search`}
@@ -130,26 +175,16 @@ export function ValuesTable({
         </div>
       </div>
 
-      <p role="status" className="mb-2 text-sm text-muted">
-        {sorted.length === 0
-          ? `No areas match “${query.trim()}”.`
-          : `Showing ${first + 1} to ${first + rows.length} of ${sorted.length}${filtered ? ` matching “${query.trim()}”` : ""}`}
-      </p>
-      {/* Always present, so a screen reader announces the pin. It has no height while empty. */}
-      <p role="status" className={pinned ? "mb-2 text-sm" : ""}>
-        {pinned ? (
-          <>
-            Pinned on the map: {pinned.name}.{" "}
-            <button
-              type="button"
-              onClick={() => onPin(pinned)}
-              className="cursor-pointer underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            >
-              Unpin
-            </button>
-          </>
-        ) : null}
-      </p>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        {/* The only live region of the table: the result count is announced once. */}
+        <p role="status" className="text-sm text-muted">
+          {sorted.length === 0
+            ? `No areas match “${query.trim()}”.`
+            : `Showing ${first + 1} to ${first + rows.length} of ${sorted.length}${filtered ? ` matching “${query.trim()}”` : ""}`}
+        </p>
+        <PageControls label="Table pages (top)" page={page} pageCount={pageCount} onPage={setRequestedPage} />
+      </div>
+
       {anyProvisional ? (
         <p className="mb-2 text-sm text-muted">Provisional figures may still change.</p>
       ) : null}
@@ -198,15 +233,26 @@ export function ValuesTable({
                   className={`border-b border-line last:border-b-0 ${isPinned ? "bg-brand/15" : ""}`}
                 >
                   <th scope="row" className="p-0 font-normal">
-                    <button
-                      type="button"
-                      aria-pressed={isPinned}
-                      onClick={() => onPin({ code: area.code, name: area.name })}
-                      className="min-h-9 w-full cursor-pointer px-3 py-2 text-left hover:underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
-                    >
-                      {area.name}
-                      <span className="sr-only"> (pin on the map)</span>
-                    </button>
+                    <div className="flex items-center gap-2 pr-3">
+                      <button
+                        type="button"
+                        aria-pressed={isPinned}
+                        aria-label={
+                          isPinned
+                            ? `Unpin ${area.name} from the map`
+                            : `Pin ${area.name} on the map`
+                        }
+                        onClick={() => onPin({ code: area.code, name: area.name })}
+                        className="min-h-9 cursor-pointer px-3 py-2 text-left hover:underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                      >
+                        {area.name}
+                      </button>
+                      {isPinned ? (
+                        <span className="rounded border border-brand bg-surface px-1.5 py-0.5 text-xs font-medium">
+                          Pinned
+                        </span>
+                      ) : null}
+                    </div>
                   </th>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {area.provisional ? (
@@ -223,29 +269,9 @@ export function ValuesTable({
         </table>
       </div>
 
-      {pageCount > 1 ? (
-        <nav aria-label="Table pages" className="mt-3 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            className={buttonClass}
-            disabled={page <= 1}
-            onClick={() => setRequestedPage(page - 1)}
-          >
-            Previous
-          </button>
-          <span className="text-sm text-muted">
-            Page {page} of {pageCount}
-          </span>
-          <button
-            type="button"
-            className={buttonClass}
-            disabled={page >= pageCount}
-            onClick={() => setRequestedPage(page + 1)}
-          >
-            Next
-          </button>
-        </nav>
-      ) : null}
+      <div className="mt-3">
+        <PageControls label="Table pages (bottom)" page={page} pageCount={pageCount} onPage={setRequestedPage} />
+      </div>
 
       {withoutFigure > 0 ? (
         <p className="mt-3 text-sm text-muted">

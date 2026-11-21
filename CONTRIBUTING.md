@@ -196,8 +196,15 @@ map drawn with MapLibre GL JS.
   `src/components/map/map.css`.
 - Pointing at an area previews it. Clicking or tapping it, or choosing its
   name in the table, pins it so the readout stays. Escape, clicking empty
-  map or choosing it again unpins it. The map and its key and readout can
-  go full screen.
+  map or choosing it again unpins it.
+- The full screen button expands one wrapper that holds the map, the key
+  and the readout (`useExpandable.ts`). Where the Fullscreen API works on a
+  `div`, it uses that. iPhone Safari only supports it for video, so there it
+  uses a CSS mode (`.map-frame[data-mode="css"]` in `map.css`): fixed to the
+  viewport, above everything, with the page behind it unscrollable and
+  `inert`. Escape or the same button leaves either mode and focus returns to
+  the button. The e2e tests cover the CSS mode by removing the API before
+  the page loads.
 - The table can be searched, sorted and paged (25 rows by default). The
   credits under it are only those of the dataset that is shown.
 - The server renders the first page of the table into the HTML. React

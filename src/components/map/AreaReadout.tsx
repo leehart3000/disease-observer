@@ -43,7 +43,7 @@ export function AreaReadout({
       )}
       {pinned ? (
         <p className="mt-1 text-xs text-muted">
-          Pinned. Click or tap it again, or press Escape, to unpin.
+          Pinned. To unpin: click or tap it again, or press Escape.
         </p>
       ) : null}
     </div>

@@ -4,10 +4,11 @@
 // nowhere else, so they are only sent with the map page.
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./map.css";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ExpressionSpecification,
   GeoJSONSource,
+  IControl,
   Map as MapLibreMap,
   MapLayerMouseEvent,
   StyleSpecification,
@@ -27,8 +28,12 @@ type Props = {
   scale: Scale | null;
   /** The area to outline, if any. */
   highlightCode: string | null;
-  /** The element that goes full screen, so the key and readout go with the map. */
-  fullscreenRef: RefObject<HTMLElement | null>;
+  /** True while the map, key and readout are expanded to fill the screen. */
+  expanded: boolean;
+  /** Called when the full screen button is pressed. */
+  onToggleExpanded: () => void;
+  /** Called with the full screen button once it exists, so focus can return to it. */
+  onFullscreenButton: (button: HTMLButtonElement | null) => void;
   /** Called when the pointer moves over an area, or off all of them (`null`). */
   onHover: (area: SelectedArea | null) => void;
   /** Called when an area is clicked or tapped, or empty map is (`null`). */
@@ -275,6 +280,48 @@ function addAreaLayers(map: MapLibreMap, state: MapState) {
   }
 }
 
+/** A full screen button in MapLibre's control style. */
+type FullscreenControl = {
+  control: IControl;
+  button: HTMLButtonElement;
+  /** Updates the label and icon. */
+  setExpanded: (expanded: boolean) => void;
+};
+
+/**
+ * Builds the full screen button. MapLibre's own full screen control only
+ * expands the map, and does nothing useful where the Fullscreen API is
+ * missing (iPhone Safari). This one only reports the click. The page
+ * decides how to expand, so the key and readout go with the map.
+ */
+function createFullscreenControl(onClick: () => void): FullscreenControl {
+  const container = document.createElement("div");
+  container.className = "maplibregl-ctrl maplibregl-ctrl-group";
+  const button = document.createElement("button");
+  button.type = "button";
+  const icon = document.createElement("span");
+  icon.className = "maplibregl-ctrl-icon";
+  icon.setAttribute("aria-hidden", "true");
+  button.append(icon);
+  container.append(button);
+  button.addEventListener("click", onClick);
+
+  const setExpanded = (expanded: boolean) => {
+    const label = expanded ? "Exit fullscreen" : "Enter fullscreen";
+    // MapLibre's stylesheet draws the icon from these class names.
+    button.className = expanded ? "maplibregl-ctrl-shrink" : "maplibregl-ctrl-fullscreen";
+    button.setAttribute("aria-label", label);
+    button.title = label;
+  };
+  setExpanded(false);
+
+  return {
+    control: { onAdd: () => container, onRemove: () => container.remove() },
+    button,
+    setExpanded,
+  };
+}
+
 /** Asks the map for a new base style. Our layers are added again when it has loaded. */
 function applyBaseStyle(map: MapLibreMap, state: MapState, theme: Theme) {
   state.theme = theme;
@@ -298,7 +345,9 @@ export function ChoroplethMap({
   dataset,
   scale,
   highlightCode,
-  fullscreenRef,
+  expanded,
+  onToggleExpanded,
+  onFullscreenButton,
   onHover,
   onSelect,
   onAreaCount,
@@ -319,10 +368,17 @@ export function ChoroplethMap({
     collection: null,
   });
   const themeRef = useRef(theme);
-  const callbacksRef = useRef({ onHover, onSelect, onAreaCount });
+  const fullscreenRef = useRef<FullscreenControl | null>(null);
+  const callbacksRef = useRef({
+    onHover,
+    onSelect,
+    onAreaCount,
+    onToggleExpanded,
+    onFullscreenButton,
+  });
   useEffect(() => {
     themeRef.current = theme;
-    callbacksRef.current = { onHover, onSelect, onAreaCount };
+    callbacksRef.current = { onHover, onSelect, onAreaCount, onToggleExpanded, onFullscreenButton };
   });
 
   if (failure) throw failure;
@@ -359,10 +415,10 @@ export function ChoroplethMap({
         instance.touchPitch.disable();
         instance.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
         // The button is labelled "Enter fullscreen" or "Exit fullscreen".
-        instance.addControl(
-          new maplibre.FullscreenControl({ container: fullscreenRef.current ?? undefined }),
-          "top-right",
-        );
+        const fullscreen = createFullscreenControl(() => callbacksRef.current.onToggleExpanded());
+        fullscreenRef.current = fullscreen;
+        instance.addControl(fullscreen.control, "top-right");
+        callbacksRef.current.onFullscreenButton(fullscreen.button);
 
         instance.on("style.load", () => {
           state.styleLoaded = true;
@@ -420,8 +476,28 @@ export function ChoroplethMap({
     return () => {
       cancelled = true;
       created?.remove();
+      fullscreenRef.current = null;
+      callbacksRef.current.onFullscreenButton(null);
     };
-  }, [fullscreenRef]);
+  }, []);
+
+  // When the map is expanded or collapsed: update the button, let one finger
+  // move the map (the page is not scrolling then), and resize the map once
+  // the layout has changed.
+  useEffect(() => {
+    if (!map) return;
+    fullscreenRef.current?.setExpanded(expanded);
+    if (expanded) map.cooperativeGestures.disable();
+    else map.cooperativeGestures.enable();
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => map.resize());
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [map, expanded]);
 
   // Switch the base style when the theme changes.
   useEffect(() => {

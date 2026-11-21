@@ -53,6 +53,8 @@ const mapCanvas = (page: Page) => page.getByTestId("map-canvas");
 const readout = (page: Page) => page.getByTestId("area-readout");
 const table = (page: Page) => page.getByRole("table");
 const rows = (page: Page) => table(page).locator("tbody tr");
+const topPages = (page: Page) => page.getByRole("navigation", { name: "Table pages (top)" });
+const bottomPages = (page: Page) => page.getByRole("navigation", { name: "Table pages (bottom)" });
 
 /** Opens the map page and waits until the map has drawn the current layer. */
 async function openMap(page: Page) {
@@ -153,25 +155,65 @@ test("the table can be sorted", async ({ page }) => {
   await expect(rows(page).first()).toContainText("York");
 });
 
+test("the table controls are in order, with one live result count", async ({ page }) => {
+  await openMap(page);
+
+  // Search box, rows per page, result count, page controls, table, page controls.
+  const inOrder = await page.evaluate(() => {
+    const section = document.querySelector("#values-table");
+    const parts = [
+      section?.querySelector('input[type="search"]'),
+      section?.querySelector("select"),
+      section?.querySelector('[role="status"]'),
+      section?.querySelector('nav[aria-label="Table pages (top)"]'),
+      section?.querySelector("table"),
+      section?.querySelector('nav[aria-label="Table pages (bottom)"]'),
+    ];
+    if (parts.some((part) => !part)) return "a part is missing";
+    return parts.every(
+      (part, i) =>
+        i === 0 || Boolean(parts[i - 1]!.compareDocumentPosition(part!) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+  });
+  expect(inOrder).toBe(true);
+  await expect(page.getByLabel("Search table by area name")).toBeVisible();
+
+  // The result count is the only live region, so it is announced once.
+  const live = page.locator('#values-table [role="status"], #values-table [aria-live]');
+  await expect(live).toHaveCount(1);
+  await expect(live).toHaveText("Showing 1 to 25 of 30");
+  await expect(page.getByText("Showing 1 to 25 of 30")).toHaveCount(1);
+});
+
 test("the table is paged, with a choice of page size", async ({ page }) => {
   await openMap(page);
 
   await expect(page.getByText("Showing 1 to 25 of 30")).toBeVisible();
   await expect(rows(page)).toHaveCount(25);
-  await expect(page.getByRole("button", { name: "Previous" })).toBeDisabled();
+  await expect(topPages(page).getByRole("button", { name: "Previous" })).toBeDisabled();
+  await expect(bottomPages(page).getByRole("button", { name: "Previous" })).toBeDisabled();
 
-  await page.getByRole("button", { name: "Next" }).click();
+  // The two sets of page controls stay in step, whichever is used.
+  await topPages(page).getByRole("button", { name: "Next" }).click();
   await expect(page.getByText("Showing 26 to 30 of 30")).toBeVisible();
   await expect(rows(page)).toHaveCount(5);
-  await expect(page.getByText("Page 2 of 2")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+  await expect(topPages(page).getByText("Page 2 of 2")).toBeVisible();
+  await expect(bottomPages(page).getByText("Page 2 of 2")).toBeVisible();
+  await expect(topPages(page).getByRole("button", { name: "Next" })).toBeDisabled();
+  await expect(bottomPages(page).getByRole("button", { name: "Next" })).toBeDisabled();
+
+  await bottomPages(page).getByRole("button", { name: "Previous" }).click();
+  await expect(page.getByText("Showing 1 to 25 of 30")).toBeVisible();
+  await expect(topPages(page).getByText("Page 1 of 2")).toBeVisible();
+  await expect(bottomPages(page).getByText("Page 1 of 2")).toBeVisible();
 
   const size = page.getByLabel("Rows per page");
   await expect(size.locator("option")).toHaveText(["25", "50", "100", "All"]);
   await size.selectOption("50");
   await expect(page.getByText("Showing 1 to 30 of 30")).toBeVisible();
   await expect(rows(page)).toHaveCount(30);
-  await expect(page.getByRole("navigation", { name: "Table pages" })).toHaveCount(0);
+  await expect(topPages(page)).toHaveCount(0);
+  await expect(bottomPages(page)).toHaveCount(0);
 
   await size.selectOption("all");
   await expect(rows(page)).toHaveCount(30);
@@ -182,7 +224,7 @@ test("the table is paged, with a choice of page size", async ({ page }) => {
 test("the table can be searched by area name", async ({ page }) => {
   await openMap(page);
 
-  const search = page.getByLabel("Search by area name");
+  const search = page.getByLabel("Search table by area name");
   await search.fill("hart");
   await expect(rows(page)).toHaveCount(1);
   await expect(rows(page).first()).toContainText("Hartlepool");
@@ -219,7 +261,8 @@ test("the measles layer shows the latest complete week", async ({ page }) => {
   await expect(table(page).getByRole("columnheader")).toHaveText([/^Area/, /^Cases \(week\)/]);
   await expect(rows(page)).toHaveCount(9);
   await expect(page.getByText("Showing 1 to 9 of 9")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Table pages" })).toHaveCount(0);
+  await expect(topPages(page)).toHaveCount(0);
+  await expect(bottomPages(page)).toHaveCount(0);
   await expect(table(page).getByText("Provisional", { exact: true })).toHaveCount(2);
   await expect(page.getByText("Provisional figures may still change.")).toBeVisible();
   // The week that has not finished (99 cases in every region) is left out.
@@ -265,7 +308,7 @@ test("pointing at an area previews it, and clicking or tapping pins it", async (
   await chooseOnMap(page, "middle");
   await expect(readout(page)).toContainText(/\d+ cases?/);
   await expect(readout(page)).toContainText(/Week of onset/);
-  await expect(readout(page)).toContainText("Pinned");
+  await expect(readout(page)).toContainText("Pinned. To unpin: click or tap it again, or press Escape.");
   const pinnedCode = await mapCanvas(page).getAttribute("data-highlight");
   expect(pinnedCode).toMatch(/^E45/);
 
@@ -304,51 +347,162 @@ test("pointing at an area previews it, and clicking or tapping pins it", async (
 test("an area can be pinned from the table with the keyboard", async ({ page }) => {
   await openMap(page);
 
-  const pin = page.getByRole("button", { name: "Hartlepool (pin on the map)" });
+  const pin = page.getByRole("button", { name: "Pin Hartlepool on the map" });
+  await expect(pin).toHaveAttribute("aria-pressed", "false");
   await pin.focus();
   await page.keyboard.press("Enter");
-  await expect(pin).toHaveAttribute("aria-pressed", "true");
+
+  // The row is highlighted and tagged, and its button now offers to unpin.
+  const unpin = page.getByRole("button", { name: "Unpin Hartlepool from the map" });
+  await expect(unpin).toHaveAttribute("aria-pressed", "true");
+  const row = rows(page).filter({ hasText: "Hartlepool" });
+  await expect(row.getByText("Pinned", { exact: true })).toBeVisible();
+  await expect(row).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(rows(page).filter({ hasText: "Middlesbrough" })).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  // There is no separate "Pinned on the map" line.
+  await expect(page.getByText("Pinned on the map")).toHaveCount(0);
   await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
   await expect(readout(page)).toContainText("Hartlepool");
   await expect(readout(page)).toContainText("Provisional");
-  await expect(page.getByText("Pinned on the map: Hartlepool.")).toBeVisible();
+  await expect(readout(page)).toContainText("Pinned. To unpin: click or tap it again, or press Escape.");
 
   // Pressing it again unpins it.
   await page.keyboard.press("Enter");
   await expect(pin).toHaveAttribute("aria-pressed", "false");
+  await expect(row.getByText("Pinned", { exact: true })).toHaveCount(0);
   await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
 
-  // Escape unpins it too, and so does the Unpin button.
+  // Escape unpins it too.
   await page.keyboard.press("Enter");
   await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
   await page.keyboard.press("Escape");
   await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
-  await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Unpin" }).click();
-  await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
+  await expect(row.getByText("Pinned", { exact: true })).toHaveCount(0);
+});
+
+test("a table button's name includes the area name, even with a comma", async ({ page }) => {
+  await openMap(page);
+
+  const pin = page.getByRole("button", { name: "Pin Herefordshire, County of on the map" });
+  await expect(pin).toBeVisible();
+  await expect(pin).toContainText("Herefordshire, County of");
 });
 
 test("a pinned area is cleared when the layer changes", async ({ page }) => {
   await openMap(page);
 
-  await page.getByRole("button", { name: "Hartlepool (pin on the map)" }).click();
+  await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
   await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
   await chooseLayer(page, "Measles cases by region");
   await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
 });
 
-test("the map has a labelled fullscreen button", async ({ page }) => {
+test("the map has a labelled fullscreen button that expands the map, key and readout", async ({ page }) => {
   await openMap(page);
+  await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
 
   const enter = page.getByRole("button", { name: "Enter fullscreen" });
   await expect(enter).toBeVisible();
   await enter.click();
-  // The key and readout go full screen with the map.
+
+  // The wrapper that holds the map, the key and the readout goes full screen.
+  const frame = page.locator(".map-frame");
+  await expect(frame).toHaveAttribute("data-mode", "native");
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement?.classList.contains("map-frame")))
     .toBe(true);
-  await page.getByRole("button", { name: "Exit fullscreen" }).click();
+  expect(
+    await page.evaluate(() => {
+      const full = document.fullscreenElement;
+      return Boolean(full?.querySelector('[data-testid="area-readout"]') && full.querySelector(".map-legend"));
+    }),
+  ).toBe(true);
+  await expect(readout(page)).toBeVisible();
+
+  const exit = page.getByRole("button", { name: "Exit fullscreen" });
+  await exit.click();
   await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true);
+  await expect(frame).toHaveAttribute("data-expanded", "false");
+  await expect(page.getByRole("button", { name: "Enter fullscreen" })).toBeFocused();
+});
+
+test.describe("without the Fullscreen API (as on iPhone Safari)", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(Document.prototype, "fullscreenEnabled", { get: () => false, configurable: true });
+      delete (Element.prototype as { requestFullscreen?: unknown }).requestFullscreen;
+    });
+  });
+
+  test("a CSS expanded mode fills the screen with the map, key and readout", async ({ page }) => {
+    await openMap(page);
+    await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
+    await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
+
+    const frame = page.locator(".map-frame");
+    const canvas = page.locator(".maplibregl-canvas");
+    const before = await canvas.boundingBox();
+    const viewport = page.viewportSize()!;
+
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-mode", "css");
+    await expect(frame).toHaveAttribute("data-expanded", "true");
+
+    // It is fixed, fills the viewport and sits above the page.
+    await expect(frame).toHaveCSS("position", "fixed");
+    const box = await frame.boundingBox();
+    expect(box).toMatchObject({ x: 0, y: 0, width: viewport.width });
+    expect(box!.height).toBeGreaterThanOrEqual(viewport.height - 1);
+    const topmost = await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.closest(".map-frame") !== null,
+      [40, 30],
+    );
+    expect(topmost).toBe(true);
+
+    // The page behind cannot scroll, and cannot take keyboard focus.
+    await expect(page.locator("html")).toHaveCSS("overflow", "hidden");
+    await expect(page.locator("body > header")).toHaveAttribute("inert", "");
+    await expect(page.locator("#values-table")).toHaveAttribute("inert", "");
+
+    // The map has grown to fill the frame, and the key and readout are laid over it.
+    await expect.poll(async () => (await canvas.boundingBox())!.width).toBeGreaterThan(before!.width);
+    const map = (await canvas.boundingBox())!;
+    for (const part of [page.locator(".map-legend"), readout(page)]) {
+      await expect(part).toBeVisible();
+      const inner = (await part.boundingBox())!;
+      expect(inner.x).toBeGreaterThanOrEqual(map.x);
+      expect(inner.y).toBeGreaterThanOrEqual(map.y);
+      expect(inner.x + inner.width).toBeLessThanOrEqual(map.x + map.width);
+      expect(inner.y + inner.height).toBeLessThanOrEqual(map.y + map.height);
+    }
+    await expect(readout(page)).toContainText("Hartlepool");
+
+    // Escape leaves the mode, keeps the pin and puts focus back on the button.
+    await expect(page.getByRole("button", { name: "Exit fullscreen" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(frame).toHaveAttribute("data-expanded", "false");
+    await expect(frame).not.toHaveAttribute("data-mode", /.+/);
+    await expect(page.getByRole("button", { name: "Enter fullscreen" })).toBeFocused();
+    await expect(page.locator("html")).not.toHaveCSS("overflow", "hidden");
+    await expect(page.locator("body > header")).not.toHaveAttribute("inert", "");
+    await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
+    await expect.poll(async () => (await canvas.boundingBox())!.width).toBeCloseTo(before!.width, -1);
+  });
+
+  test("the same button leaves the CSS mode, and focus returns to it", async ({ page }) => {
+    await openMap(page);
+    const frame = page.locator(".map-frame");
+
+    await page.getByRole("button", { name: "Enter fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-mode", "css");
+    await page.getByRole("button", { name: "Exit fullscreen" }).click();
+    await expect(frame).toHaveAttribute("data-expanded", "false");
+    await expect(page.getByRole("button", { name: "Enter fullscreen" })).toBeFocused();
+
+    // It can be entered again.
+    await page.keyboard.press("Enter");
+    await expect(frame).toHaveAttribute("data-mode", "css");
+  });
 });
 
 test("the attribution is visible and readable in both themes", async ({ page }) => {
