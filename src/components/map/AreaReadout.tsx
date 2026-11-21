@@ -3,23 +3,26 @@ import type { AreaValue, LayerKey, MapDataset } from "@/lib/map/types";
 import type { SelectedArea } from "./ChoroplethMap";
 
 /**
- * Shows the figure for the area that the visitor is pointing at (on a
- * computer) or has tapped (on a phone): its name, value, period and whether
- * the value is provisional.
+ * Shows the figure for an area: its name, value, period and whether the
+ * value is provisional. Pointing at an area previews it. Clicking or
+ * tapping it (or choosing it in the table) pins it, so the readout stays.
  */
 export function AreaReadout({
   layer,
   dataset,
   area,
+  pinned,
 }: {
   layer: LayerKey;
   dataset: MapDataset | null;
   area: SelectedArea | null;
+  /** True if `area` is pinned rather than just pointed at. */
+  pinned: boolean;
 }) {
   if (!area) {
     return (
       <p className="text-sm text-muted">
-        Point at or tap an area on the map to see its figure.
+        Point at an area on the map, or tap it, to see its figure.
       </p>
     );
   }
@@ -38,6 +41,11 @@ export function AreaReadout({
       ) : (
         <p className="text-muted">No data for this period</p>
       )}
+      {pinned ? (
+        <p className="mt-1 text-xs text-muted">
+          Pinned. Click or tap it again, or press Escape, to unpin.
+        </p>
+      ) : null}
     </div>
   );
 }

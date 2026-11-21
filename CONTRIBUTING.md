@@ -149,8 +149,9 @@ The map page tests need data, so they use a separate database called
 - Locally, run `pnpm test:e2e:db` once, and again whenever the schema
   changes. It creates the database in the same local `db` container (using
   the server and login in `.env.local`), runs the migrations, the seed and
-  the boundary loader, and loads a small set of fixture observations (12
-  local authorities for COVID-19 and the 9 regions for measles, with dates
+  the boundary loader, and loads a small set of fixture observations (30
+  local authorities for COVID-19, enough for a second page of the table, and
+  the 9 regions for measles, with dates
   worked out from today). `pnpm test:e2e` then points the site at that
   database. Because of this, it starts its own server, so stop `pnpm dev`
   first.
@@ -188,7 +189,22 @@ map drawn with MapLibre GL JS.
   directly, and if that fails too it shows "Data unavailable" and the rest
   of the page still works.
 - The base map follows the theme toggle, switching between OpenFreeMap's
-  positron (light) and dark styles without reloading the page.
+  positron (light) and dark styles without reloading the page. The style
+  files are not edited: `transformStyle` (in `ChoroplethMap.tsx`) raises
+  the contrast of the place labels so they read over the coloured areas.
+  Our colours for MapLibre's attribution box are in
+  `src/components/map/map.css`.
+- Pointing at an area previews it. Clicking or tapping it, or choosing its
+  name in the table, pins it so the readout stays. Escape, clicking empty
+  map or choosing it again unpins it. The map and its key and readout can
+  go full screen.
+- The table can be searched, sorted and paged (25 rows by default). The
+  credits under it are only those of the dataset that is shown.
+- The server renders the first page of the table into the HTML. React
+  streams the data-dependent part of the page, and a script reveals it, so
+  a browser with JavaScript turned off shows only "Loading the map".
+  Fixing that would mean reading the database at build time, which is not
+  allowed.
 
 ### Running migrations on Neon
 

@@ -1,7 +1,6 @@
 import { connection } from "next/server";
 import { DataUnavailable } from "@/components/map/DataUnavailable";
 import { MapExplorer } from "@/components/map/MapExplorer";
-import { Sources } from "@/components/map/Sources";
 import { loadMapData } from "@/lib/map/data";
 
 /**
@@ -13,10 +12,5 @@ export async function MapSection() {
   await connection();
   const result = await loadMapData();
   if (result.status !== "ok") return <DataUnavailable reason={result.status} />;
-  return (
-    <>
-      <MapExplorer data={result.data} />
-      <Sources credits={result.data.sources} />
-    </>
-  );
+  return <MapExplorer data={result.data} />;
 }

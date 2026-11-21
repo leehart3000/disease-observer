@@ -1,29 +1,37 @@
 "use client";
 
-// MapLibre's stylesheet is imported here, and nowhere else, so it is only
-// sent with the map page.
+// MapLibre's stylesheet and our own overrides for it are imported here, and
+// nowhere else, so they are only sent with the map page.
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState } from "react";
+import "./map.css";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import type {
   ExpressionSpecification,
   GeoJSONSource,
   Map as MapLibreMap,
   MapLayerMouseEvent,
   StyleSpecification,
+  TransformStyleFunction,
 } from "maplibre-gl";
 import { LAYERS } from "@/lib/map/layers";
 import type { Scale } from "@/lib/map/scale";
 import type { LayerKey, MapDataset } from "@/lib/map/types";
 import { useTheme, type Theme } from "../useTheme";
 
-/** An area that the visitor is pointing at or has tapped. */
+/** An area that the visitor is pointing at, has tapped or has chosen in the table. */
 export type SelectedArea = { code: string; name: string };
 
 type Props = {
   layer: LayerKey;
   dataset: MapDataset | null;
   scale: Scale | null;
-  /** Called when the pointed-at area changes. `null` means nothing is selected. */
+  /** The area to outline, if any. */
+  highlightCode: string | null;
+  /** The element that goes full screen, so the key and readout go with the map. */
+  fullscreenRef: RefObject<HTMLElement | null>;
+  /** Called when the pointer moves over an area, or off all of them (`null`). */
+  onHover: (area: SelectedArea | null) => void;
+  /** Called when an area is clicked or tapped, or empty map is (`null`). */
   onSelect: (area: SelectedArea | null) => void;
   /** Called with the number of areas in a layer's boundary file once it has loaded. */
   onAreaCount: (layer: LayerKey, count: number) => void;
@@ -36,10 +44,26 @@ const BASE_STYLES: Record<Theme, { name: string; url: string }> = {
 };
 
 /** Colours for the layers that we draw, which depend on the theme. */
-const PAINT: Record<Theme, { noData: string; outline: string; hover: string; background: string }> = {
-  light: { noData: "#c9d0d8", outline: "#fbfcfd", hover: "#24303d", background: "#f3f5f8" },
-  dark: { noData: "#3a4856", outline: "#1e2933", hover: "#d6dde5", background: "#172029" },
+const PAINT: Record<Theme, { noData: string; outline: string; background: string }> = {
+  light: { noData: "#c9d0d8", outline: "#fbfcfd", background: "#f3f5f8" },
+  dark: { noData: "#3a4856", outline: "#1e2933", background: "#172029" },
 };
+
+/**
+ * Label colours that stand out over our fills. They replace the base
+ * style's own colours (OpenFreeMap's files are not edited) on its place
+ * labels.
+ */
+const LABEL_PAINT: Record<Theme, Record<string, string | number>> = {
+  light: { "text-color": "#14202b", "text-halo-color": "#ffffff", "text-halo-width": 1.6 },
+  dark: { "text-color": "#f5f8fb", "text-halo-color": "#0a1016", "text-halo-width": 1.8 },
+};
+
+/** The two tones of the highlight outline: a wide white line under a narrower dark one. */
+const HIGHLIGHT = { under: "#ffffff", over: "#0a1016" };
+
+/** The place label layers in OpenFreeMap's styles (`place_*` in dark, `label_*` in positron). */
+const PLACE_LABEL = /^(place|label)_/;
 
 /** England, with some room around it. */
 const ENGLAND_BOUNDS: [[number, number], [number, number]] = [
@@ -54,7 +78,8 @@ const MAX_BOUNDS: [[number, number], [number, number]] = [
 const SOURCE_ID = "areas";
 const FILL_ID = "areas-fill";
 const LINE_ID = "areas-line";
-const HOVER_ID = "areas-hover";
+const HIGHLIGHT_UNDER_ID = "areas-highlight-under";
+const HIGHLIGHT_OVER_ID = "areas-highlight-over";
 
 /** Minimal GeoJSON types for our own files. */
 type AreaFeature<Properties> = {
@@ -81,6 +106,18 @@ function plainStyle(theme: Theme): StyleSpecification {
       { id: "background", type: "background", paint: { "background-color": PAINT[theme].background } },
     ],
   };
+}
+
+/** Makes the base style's place labels easier to read over the areas. */
+function emphasiseLabels(theme: Theme): TransformStyleFunction {
+  return (_previous, next) => ({
+    ...next,
+    layers: next.layers.map((layer) =>
+      layer.type === "symbol" && PLACE_LABEL.test(layer.id)
+        ? { ...layer, paint: { ...layer.paint, ...LABEL_PAINT[theme] } }
+        : layer,
+    ),
+  });
 }
 
 type BoundaryCollection = AreaCollection<{ code: string; name: string }>;
@@ -146,9 +183,22 @@ type MapState = {
   usedPlainStyle: boolean;
   /** True once any style has loaded. */
   styleLoaded: boolean;
-  hovered: string | null;
+  /** The code of the outlined area. */
+  highlight: string | null;
   collection: JoinedCollection | null;
 };
+
+/** The filter that picks out the outlined area (or nothing). */
+function highlightFilter(code: string | null): ExpressionSpecification {
+  return ["==", ["get", "code"], code ?? ""];
+}
+
+/** Outlines one area, or none. */
+function setHighlight(map: MapLibreMap, code: string | null) {
+  for (const id of [HIGHLIGHT_UNDER_ID, HIGHLIGHT_OVER_ID]) {
+    if (map.getLayer(id)) map.setFilter(id, highlightFilter(code));
+  }
+}
 
 /** Adds our source and layers to the current style, if they are not there. */
 function addAreaLayers(map: MapLibreMap, state: MapState) {
@@ -195,14 +245,30 @@ function addAreaLayers(map: MapLibreMap, state: MapState) {
       beforeId,
     );
   }
-  if (!map.getLayer(HOVER_ID)) {
+  // The highlight is two lines: a wide white one with a narrower dark one
+  // on top, so it shows against every fill colour in both themes.
+  if (!map.getLayer(HIGHLIGHT_UNDER_ID)) {
     map.addLayer(
       {
-        id: HOVER_ID,
+        id: HIGHLIGHT_UNDER_ID,
         type: "line",
         source: SOURCE_ID,
-        filter: ["==", ["get", "code"], state.hovered ?? ""],
-        paint: { "line-color": paint.hover, "line-width": 2.5 },
+        filter: highlightFilter(state.highlight),
+        layout: { "line-join": "round" },
+        paint: { "line-color": HIGHLIGHT.under, "line-width": 5 },
+      },
+      beforeId,
+    );
+  }
+  if (!map.getLayer(HIGHLIGHT_OVER_ID)) {
+    map.addLayer(
+      {
+        id: HIGHLIGHT_OVER_ID,
+        type: "line",
+        source: SOURCE_ID,
+        filter: highlightFilter(state.highlight),
+        layout: { "line-join": "round" },
+        paint: { "line-color": HIGHLIGHT.over, "line-width": 2 },
       },
       beforeId,
     );
@@ -215,7 +281,7 @@ function applyBaseStyle(map: MapLibreMap, state: MapState, theme: Theme) {
   state.styleName = BASE_STYLES[theme].name;
   state.usedPlainStyle = false;
   // A full rebuild (not a diff) means the style.load event fires every time.
-  map.setStyle(BASE_STYLES[theme].url, { diff: false });
+  map.setStyle(BASE_STYLES[theme].url, { diff: false, transformStyle: emphasiseLabels(theme) });
 }
 
 /**
@@ -227,7 +293,16 @@ function applyBaseStyle(map: MapLibreMap, state: MapState, theme: Theme) {
  * cannot start (for example, there is no WebGL), this throws while
  * rendering, so the nearest error boundary can show a fallback.
  */
-export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: Props) {
+export function ChoroplethMap({
+  layer,
+  dataset,
+  scale,
+  highlightCode,
+  fullscreenRef,
+  onHover,
+  onSelect,
+  onAreaCount,
+}: Props) {
   const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
@@ -240,16 +315,14 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
     styleName: BASE_STYLES[theme].name,
     usedPlainStyle: false,
     styleLoaded: false,
-    hovered: null,
+    highlight: highlightCode,
     collection: null,
   });
   const themeRef = useRef(theme);
-  const onSelectRef = useRef(onSelect);
-  const onAreaCountRef = useRef(onAreaCount);
+  const callbacksRef = useRef({ onHover, onSelect, onAreaCount });
   useEffect(() => {
     themeRef.current = theme;
-    onSelectRef.current = onSelect;
-    onAreaCountRef.current = onAreaCount;
+    callbacksRef.current = { onHover, onSelect, onAreaCount };
   });
 
   if (failure) throw failure;
@@ -258,16 +331,6 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
   useEffect(() => {
     let cancelled = false;
     let created: MapLibreMap | undefined;
-
-    function select(area: SelectedArea | null) {
-      const state = stateRef.current;
-      if ((area?.code ?? null) === state.hovered) return;
-      state.hovered = area?.code ?? null;
-      if (created?.getLayer(HOVER_ID)) {
-        created.setFilter(HOVER_ID, ["==", ["get", "code"], area?.code ?? ""]);
-      }
-      onSelectRef.current(area);
-    }
 
     (async () => {
       try {
@@ -278,12 +341,10 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
         // scripts/maplibre-worker.mts).
         maplibre.setWorkerUrl(`/maplibre/maplibre-gl-worker.mjs?v=${maplibre.getVersion()}`);
         const state = stateRef.current;
-        state.theme = themeRef.current;
-        state.styleName = BASE_STYLES[state.theme].name;
 
+        // The style is set below, so that it goes through transformStyle.
         const instance = new maplibre.Map({
           container: containerRef.current,
-          style: BASE_STYLES[state.theme].url,
           bounds: ENGLAND_BOUNDS,
           maxBounds: MAX_BOUNDS,
           // Keep the credit visible, not collapsed behind a button.
@@ -297,6 +358,11 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
         instance.touchZoomRotate.disableRotation();
         instance.touchPitch.disable();
         instance.addControl(new maplibre.NavigationControl({ showCompass: false }), "top-right");
+        // The button is labelled "Enter fullscreen" or "Exit fullscreen".
+        instance.addControl(
+          new maplibre.FullscreenControl({ container: fullscreenRef.current ?? undefined }),
+          "top-right",
+        );
 
         instance.on("style.load", () => {
           state.styleLoaded = true;
@@ -314,29 +380,37 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
           }
         });
 
-        // Pointing selects an area, but only where there is a pointer that can
-        // hover. On a phone, the mouse events that follow a tap would clear
-        // the selection straight away.
+        // Pointing previews an area, but only where there is a pointer that
+        // can hover. On a phone, the mouse events that follow a tap would
+        // otherwise interfere with it.
         if (window.matchMedia("(hover: hover)").matches) {
           instance.on("mousemove", FILL_ID, (event: MapLayerMouseEvent) => {
             instance.getCanvas().style.cursor = "pointer";
             const properties = event.features?.[0]?.properties;
-            if (properties) select({ code: String(properties.code), name: String(properties.name) });
+            if (properties) {
+              callbacksRef.current.onHover({
+                code: String(properties.code),
+                name: String(properties.name),
+              });
+            }
           });
           instance.on("mouseleave", FILL_ID, () => {
             instance.getCanvas().style.cursor = "";
-            select(null);
+            callbacksRef.current.onHover(null);
           });
         }
-        // A tap (or click) selects the area under it, or clears the selection.
+        // A click or tap chooses the area under it, or empty map.
         instance.on("click", (event) => {
           const features = instance.getLayer(FILL_ID)
             ? instance.queryRenderedFeatures(event.point, { layers: [FILL_ID] })
             : [];
           const properties = features[0]?.properties;
-          select(properties ? { code: String(properties.code), name: String(properties.name) } : null);
+          callbacksRef.current.onSelect(
+            properties ? { code: String(properties.code), name: String(properties.name) } : null,
+          );
         });
 
+        applyBaseStyle(instance, state, themeRef.current);
         setMap(instance);
       } catch (error) {
         if (!cancelled) setFailure(error instanceof Error ? error : new Error(String(error)));
@@ -347,7 +421,7 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
       cancelled = true;
       created?.remove();
     };
-  }, []);
+  }, [fullscreenRef]);
 
   // Switch the base style when the theme changes.
   useEffect(() => {
@@ -356,6 +430,12 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
     if (state.styleName === BASE_STYLES[theme].name && !state.usedPlainStyle) return;
     applyBaseStyle(map, state, theme);
   }, [map, theme]);
+
+  // Outline the highlighted area.
+  useEffect(() => {
+    stateRef.current.highlight = highlightCode;
+    if (map) setHighlight(map, highlightCode);
+  }, [map, highlightCode]);
 
   // Draw the current layer's values.
   useEffect(() => {
@@ -366,10 +446,7 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
         if (cancelled) return;
         const state = stateRef.current;
         state.collection = joinValues(boundaries, dataset, scale);
-        state.hovered = null;
-        if (map.getLayer(HOVER_ID)) map.setFilter(HOVER_ID, ["==", ["get", "code"], ""]);
-        onSelectRef.current(null);
-        onAreaCountRef.current(layer, boundaries.features.length);
+        callbacksRef.current.onAreaCount(layer, boundaries.features.length);
         // If a style change is in progress, the new style picks this data up.
         const source = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
         await source?.setData(state.collection as unknown as MapLibreData);
@@ -395,13 +472,7 @@ export function ChoroplethMap({ layer, dataset, scale, onSelect, onAreaCount }: 
       data-testid="map-canvas"
       data-base-style={baseStyle ?? undefined}
       data-map-ready={ready ? "true" : "false"}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") {
-          stateRef.current.hovered = null;
-          if (map?.getLayer(HOVER_ID)) map.setFilter(HOVER_ID, ["==", ["get", "code"], ""]);
-          onSelect(null);
-        }
-      }}
+      data-highlight={highlightCode ?? undefined}
     />
   );
 }

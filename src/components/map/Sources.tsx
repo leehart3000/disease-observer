@@ -6,31 +6,19 @@ function lines(attribution: string): string[] {
 }
 
 /**
- * The credits for everything on the map. The base map credit is fixed; the
- * data credits and licences come from the `sources` table.
+ * The credits for the data on the map. The caller passes only the sources
+ * for the dataset that is shown. They come from the `sources` table. The
+ * base map's own credit is in the map's attribution box.
  */
 export function Sources({ credits }: { credits: SourceCredit[] }) {
-  const link = "underline underline-offset-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+  const link =
+    "underline underline-offset-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
   return (
     <section aria-labelledby="sources-heading" className="mt-8 text-sm text-muted">
       <h2 id="sources-heading" className="mb-2 font-medium text-ink">
         Sources
       </h2>
       <ul className="grid gap-3">
-        <li>
-          <p>
-            <a className={link} href="https://openfreemap.org">
-              OpenFreeMap
-            </a>{" "}
-            <a className={link} href="https://www.openmaptiles.org/">
-              &copy; OpenMapTiles
-            </a>{" "}
-            Data from{" "}
-            <a className={link} href="https://www.openstreetmap.org/copyright">
-              OpenStreetMap
-            </a>
-          </p>
-        </li>
         {credits.map((credit) => (
           <li key={credit.slug}>
             <p>

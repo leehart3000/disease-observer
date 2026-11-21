@@ -43,7 +43,11 @@ export function assertTestDatabase(connectionString: string | undefined): string
   return connectionString;
 }
 
-/** The first twelve unitary authorities, which the tests use by name. */
+/**
+ * Thirty local authorities, which the tests use by name. That is enough for
+ * a second page of the table (it shows 25 rows at a time). The first twelve
+ * have the high values (20 to 410.5); the rest have low ones (1 to 9.5).
+ */
 const LOCAL_AUTHORITIES = [
   "E06000001", // Hartlepool
   "E06000002", // Middlesbrough
@@ -57,6 +61,24 @@ const LOCAL_AUTHORITIES = [
   "E06000010", // Kingston upon Hull, City of
   "E06000011", // East Riding of Yorkshire
   "E06000012", // North East Lincolnshire
+  "E06000013", // North Lincolnshire
+  "E06000014", // York
+  "E06000015", // Derby
+  "E06000016", // Leicester
+  "E06000017", // Rutland
+  "E06000018", // Nottingham
+  "E06000019", // Herefordshire, County of
+  "E06000020", // Telford and Wrekin
+  "E06000021", // Stoke-on-Trent
+  "E06000022", // Bath and North East Somerset
+  "E06000023", // Bristol, City of
+  "E06000024", // North Somerset
+  "E06000025", // South Gloucestershire
+  "E06000026", // Plymouth
+  "E06000027", // Torbay
+  "E06000030", // Swindon
+  "E06000031", // Peterborough
+  "E06000032", // Luton
 ];
 
 /** The nine regions, as UKHSA codes them. */
@@ -156,7 +178,7 @@ async function main() {
           ...covidBase,
           periodStart: dates.covidLatest.start,
           periodEnd: dates.covidLatest.end,
-          value: 20 + index * 35.5,
+          value: index < 12 ? 20 + index * 35.5 : 1 + (index - 12) * 0.5,
           // Three areas are still inside UKHSA's reporting delay.
           provisional: index < 3,
         });

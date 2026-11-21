@@ -17,6 +17,13 @@ export type LayerConfig = {
   boundaryUrl: string;
   /** What the areas are called, in the plural. */
   areaNoun: string;
+  /** The heading of the value column in the table. */
+  valueHeading: string;
+  /**
+   * The `sources` rows to credit when this layer is shown: its own data
+   * source, then the one for the boundaries that are drawn.
+   */
+  sourceSlugs: string[];
 };
 
 export const LAYERS: Record<LayerKey, LayerConfig> = {
@@ -27,6 +34,8 @@ export const LAYERS: Record<LayerKey, LayerConfig> = {
     valueKind: "rate",
     boundaryUrl: "/boundaries/lad-dec-2022.json",
     areaNoun: "local authorities",
+    valueHeading: "Cases per 100,000 (7 days)",
+    sourceSlugs: ["ukhsa", "ons-geography"],
   },
   measles: {
     key: "measles",
@@ -35,6 +44,8 @@ export const LAYERS: Record<LayerKey, LayerConfig> = {
     valueKind: "count",
     boundaryUrl: "/boundaries/rgn-dec-2022.json",
     areaNoun: "regions",
+    valueHeading: "Cases (week)",
+    sourceSlugs: ["ukhsa", "ons-geography"],
   },
 };
 
