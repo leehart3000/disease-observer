@@ -22,6 +22,10 @@ on:
         description: "Only load the first N local authorities (for test runs). Leave empty for all."
         type: string
         required: false
+      only:
+        description: "Only load these kinds of area: a comma-separated list of nation, region and lad (no spaces). Leave empty for all."
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -73,8 +77,16 @@ jobs:
             fi
             args+=("--limit=$LIMIT")
           fi
+          if [ -n "$ONLY" ]; then
+            if ! [[ "$ONLY" =~ ^(nation|region|lad)(,(nation|region|lad))*$ ]]; then
+              echo "::error::The 'only' input must be a comma-separated list of nation, region and lad, such as nation,region."
+              exit 1
+            fi
+            args+=("--only=$ONLY")
+          fi
           pnpm etl:ukhsa "${args[@]}"
         env:
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
           FROM: ${{ inputs.from }}
           LIMIT: ${{ inputs.limit }}
+          ONLY: ${{ inputs.only }}

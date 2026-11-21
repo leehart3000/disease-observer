@@ -57,7 +57,22 @@ export type SeriesQuery = {
   metric: string;
   /** Only fetch points dated in this calendar year. */
   year?: number;
+  /**
+   * True to ask for the series with no age, sex or other breakdown
+   * (`age=all&sex=all&stratum=default`). Without it, a series can come back
+   * once for every breakdown, which is hundreds of times as many rows. If the
+   * first page reports more than `MAX_ROWS_WITH_FILTERS` rows, the fetch
+   * stops with an error.
+   */
+  defaultStratumOnly?: boolean;
 };
+
+/**
+ * The most rows that a series sent with the default-stratum filters may
+ * report. One year of daily values is 366 rows and the longest weekly
+ * history is a few hundred, so a larger count means the filters did not work.
+ */
+export const MAX_ROWS_WITH_FILTERS = 2000;
 
 /** The points of one series, with a note if the API's own count disagrees. */
 export type SeriesResult = {
@@ -98,6 +113,11 @@ export async function fetchSeries(
 ): Promise<SeriesResult> {
   const params = new URLSearchParams({ page_size: String(PAGE_SIZE) });
   if (query.year !== undefined) params.set("year", String(query.year));
+  if (query.defaultStratumOnly) {
+    params.set("age", "all");
+    params.set("sex", "all");
+    params.set("stratum", "default");
+  }
 
   let url: string | null =
     `${topicPath(query)}/geographies/${encodeURIComponent(query.geography)}` +
@@ -111,7 +131,15 @@ export async function fetchSeries(
       throw new Error(`More than ${MAX_PAGES} pages for ${query.geography}`);
     }
     const page = pageSchema.parse(await http.getJson(url));
-    if (pages === 0) reportedCount = page.count;
+    if (pages === 0) {
+      reportedCount = page.count;
+      if (query.defaultStratumOnly && page.count > MAX_ROWS_WITH_FILTERS) {
+        throw new Error(
+          `${query.geography} ${query.metric}: the API reports ${page.count} rows even with the ` +
+            `default-stratum filters (the most expected is ${MAX_ROWS_WITH_FILTERS}), so it was not loaded`,
+        );
+      }
+    }
     points.push(...page.results);
     pages++;
     if (page.next !== null && new URL(page.next).origin !== API_ORIGIN) {

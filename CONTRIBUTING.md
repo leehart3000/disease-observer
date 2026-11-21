@@ -84,12 +84,19 @@ Run these from the repository root:
   `data/ons/` from the raw ONS downloads (see `data/ons/README.md`).
 - `pnpm db:boundaries`: load those boundaries into the `areas` table. Run
   it after `pnpm db:seed`. It is safe to run more than once.
-- `pnpm etl:ukhsa`: load UKHSA data (COVID-19 by local authority and
-  measles by region) into the database. It needs `DATABASE_URL_UNPOOLED`
-  and `pnpm db:seed` first. With no options it loads the current year
-  (plus last year in January). `--from=YYYY` backfills COVID-19 from that
-  year, and `--limit=N` loads only the first N local authorities. The
-  command exits with an error if the run is marked failed.
+- `pnpm etl:ukhsa`: load UKHSA data (COVID-19 for England, the UKHSA
+  regions and the local authorities, and measles for England and the
+  regions) into the database. It needs `DATABASE_URL_UNPOOLED` and
+  `pnpm db:seed` first. With no options it loads the current year (plus
+  last year in January). `--from=YYYY` backfills COVID-19 from that year,
+  `--limit=N` loads only the first N local authorities, and
+  `--only=nation,region,lad` loads only those kinds of area, for example
+  `--from=2023 --only=nation,region` to backfill England and the regions
+  without reloading every local authority. The England and region series
+  are always requested without age or sex breakdowns
+  (`age=all&sex=all&stratum=default`), and the run refuses a series that
+  still reports more than 2,000 rows. The command exits with an error if
+  the run is marked failed.
 
 Commands for unit tests, formatting and documentation will be added when
 those tools are set up.
@@ -284,6 +291,9 @@ To run it by hand, open the Actions tab, choose "ETL: UKHSA" and select
   default mode.
 - `limit`: a whole number to load only the first N local authorities, or
   empty for all of them.
+- `only`: a comma-separated list of `nation`, `region` and `lad` (no
+  spaces), or empty for all. To backfill England and the regions, use
+  `from` = `2023` and `only` = `nation,region`.
 
 Test on `db-dev` with a small `limit` first, for example 5. A backfill
 makes about 600 requests for each year, so it can take a long time.

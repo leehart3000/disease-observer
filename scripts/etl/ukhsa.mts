@@ -1,7 +1,7 @@
 /**
  * Loads UKHSA data dashboard data into the database: COVID-19 cases and
- * case rates by lower tier local authority, and measles cases by UKHSA
- * region. Safe to run more than once: rows are only changed when the
+ * case rates for England, the UKHSA regions and the lower tier local
+ * authorities, and measles cases for England and the UKHSA regions. Safe to run more than once: rows are only changed when the
  * value or the provisional flag differs.
  *
  * Run with `pnpm etl:ukhsa`. It uses the direct connection
@@ -13,6 +13,9 @@
  * Options:
  * - `--from=YYYY`: backfill COVID-19 from that year instead.
  * - `--limit=N`: only load the first N local authorities, for testing.
+ * - `--only=nation,region,lad`: only load those kinds of area (England, the
+ *   UKHSA regions, the local authorities). Use `--from=2023 --only=nation,region`
+ *   to backfill England and the regions without reloading every local authority.
  *
  * The run is recorded in `etl_runs`. It fails, and the process exits with
  * a non-zero code, if more than 5% of the geographies of one type fail or
@@ -33,6 +36,8 @@ import { fetchGeographyNames, fetchSeries } from "./ukhsa-api.mts";
 import {
   DATASETS,
   dedupeObservations,
+  parseOnly,
+  selectDatasets,
   toObservationFields,
   yearsForBackfill,
   yearsForDefaultRun,
@@ -73,7 +78,11 @@ type Context = {
 };
 
 const { values: args } = parseArgs({
-  options: { from: { type: "string" }, limit: { type: "string" } },
+  options: {
+    from: { type: "string" },
+    limit: { type: "string" },
+    only: { type: "string" },
+  },
   strict: true,
 });
 
@@ -189,6 +198,7 @@ async function loadGeography(
           geography,
           metric: series.ukhsaMetric,
           year,
+          defaultStratumOnly: dataset.defaultStratumOnly,
         });
       } catch (error) {
         if (error instanceof NotFoundError) {
@@ -301,6 +311,8 @@ async function loadReferenceIds(db: Database) {
 async function main(): Promise<void> {
   const fromYear = readIntegerOption("from", args.from, 2019);
   const limit = readIntegerOption("limit", args.limit, 1);
+  const only = args.only === undefined ? undefined : parseOnly(args.only);
+  const datasets = selectDatasets(DATASETS, only);
   const now = new Date();
   const years = fromYear === undefined ? yearsForDefaultRun(now) : yearsForBackfill(fromYear, now);
 
@@ -346,7 +358,7 @@ async function main(): Promise<void> {
     };
 
     let failed = false;
-    for (const dataset of DATASETS) {
+    for (const dataset of datasets) {
       const failuresBefore = ctx.totals.failedGeographies;
       const geographiesBefore = ctx.totals.geographies;
       await loadDataset(ctx, dataset, years, limit);

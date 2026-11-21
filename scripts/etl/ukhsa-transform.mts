@@ -19,6 +19,10 @@ export type SeriesConfig = {
   period: (date: string) => { start: string; end: string };
 };
 
+/** The kinds of area that `--only` can choose: England, UKHSA regions, local authorities. */
+export const DATASET_LEVELS = ["nation", "region", "lad"] as const;
+export type DatasetLevel = (typeof DATASET_LEVELS)[number];
+
 /** A set of series for one disease and one type of geography. */
 export type DatasetConfig = {
   /** Used in logs. */
@@ -28,6 +32,14 @@ export type DatasetConfig = {
   topic: string;
   geographyType: string;
   areaLevel: (typeof AREA_LEVELS)[number];
+  /** The kind of area, as chosen with `--only`. */
+  level: DatasetLevel;
+  /**
+   * True to request only the series with no age, sex or other breakdown.
+   * Every dataset with a breakdown on the dashboard needs it. See
+   * `defaultStratumOnly` in `ukhsa-api.mts`.
+   */
+  defaultStratumOnly: boolean;
   /**
    * True if the API should be asked for one calendar year at a time. This
    * suits long daily series. False fetches the whole history in one go.
@@ -67,6 +79,37 @@ export function addDays(date: string, days: number): string {
  *   documentation pages that I could reach do not describe this metric, so
  *   the Monday start is inferred from the data.
  */
+const COVID_SERIES: SeriesConfig[] = [
+  {
+    ukhsaMetric: "COVID-19_cases_casesByDay",
+    metric: "cases",
+    periodType: "day",
+    period: (date) => ({ start: date, end: date }),
+  },
+  {
+    ukhsaMetric: "COVID-19_cases_rateRollingMean",
+    metric: "rate_per_100k",
+    periodType: "week",
+    period: (date) => ({ start: addDays(date, -6), end: date }),
+  },
+];
+
+const MEASLES_SERIES: SeriesConfig[] = [
+  {
+    ukhsaMetric: "measles_cases_casesByOnsetWeek",
+    metric: "cases",
+    periodType: "week",
+    period: (date) => ({ start: date, end: addDays(date, 6) }),
+  },
+];
+
+/**
+ * England and the UKHSA regions are stored as well as the local authorities
+ * and the measles regions. They send `defaultStratumOnly`, because these
+ * series have a row for every age and sex band (England's COVID-19 rate has
+ * 153,468 rows in all). The local authority and measles region requests are
+ * as they were before the filters were added.
+ */
 export const DATASETS: DatasetConfig[] = [
   {
     name: "COVID-19 by lower tier local authority",
@@ -75,21 +118,34 @@ export const DATASETS: DatasetConfig[] = [
     topic: "COVID-19",
     geographyType: "Lower Tier Local Authority",
     areaLevel: "lower_tier_local_authority",
+    level: "lad",
+    defaultStratumOnly: false,
     byYear: true,
-    series: [
-      {
-        ukhsaMetric: "COVID-19_cases_casesByDay",
-        metric: "cases",
-        periodType: "day",
-        period: (date) => ({ start: date, end: date }),
-      },
-      {
-        ukhsaMetric: "COVID-19_cases_rateRollingMean",
-        metric: "rate_per_100k",
-        periodType: "week",
-        period: (date) => ({ start: addDays(date, -6), end: date }),
-      },
-    ],
+    series: COVID_SERIES,
+  },
+  {
+    name: "COVID-19 for England",
+    diseaseSlug: "covid-19",
+    subTheme: "respiratory",
+    topic: "COVID-19",
+    geographyType: "Nation",
+    areaLevel: "nation",
+    level: "nation",
+    defaultStratumOnly: true,
+    byYear: true,
+    series: COVID_SERIES,
+  },
+  {
+    name: "COVID-19 by UKHSA region",
+    diseaseSlug: "covid-19",
+    subTheme: "respiratory",
+    topic: "COVID-19",
+    geographyType: "UKHSA Region",
+    areaLevel: "region",
+    level: "region",
+    defaultStratumOnly: true,
+    byYear: true,
+    series: COVID_SERIES,
   },
   {
     name: "Measles by UKHSA region",
@@ -98,17 +154,52 @@ export const DATASETS: DatasetConfig[] = [
     topic: "Measles",
     geographyType: "UKHSA Region",
     areaLevel: "region",
+    level: "region",
+    defaultStratumOnly: false,
     byYear: false,
-    series: [
-      {
-        ukhsaMetric: "measles_cases_casesByOnsetWeek",
-        metric: "cases",
-        periodType: "week",
-        period: (date) => ({ start: date, end: addDays(date, 6) }),
-      },
-    ],
+    series: MEASLES_SERIES,
+  },
+  {
+    name: "Measles for England",
+    diseaseSlug: "measles",
+    subTheme: "vaccine_preventable",
+    topic: "Measles",
+    geographyType: "Nation",
+    areaLevel: "nation",
+    level: "nation",
+    defaultStratumOnly: true,
+    byYear: false,
+    series: MEASLES_SERIES,
   },
 ];
+
+/**
+ * The datasets to load for `--only`. With no choice, every dataset is
+ * loaded.
+ */
+export function selectDatasets(
+  datasets: readonly DatasetConfig[],
+  only: readonly DatasetLevel[] | undefined,
+): DatasetConfig[] {
+  return only === undefined ? [...datasets] : datasets.filter((d) => only.includes(d.level));
+}
+
+/**
+ * Reads the value of `--only`: a comma-separated list of `nation`,
+ * `region` and `lad`.
+ *
+ * @throws If the list is empty or has anything else in it.
+ */
+export function parseOnly(value: string): DatasetLevel[] {
+  const parts = value.split(",").map((part) => part.trim());
+  const levels = parts.filter((part): part is DatasetLevel =>
+    (DATASET_LEVELS as readonly string[]).includes(part),
+  );
+  if (levels.length !== parts.length) {
+    throw new Error(`--only must be a comma-separated list of: ${DATASET_LEVELS.join(", ")}`);
+  }
+  return [...new Set(levels)];
+}
 
 /**
  * Describes the slice of the population that a point covers, using our
