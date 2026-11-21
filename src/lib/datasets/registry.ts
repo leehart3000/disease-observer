@@ -19,6 +19,7 @@ export const DISEASES = [
       "COVID-19 is an infectious disease caused by the SARS-CoV-2 virus. It spreads mainly through the air and can cause illness ranging from a mild cough to serious breathing problems.",
       "The map shows the rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people. Rates allow areas of different sizes to be compared.",
     ],
+    headline: { datasetId: "covid-19-rate" },
   },
   {
     slug: "measles",
@@ -28,6 +29,7 @@ export const DISEASES = [
       "Measles is a highly infectious viral illness. Two doses of the MMR vaccine give lasting protection, and outbreaks can follow when vaccination rates fall.",
       "The map shows the number of confirmed cases in each UKHSA region for the latest complete week, by the week that symptoms began. Recent weeks are provisional because cases are still being reported.",
     ],
+    headline: { datasetId: "measles-cases" },
   },
 ] as const satisfies readonly DiseaseDef[];
 

@@ -74,4 +74,9 @@ export type DiseaseDef = {
   summary: string;
   /** Short paragraphs for the disease page. British English. */
   about: readonly string[];
+  /**
+   * The figure shown on the disease's card and page: the latest value for
+   * the dataset's whole place (England), in the dataset's metric and unit.
+   */
+  headline: { datasetId: string };
 };

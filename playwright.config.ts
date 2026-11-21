@@ -30,8 +30,9 @@ function localTestDatabaseEnv(): Record<string, string> {
 const testDatabaseEnv = localTestDatabaseEnv();
 
 /**
- * End-to-end test setup. The site is started automatically: `pnpm dev`
- * locally, and `pnpm start` in CI (run `pnpm build` first). Set CHROMIUM_PATH
+ * End-to-end test setup. The site is started automatically from a
+ * production build: `pnpm build && pnpm start` locally, and `pnpm start` in
+ * CI (the job builds first). Set CHROMIUM_PATH
  * to use a system Chromium instead of Playwright's own download.
  */
 export default defineConfig({
@@ -65,12 +66,16 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: isCI ? "pnpm start" : "pnpm dev",
+    // The tests run against a production build, as the live site does. The dev
+    // server compiles each page on its first visit, which made tests time out
+    // at random. CI has built the site already in an earlier step.
+    command: isCI ? "pnpm start" : "pnpm build && pnpm start",
     url: "http://localhost:3000",
     // A server that is already running might use the development database,
     // so it is only reused when the tests do not point it at the test one.
     reuseExistingServer: !isCI && Object.keys(testDatabaseEnv).length === 0,
     env: testDatabaseEnv,
-    timeout: 120_000,
+    // Locally, this includes the build.
+    timeout: isCI ? 120_000 : 300_000,
   },
 });

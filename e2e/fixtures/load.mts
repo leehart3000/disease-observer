@@ -17,6 +17,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { createDb } from "../../src/db/client.ts";
 import { areas, diseases, observations, sources } from "../../src/db/schema.ts";
+import { englandRows, fixtureDates } from "./dates.mts";
 
 export const TEST_DATABASE_NAME = "disease_observer_test";
 const LOCAL_HOSTS = ["localhost", "127.0.0.1", "db"];
@@ -96,35 +97,6 @@ const REGIONS = [
 
 /** Measles cases for each region in the last complete week. Four regions have none. */
 const MEASLES_CASES = [0, 0, 0, 0, 1, 2, 3, 5, 8];
-
-/** Adds days to a `YYYY-MM-DD` date, using UTC. */
-function addDays(date: string, days: number): string {
-  const result = new Date(`${date}T00:00:00Z`);
-  result.setUTCDate(result.getUTCDate() + days);
-  return result.toISOString().slice(0, 10);
-}
-
-/**
- * The dates the fixtures use, worked out from today so the tests never go
- * stale.
- *
- * - COVID-19: a week ending three days ago (the latest), and the week before.
- * - Measles: the last complete week (Monday to Sunday, ended before today),
- *   and the week after it, which has not ended yet and so must be ignored.
- */
-export function fixtureDates(now: Date = new Date()) {
-  const today = now.toISOString().slice(0, 10);
-  const covidEnd = addDays(today, -3);
-  // Days back to the most recent Sunday that is before today.
-  const dayOfWeek = now.getUTCDay();
-  const measlesEnd = addDays(today, -(dayOfWeek === 0 ? 7 : dayOfWeek));
-  return {
-    covidLatest: { start: addDays(covidEnd, -6), end: covidEnd },
-    covidPrevious: { start: addDays(covidEnd, -13), end: addDays(covidEnd, -7) },
-    measlesComplete: { start: addDays(measlesEnd, -6), end: measlesEnd },
-    measlesIncomplete: { start: addDays(measlesEnd, 1), end: addDays(measlesEnd, 7) },
-  };
-}
 
 /** Loads the fixtures. */
 async function main() {
@@ -209,6 +181,41 @@ async function main() {
           provisional: true,
         });
       });
+
+      // England is not in the boundary files, so the loader creates it, as the ETL does.
+      const [england] = await tx
+        .insert(areas)
+        .values({ codeScheme: "ons", code: "E92000001", name: "England", level: "nation" })
+        .onConflictDoUpdate({
+          target: [areas.codeScheme, areas.code],
+          set: { name: sql`excluded.name` },
+        })
+        .returning({ id: areas.id });
+      const englandSeries = englandRows(dates);
+      for (const row of englandSeries.covid) {
+        rows.push({
+          ...base,
+          diseaseId: covid.id,
+          areaId: england.id,
+          metric: "rate_per_100k",
+          periodStart: row.start,
+          periodEnd: row.end,
+          value: row.value,
+          provisional: row.provisional,
+        });
+      }
+      for (const row of englandSeries.measles) {
+        rows.push({
+          ...base,
+          diseaseId: measles.id,
+          areaId: england.id,
+          metric: "cases",
+          periodStart: row.start,
+          periodEnd: row.end,
+          value: row.value,
+          provisional: row.provisional,
+        });
+      }
 
       await tx.delete(observations);
       await tx.insert(observations).values(rows).onConflictDoUpdate({

@@ -62,8 +62,9 @@ Run these from the repository root:
 - `pnpm typecheck`: generate the Next.js route types and run the
   TypeScript compiler without emitting files.
 - `pnpm test:e2e`: run the Playwright end-to-end tests at desktop (1280 px)
-  and iPhone SE (375 px) sizes. The site starts automatically with
-  `pnpm dev` (or `pnpm start` when `CI` is set, after `pnpm build`). Run
+  and iPhone SE (375 px) sizes. The site starts automatically from a
+  production build: it runs `pnpm build` and `pnpm start` (or only
+  `pnpm start` when `CI` is set, after `pnpm build`). Run
   `pnpm exec playwright install chromium` once first, or set
   `CHROMIUM_PATH` to use a Chromium you already have. The map page tests
   need the test database (see [End-to-end test database](#end-to-end-test-database)).
@@ -158,8 +159,8 @@ The map page tests need data, so they use a separate database called
   the server and login in `.env.local`), runs the migrations, the seed and
   the boundary loader, and loads a small set of fixture observations (30
   local authorities for COVID-19, enough for a second page of the table, and
-  the 9 regions for measles, with dates
-  worked out from today). `pnpm test:e2e` then points the site at that
+  the 9 regions for measles, plus 30 weeks of England values for both,
+  with dates worked out from today). `pnpm test:e2e` then points the site at that
   database. Because of this, it starts its own server, so stop `pnpm dev`
   first.
 - The fixture loader (`e2e/fixtures/load.mts`) deletes every observation
@@ -182,7 +183,17 @@ every page has them. The header links are listed in `NavLinks.tsx`.
 - `/`, `/diseases` and `/diseases/[slug]` are generated from the diseases
   in the registry (name, summary and description). Adding a disease to the
   registry adds its card and its page. Their text and links do not need the
-  database.
+  database. An unknown disease slug gets a real 404 from `src/proxy.ts`,
+  because with Cache Components the page cannot change the status once its
+  shell is sent.
+- Each card and disease page shows the disease's headline: the latest
+  England value of its `headline` dataset, its period, a "Provisional" tag
+  when the source may still revise it, and a sparkline of the last 26
+  weekly values (`src/lib/data/headlines.ts`). The figure streams in, is
+  cached for about a day like the map values, and says "No figure yet" if
+  England has no data, or "Figure unavailable" if the database can't be
+  read. The sparkline is an inline SVG hidden from screen readers, with a
+  sentence for them.
 - `/sources` and the sources on each disease page list only the sources
   that a registry dataset uses (`sourceSlugs`), read from the `sources`
   table, plus the base map credit in `src/lib/credits.ts`. If the table
