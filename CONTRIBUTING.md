@@ -199,12 +199,19 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   (`src/components/charts/`, with the maths in `src/lib/chart-math.ts` and
   the data in `src/lib/data/series.ts`). It is hand-built SVG, drawn on the
   server and then at the size of its box. England is a thick line in the
-  text colour and the regions are thin muted lines; pressing a region in the
-  legend highlights it, in one of three colours (`--chart-1` to `--chart-3`
-  in `globals.css`, checked together in both themes). Pointing at or
-  touching the chart, or using the arrow, Page Up, Page Down, Home and End
-  keys on it, moves a marker and shows that week's values. A table of the
-  same numbers is under it.
+  text colour and the regions are thin muted lines; ticking a region in the
+  legend highlights it, drawn on top of England, in one of three colours
+  (`--chart-1` to `--chart-3` in `globals.css`, checked together in both
+  themes). The range starts on the last 12 months, with a choice of the
+  whole series since `chart.since` (it is not in the URL yet), and the y
+  axis always starts at zero. Pointing at or touching the chart, or using
+  the arrow, Page Up, Page Down, Home and End keys on it, moves a marker
+  and shows that week's values. A "View data table" disclosure holds the
+  same weeks as a table, newest first, paged like the map's table
+  (`src/components/PageControls.tsx`).
+- The disease page reads, from the top: the heading and introduction, the
+  latest figure, the chart, the maps (each with its `description` from the
+  registry) and the sources.
 - `src/proxy.ts` runs only for `/diseases/<slug>` (its matcher), and marks
   a known disease with an `x-disease-checked` header so the tests can see
   where it ran.

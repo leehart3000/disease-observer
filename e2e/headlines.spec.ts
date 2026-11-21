@@ -4,8 +4,8 @@ import { englandCovidRate, englandMeaslesCases, fixtureDates } from "./fixtures/
 /**
  * Tests for the headline figures and sparklines on the cards and disease
  * pages. They need the test database, filled by e2e/fixtures/load.mts:
- * England's COVID-19 rate falls by 0.3 a week from 12.6 (provisional), and
- * its measles cases fall by 1 a week from 40 (provisional). There are 30
+ * England's COVID-19 rate falls by 0.1 a week from 12.6 (provisional), and
+ * its measles cases fall by 1 a week from 80 (provisional). There are 70
  * weeks of each, so the sparkline holds the latest 26. COVID-19 also has a
  * row of 999 for the day before the latest, and measles a week of 99 that
  * has not ended: neither may appear.
@@ -39,7 +39,7 @@ for (const path of ["/", "/diseases"]) {
     await expect(covid.getByTestId("headline")).toContainText("Provisional");
 
     const measles = page.getByRole("article").filter({ hasText: "Measles" });
-    await expect(measles.getByTestId("headline")).toContainText("40 cases");
+    await expect(measles.getByTestId("headline")).toContainText(`${englandMeaslesCases(0)} cases`);
     await expect(measles.getByTestId("headline")).toContainText("Week of onset");
     await expect(measles.getByTestId("headline")).toContainText(longDay(dates.measlesComplete.end));
 
@@ -72,7 +72,7 @@ test("the sparkline is decorative and has 26 weekly points with a text equivalen
   await expect(covid.getByText(`Over the last 26 weeks it went from ${FIRST_COVID} to 12.6 per 100,000.`)).toBeAttached();
   const measles = page.getByRole("article").filter({ hasText: "Measles" });
   await expect(
-    measles.getByText(`Over the last 26 weeks it went from ${FIRST_MEASLES} to 40 cases.`),
+    measles.getByText(`Over the last 26 weeks it went from ${FIRST_MEASLES} to ${englandMeaslesCases(0)} cases.`),
   ).toBeAttached();
 });
 
@@ -80,7 +80,7 @@ test("a disease page shows the same figure and sparkline", async ({ page }) => {
   await page.goto("/diseases/measles");
 
   const headline = page.getByTestId("headline");
-  await expect(headline).toContainText("40 cases");
+  await expect(headline).toContainText(`${englandMeaslesCases(0)} cases`);
   await expect(headline).toContainText("Provisional");
   await expect(headline.getByTestId("sparkline")).toBeVisible();
 });

@@ -31,6 +31,8 @@ export type DatasetDef = {
   diseaseSlug: string;
   /** The text in the dataset picker. Unique, so it is clear when closed. */
   label: string;
+  /** One sentence on what the map shows, for the disease page. British English. */
+  description: string;
   /** The heading for the map, the legend and the table. */
   title: string;
   /** The metric name in the `observations` table. */

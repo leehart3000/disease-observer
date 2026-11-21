@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
+import { fieldClass, PAGE_SIZES, PageControls, type PageSize } from "@/components/PageControls";
 import type { DatasetDef } from "@/lib/datasets/types";
 import { formatNumber, formatPeriod } from "@/lib/format";
 import type { MapDataset } from "@/lib/map/types";
@@ -8,58 +9,6 @@ import type { SelectedArea } from "./ChoroplethMap";
 
 type SortKey = "name" | "value";
 type SortDirection = "ascending" | "descending";
-
-const PAGE_SIZES = ["25", "50", "100", "all"] as const;
-type PageSize = (typeof PAGE_SIZES)[number];
-
-const buttonClass =
-  "inline-flex min-h-11 cursor-pointer items-center rounded-md border border-line bg-surface px-3 hover:bg-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-50";
-
-const fieldClass =
-  "min-h-11 rounded-md border border-line bg-surface px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
-
-/**
- * Previous and Next buttons with the page number. It is used above and
- * below the table, and both copies show the same page. It renders nothing
- * when there is only one page. It is not a live region: the result count
- * above the table is the one that is announced.
- */
-function PageControls({
-  label,
-  page,
-  pageCount,
-  onPage,
-}: {
-  label: string;
-  page: number;
-  pageCount: number;
-  onPage: (page: number) => void;
-}) {
-  if (pageCount <= 1) return null;
-  return (
-    <nav aria-label={label} className="flex flex-wrap items-center gap-3">
-      <button
-        type="button"
-        className={buttonClass}
-        disabled={page <= 1}
-        onClick={() => onPage(page - 1)}
-      >
-        Previous
-      </button>
-      <span className="text-sm text-muted">
-        Page {page} of {pageCount}
-      </span>
-      <button
-        type="button"
-        className={buttonClass}
-        disabled={page >= pageCount}
-        onClick={() => onPage(page + 1)}
-      >
-        Next
-      </button>
-    </nav>
-  );
-}
 
 /**
  * The same values as the map, as a table that can be searched, sorted and

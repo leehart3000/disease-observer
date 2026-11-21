@@ -35,16 +35,22 @@ export function fixtureDates(now: Date = new Date()) {
 }
 
 /** How many weekly England values the fixtures hold, counting the latest. */
-export const ENGLAND_WEEKS = 30;
+export const ENGLAND_WEEKS = 70;
 
-/** England's COVID-19 rate `weeksBack` weeks before the latest: 12.6, 12.3, 12.0, and so on. */
+/**
+ * How many of those weeks are in the chart's default view, the last 12
+ * months: weeks that end less than 365 days before the latest week's end.
+ */
+export const LAST_YEAR_WEEKS = 53;
+
+/** England's COVID-19 rate `weeksBack` weeks before the latest: 12.6, 12.5, 12.4, and so on. */
 export function englandCovidRate(weeksBack: number): number {
-  return Math.round((12.6 - weeksBack * 0.3) * 10) / 10;
+  return Math.round((12.6 - weeksBack * 0.1) * 10) / 10;
 }
 
-/** England's measles cases `weeksBack` weeks before the latest complete week: 40, 39, 38, and so on. */
+/** England's measles cases `weeksBack` weeks before the latest complete week: 80, 79, 78, and so on. */
 export function englandMeaslesCases(weeksBack: number): number {
-  return 40 - weeksBack;
+  return 80 - weeksBack;
 }
 
 /**

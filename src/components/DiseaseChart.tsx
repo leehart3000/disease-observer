@@ -1,11 +1,14 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { loadDiseaseSeries } from "@/lib/data/series";
+import { getDisease } from "@/lib/datasets/registry";
 import { LineChart } from "./charts/LineChart";
 
 /** The data-driven part. It waits for a real request before it touches the database. */
 async function ChartData({ slug, name }: { slug: string; name: string }) {
   await connection();
+  const disease = getDisease(slug);
+  if (!disease) return null;
   const result = await loadDiseaseSeries(slug);
   if (result.status !== "ok") {
     return (
@@ -16,7 +19,13 @@ async function ChartData({ slug, name }: { slug: string; name: string }) {
       </p>
     );
   }
-  return <LineChart series={result.data} diseaseName={name} />;
+  return (
+    <LineChart
+      series={result.data}
+      diseaseName={name}
+      sinceLabel={`Since ${disease.chart.since.slice(0, 4)}`}
+    />
+  );;
 }
 
 /**

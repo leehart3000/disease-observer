@@ -44,31 +44,33 @@ export default async function DiseasePage({ params }: PageProps<"/diseases/[slug
         </Link>
       </p>
       <h1 className="mt-4 text-3xl font-medium tracking-tight sm:text-4xl">{disease.name}</h1>
-      <p className="mt-3 max-w-2xl text-lg text-muted">{disease.summary}</p>
-      <div className="mt-6 max-w-sm rounded-md border border-line bg-surface p-5">
-        <h2 className="text-sm font-medium">Latest figure</h2>
-        <DiseaseHeadline slug={disease.slug} id="headline" />
-      </div>
-      <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Over time</h2>
-      <DiseaseChart slug={disease.slug} name={disease.name} />
-
-      <div className="mt-10 grid max-w-2xl gap-3">
+      <div className="mt-3 grid max-w-2xl gap-3">
+        <p className="text-lg text-muted">{disease.summary}</p>
         {disease.about.map((paragraph) => (
           <p key={paragraph}>{paragraph}</p>
         ))}
       </div>
 
+      <div className="mt-8 max-w-sm rounded-md border border-line bg-surface p-5">
+        <h2 className="text-sm font-medium">Latest figure</h2>
+        <DiseaseHeadline slug={disease.slug} id="headline" />
+      </div>
+
+      <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Over time</h2>
+      <DiseaseChart slug={disease.slug} name={disease.name} />
+
       <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Maps</h2>
-      <ul className="grid gap-1">
+      <ul className="grid max-w-2xl gap-4">
         {datasetsForDisease(disease.slug).map((dataset) => (
           <li key={dataset.id}>
             <Link
               href={mapHref(dataset.id)}
               prefetch
-              className={`${strongLink} inline-flex min-h-11 items-center`}
+              className={`${strongLink} inline-flex min-h-11 items-center text-lg`}
             >
               {dataset.label}
             </Link>
+            <p className="text-muted">{dataset.description}</p>
           </li>
         ))}
       </ul>

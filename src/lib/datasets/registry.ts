@@ -40,6 +40,8 @@ export const DATASETS = [
     id: "covid-19-rate",
     diseaseSlug: "covid-19",
     label: "COVID-19 rate by local authority",
+    description:
+      "The rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people.",
     title: "COVID-19 cases per 100,000 people, by local authority",
     // UKHSA documents this as the rate of reported new cases in the 7 days
     // ending on the date shown.
@@ -65,6 +67,8 @@ export const DATASETS = [
     id: "measles-cases",
     diseaseSlug: "measles",
     label: "Measles cases by region",
+    description:
+      "The number of confirmed cases in each UKHSA region in the latest complete week, by the week that symptoms began.",
     title: "Measles cases, by UKHSA region",
     metric: "cases",
     valueKind: "count",
