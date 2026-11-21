@@ -855,7 +855,7 @@ test("the home page does not load the map", async ({ page }) => {
   const requested: string[] = [];
   page.on("request", (request) => requested.push(request.url()));
   await page.goto("/");
-  await expect(page.getByRole("link", { name: "View the map" })).toBeVisible();
+  await expect(page.getByRole("article").getByRole("link", { name: "Map" })).toBeVisible();
   await page.waitForLoadState("networkidle");
 
   expect(requested.filter((url) => url.includes("tiles.openfreemap.org"))).toEqual([]);

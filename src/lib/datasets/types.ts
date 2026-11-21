@@ -66,4 +66,8 @@ export type DiseaseDef = {
   /** Stable, URL-safe identifier. It is in `/diseases/covid-19`. */
   slug: string;
   name: string;
+  /** One sentence for the cards and the page description. British English. */
+  summary: string;
+  /** Short paragraphs for the disease page. British English. */
+  about: readonly string[];
 };

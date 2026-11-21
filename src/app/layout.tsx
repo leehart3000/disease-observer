@@ -1,15 +1,18 @@
 import type { Metadata, Viewport } from "next";
+import { SiteFooter } from "@/components/SiteFooter";
+import { SiteHeader } from "@/components/SiteHeader";
 import { themeInitScript } from "@/components/theme";
 import { plexMono, plexSans } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  // The base for relative URLs in metadata, such as canonical links.
+  metadataBase: new URL("https://disease.observer"),
   title: {
     default: "Disease Observer",
     template: "%s | Disease Observer",
   },
-  description:
-    "Maps and charts for infectious disease surveillance. Disease Observer is being built.",
+  description: "Maps and charts for infectious disease surveillance in England.",
 };
 
 export const viewport: Viewport = {
@@ -31,7 +34,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <SiteHeader />
+        {children}
+        <SiteFooter />
+      </body>
     </html>
   );
 }

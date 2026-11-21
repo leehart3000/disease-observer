@@ -11,8 +11,24 @@
 import type { DatasetDef, DiseaseDef, PeriodChoice } from "./types.ts";
 
 export const DISEASES = [
-  { slug: "covid-19", name: "COVID-19" },
-  { slug: "measles", name: "Measles" },
+  {
+    slug: "covid-19",
+    name: "COVID-19",
+    summary: "Reported COVID-19 case rates for every local authority in England.",
+    about: [
+      "COVID-19 is an infectious disease caused by the SARS-CoV-2 virus. It spreads mainly through the air and can cause illness ranging from a mild cough to serious breathing problems.",
+      "The map shows the rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people. Rates allow areas of different sizes to be compared.",
+    ],
+  },
+  {
+    slug: "measles",
+    name: "Measles",
+    summary: "Confirmed measles cases in England, by UKHSA region and week.",
+    about: [
+      "Measles is a highly infectious viral illness. Two doses of the MMR vaccine give lasting protection, and outbreaks can follow when vaccination rates fall.",
+      "The map shows the number of confirmed cases in each UKHSA region for the latest complete week, by the week that symptoms began. Recent weeks are provisional because cases are still being reported.",
+    ],
+  },
 ] as const satisfies readonly DiseaseDef[];
 
 export const DATASETS = [
@@ -87,6 +103,22 @@ export function getDisease(slug: string): DiseaseDef | undefined {
 /** The datasets of one disease, in registry order. */
 export function datasetsForDisease(slug: string): DatasetDef[] {
   return datasetList.filter((dataset) => dataset.diseaseSlug === slug);
+}
+
+/**
+ * The slugs of the `sources` rows that a disease's datasets use, without
+ * repeats, in the order the datasets list them.
+ */
+export function sourceSlugsForDisease(slug: string): string[] {
+  return [...new Set(datasetsForDisease(slug).flatMap((dataset) => dataset.sourceSlugs))];
+}
+
+/**
+ * The slugs of every `sources` row that some dataset uses. A source that no
+ * dataset uses (such as WHO FluNet, for now) is left out.
+ */
+export function usedSourceSlugs(): string[] {
+  return [...new Set(datasetList.flatMap((dataset) => dataset.sourceSlugs))];
 }
 
 /** True if `period` is one of the choices that a dataset offers. */

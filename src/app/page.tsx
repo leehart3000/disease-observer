@@ -1,29 +1,24 @@
-import Link from "next/link";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
+import { DiseaseCard, MapCard } from "@/components/DiseaseCard";
+import { DISEASES } from "@/lib/datasets/registry";
 
-/** Placeholder home page. */
+/** The home page: one card for each disease in the registry, and one for the map. */
 export default function Home() {
   return (
-    <>
-      <SiteHeader />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6 sm:py-20">
-        <h1 className="max-w-2xl text-balance text-3xl font-medium tracking-tight sm:text-4xl">
-          Maps and charts for infectious disease surveillance
-        </h1>
-        <p className="mt-4 max-w-xl text-lg text-muted">
-          This site is being built. Please check back soon.
-        </p>
-        <p className="mt-6">
-          <Link
-            href="/map"
-            className="rounded-md font-medium text-brand underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          >
-            View the map
-          </Link>
-        </p>
-      </main>
-      <SiteFooter />
-    </>
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6 sm:py-16">
+      <h1 className="max-w-2xl text-balance text-3xl font-medium tracking-tight sm:text-4xl">
+        Maps and charts for infectious disease surveillance
+      </h1>
+      <p className="mt-4 max-w-xl text-lg text-muted">
+        Figures for England from the UK Health Security Agency, shown as soon as
+        they are published.
+      </p>
+      <h2 className="mt-10 mb-4 text-2xl font-medium tracking-tight">Explore</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {DISEASES.map((disease) => (
+          <DiseaseCard key={disease.slug} {...disease} headingLevel="h3" />
+        ))}
+        <MapCard headingLevel="h3" />
+      </div>
+    </main>
   );
 }

@@ -167,6 +167,21 @@ The map page tests need data, so they use a separate database called
   the site with no database URL, then migrates, seeds, loads the boundaries
   and fixtures, and runs the tests.
 
+## Site pages
+
+The header and footer are in the root layout (`src/app/layout.tsx`), so
+every page has them. The header links are listed in `NavLinks.tsx`.
+
+- `/`, `/diseases` and `/diseases/[slug]` are generated from the diseases
+  in the registry (name, summary and description). Adding a disease to the
+  registry adds its card and its page. Their text and links do not need the
+  database.
+- `/sources` and the sources on each disease page list only the sources
+  that a registry dataset uses (`sourceSlugs`), read from the `sources`
+  table, plus the base map credit in `src/lib/credits.ts`. If the table
+  can't be read, they show "Sources unavailable".
+- `/about` is static text.
+
 ## The map page
 
 The map page (`/map`) shows the latest COVID-19 rate by local authority and
