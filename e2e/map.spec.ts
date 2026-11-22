@@ -90,6 +90,9 @@ async function chooseLayer(page: Page, label: string) {
  * one of the regions, or the sea off the west coast, which is inside no area.
  */
 async function pointOnMap(page: Page, where: "middle" | "sea") {
+  // The mouse and touch work in viewport coordinates, and on a phone the
+  // map can be below the fold (under the period choice), so bring it on screen.
+  await page.locator(".maplibregl-canvas").scrollIntoViewIfNeeded();
   const box = await page.locator(".maplibregl-canvas").boundingBox();
   if (!box) throw new Error("The map canvas has no size");
   return where === "middle"

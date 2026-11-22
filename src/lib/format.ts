@@ -2,7 +2,7 @@
  * How numbers, values and periods are written for display (British
  * English, en-GB). Safe to import from both server and client code.
  */
-import type { DatasetDef } from "./datasets/types.ts";
+import type { DatasetDef, PeriodChoice } from "./datasets/types.ts";
 
 const numberFormat = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 
@@ -51,9 +51,38 @@ export function formatDayRange(start: string, end: string): string {
   return `${fromText} to ${formatDay(end)}`;
 }
 
-/** Describes a period in words, such as "7 days to 14 November 2026". */
-export function formatPeriod(dataset: DatasetDef, start: string, end: string): string {
-  return dataset.periodStyle === "trailing-week"
-    ? `7 days to ${formatDay(end)}`
-    : `Week of onset ${formatDayRange(start, end)}`;
+/** The choices of period, as they are written on the picker. */
+export const PERIOD_LABELS: Record<PeriodChoice, string> = {
+  latest: "Latest week",
+  "12w": "Last 12 weeks",
+  ytd: "Year to date",
+};
+
+/**
+ * Describes a period in words: "7 days to 14 November 2026", "Week of onset 9
+ * to 15 November 2026", or, for a total over several weeks, "Total for weeks
+ * of onset 24 August to 15 November 2026".
+ *
+ * @param period - Which period the dates are for. Only the latest period is a single week.
+ */
+export function formatPeriod(
+  dataset: DatasetDef,
+  start: string,
+  end: string,
+  period: PeriodChoice = "latest",
+): string {
+  if (dataset.periodStyle === "trailing-week") return `7 days to ${formatDay(end)}`;
+  return period === "latest"
+    ? `Week of onset ${formatDayRange(start, end)}`
+    : `Total for weeks of onset ${formatDayRange(start, end)}`;
+}
+
+/** The heading of the value column for a period, falling back to the latest period's. */
+export function columnHeading(dataset: DatasetDef, period: PeriodChoice): string {
+  return dataset.columnHeading[period] ?? dataset.columnHeading.latest;
+}
+
+/** "11 of 12 weeks" for an area that has fewer weeks than the period, or `null` if it has them all. */
+export function formatCoverage(weeks: number, expected: number): string | null {
+  return weeks < expected ? `${weeks} of ${expected} weeks reported` : null;
 }

@@ -96,22 +96,26 @@ test.describe("the old map address", () => {
   };
 
   test("redirects permanently to the dataset's map page", async ({ request }) => {
-    for (const [path, expected] of [
-      ["/map", `${COVID}/map`],
-      ["/map?d=covid-19-rate", `${COVID}/map`],
-      ["/map?d=measles-cases", `${MEASLES}/map`],
+    for (const [path, expected, search] of [
+      ["/map", `${COVID}/map`, ""],
+      ["/map?d=covid-19-rate", `${COVID}/map`, ""],
+      ["/map?d=measles-cases", `${MEASLES}/map`, ""],
       // An unknown dataset gives the default one.
-      ["/map?d=not-a-dataset", `${COVID}/map`],
-      ["/map?d=%E0%A4%A", `${COVID}/map`],
-      // A period is dropped while the dataset offers only the latest.
-      ["/map?d=measles-cases&p=ytd", `${MEASLES}/map`],
-      ["/map?d=covid-19-rate&p=12w", `${COVID}/map`],
+      ["/map?d=not-a-dataset", `${COVID}/map`, ""],
+      ["/map?d=%E0%A4%A", `${COVID}/map`, ""],
+      // A period is kept if the dataset offers it, and dropped if it does not
+      // (a rate cannot be added up) or if it is the default.
+      ["/map?d=measles-cases&p=ytd", `${MEASLES}/map`, "?p=ytd"],
+      ["/map?d=measles-cases&p=12w", `${MEASLES}/map`, "?p=12w"],
+      ["/map?d=measles-cases&p=latest", `${MEASLES}/map`, ""],
+      ["/map?d=measles-cases&p=bogus", `${MEASLES}/map`, ""],
+      ["/map?d=covid-19-rate&p=12w", `${COVID}/map`, ""],
     ] as const) {
       const result = await redirect(request, path);
       expect(result.status, path).toBe(308);
       expect(result.to?.pathname, path).toBe(expected);
-      // The old `d` and `p` are not carried to the new address.
-      expect(result.to?.search, path).toBe("");
+      // The old `d` is never carried to the new address.
+      expect(result.to?.search, path).toBe(search);
     }
   });
 

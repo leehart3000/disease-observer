@@ -39,11 +39,12 @@ export default defineConfig({
   testDir: "e2e",
   globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
-  // Locally, three tests at a time. The default (half the cores, 6 here) made
+  // Locally, two tests at a time. The default (half the cores, 6 here) made
   // this sandbox's load average pass 20, and the map tests, which wait for
-  // WebGL to draw, then timed out at random. With three, whole runs are
-  // clean. CI keeps Playwright's default.
-  workers: isCI ? undefined : 3,
+  // WebGL to draw, then timed out at random. Three was clean on quiet
+  // machines but still timed out now and then when it was busy. CI keeps
+  // Playwright's default.
+  workers: isCI ? undefined : 2,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
   reporter: isCI ? "github" : "list",

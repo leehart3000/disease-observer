@@ -38,6 +38,12 @@ export function viewTabs(
   return dataset.views.map((view) => ({ view, href: viewHref(dataset, view) }));
 }
 
+/**
+ * The views that show a period (`?p=`), so a link to one of them keeps it.
+ * A chart shows every week, so a link to it drops the period.
+ */
+export const PERIOD_VIEWS: readonly View[] = ["map", "table"];
+
 /** The page that lists every map: `/maps`. */
 export const MAPS_HREF = "/maps";
 

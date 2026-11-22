@@ -28,7 +28,7 @@ export const DISEASES = [
     summary: "Confirmed measles cases in England, by UKHSA region and week.",
     about: [
       "Measles is a highly infectious viral illness. Two doses of the MMR vaccine give lasting protection, and outbreaks can follow when vaccination rates fall.",
-      "The map shows the number of confirmed cases in each UKHSA region for the latest complete week, by the week that symptoms began. Recent weeks are provisional because cases are still being reported.",
+      "The map shows the number of confirmed cases in each UKHSA region, by the week that symptoms began, for the latest complete week or added up over the last 12 weeks or the year so far. Recent weeks are provisional because cases are still being reported.",
     ],
     headline: { datasetId: "measles-cases" },
     chart: { since: "2023-01-01" },
@@ -58,6 +58,8 @@ export const DATASETS = [
     periods: ["latest"],
     completePeriodsOnly: false,
     columnHeading: { latest: "Cases per 100,000 (7 days)" },
+    periodNote:
+      "COVID-19 rates are shown for the latest 7 days only, because rates can’t be added together.",
     map: {
       areaLevel: "lower_tier_local_authority",
       boundaryUrl: "/boundaries/lad-dec-2022.json",
@@ -76,18 +78,22 @@ export const DATASETS = [
     views: ["map", "table"],
     label: "Measles cases by region",
     description:
-      "The number of confirmed cases in each UKHSA region in the latest complete week, by the week that symptoms began.",
+      "The number of confirmed cases in each UKHSA region, by the week that symptoms began: for the latest complete week, the last 12 weeks or the year so far.",
     howToRead:
-      "Each value is the number of confirmed cases whose symptoms began in the week shown, from Monday to Sunday. Only complete weeks are shown, and the most recent weeks are provisional, because cases are still being reported.",
+      "Each value is the number of confirmed cases whose symptoms began in the period shown. Weeks run from Monday to Sunday, and only complete weeks are counted. You can show the latest week, the total for the last 12 weeks, or the total for the year to date (the weeks that start in the same year as the latest week). A total is provisional if any week in it is, because cases are still being reported. Where a region has no figure for a week, the total is of the weeks it has, and the page says how many.",
     title: "Measles cases, by UKHSA region",
     metric: "cases",
     valueKind: "count",
     unit: { label: "cases", one: "case", many: "cases" },
     periodStyle: "onset-week",
     periodType: "week",
-    periods: ["latest"],
+    periods: ["latest", "12w", "ytd"],
     completePeriodsOnly: true,
-    columnHeading: { latest: "Cases (week)" },
+    columnHeading: {
+      latest: "Cases (week)",
+      "12w": "Cases (12 weeks)",
+      ytd: "Cases (year to date)",
+    },
     map: {
       areaLevel: "region",
       boundaryUrl: "/boundaries/rgn-dec-2022.json",

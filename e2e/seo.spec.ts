@@ -85,8 +85,11 @@ test.describe("address helpers", () => {
     expect(to("d=measles-cases")).toEqual(measles);
     // An unknown dataset gives the default one.
     expect(to("d=not-a-dataset")).toEqual(covid);
-    // A period is kept only if the dataset offers it, and none is offered yet.
-    expect(to("d=measles-cases&p=ytd")).toEqual(measles);
+    // A period is kept only if the dataset offers it, and it is not the default.
+    expect(to("d=measles-cases&p=ytd")).toEqual({ ...measles, to: `${measles.to}?p=ytd` });
+    expect(to("d=measles-cases&p=12w")).toEqual({ ...measles, to: `${measles.to}?p=12w` });
+    expect(to("d=measles-cases&p=latest")).toEqual(measles);
+    expect(to("d=measles-cases&p=bogus")).toEqual(measles);
     expect(to("d=covid-19-rate&p=12w")).toEqual(covid);
   });
 });

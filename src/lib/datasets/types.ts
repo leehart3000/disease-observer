@@ -73,6 +73,11 @@ export type DatasetDef = {
   completePeriodsOnly: boolean;
   /** The heading of the value column in the table, for each period choice on offer. */
   columnHeading: { latest: string; "12w"?: string; ytd?: string };
+  /**
+   * Shown on the map and table pages when the dataset offers only one
+   * period, to say why there is no choice. British English.
+   */
+  periodNote?: string;
   map: {
     areaLevel: AreaLevel;
     /** The static boundary file for these areas. */

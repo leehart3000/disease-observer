@@ -19,14 +19,32 @@ type Row = {
   name: string;
   value: number;
   provisional: boolean;
+  weeks: number;
+  weeks_expected: number;
   period_start: string;
   period_end: string;
 };
 
+/** How many days before the latest week's start the last 12 weeks begin (11 weeks). */
+const TWELVE_WEEKS_BACK_DAYS = 77;
+
 /**
  * Finds the latest period that the data source has values for (the latest
  * one that has ended, if the dataset asks for that) and returns every
- * area's value for it. Not cached.
+ * area's value for the chosen period. Not cached.
+ *
+ * - `latest`: the latest week (or, for a rate, the latest 7 days).
+ * - `12w`: the 12 weeks ending at the latest week, added up.
+ * - `ytd`: the weeks that start in the same calendar year as the latest
+ *   week's start, added up.
+ *
+ * It is one query for all three: the window starts at the latest week, 77
+ * days before it, or the start of its year. A total is provisional if any
+ * week in it is. An area with no row for some week in the window (the
+ * source may leave out a week with no cases) is added up from the weeks it
+ * has, and says how many that was, so the page can say "11 of 12 weeks
+ * reported". Only the latest period is offered for rates, which cannot be
+ * added together.
  *
  * @throws {NoDataError} If there are no values at all, so an empty result
  *   is not cached for a day.
@@ -36,10 +54,15 @@ export async function queryMapValues(
   dataset: DatasetDef,
   period: PeriodChoice,
 ): Promise<MapDataset> {
-  // Only the latest period is offered so far.
-  if (period !== "latest") throw new Error(`The period "${period}" is not supported yet`);
   const sourceSlug = dataset.sourceSlugs[0];
   const ended = dataset.completePeriodsOnly ? sql`and o.period_end < current_date` : sql``;
+  // Chosen from a fixed list, never built from the request.
+  const windowStart =
+    period === "12w"
+      ? sql`l.period_start - ${TWELVE_WEEKS_BACK_DAYS}::int`
+      : period === "ytd"
+        ? sql`date_trunc('year', l.period_start)::date`
+        : sql`l.period_start`;
   const result = await getDb().execute<Row>(sql`
     with matching as (
       select o.*
@@ -54,14 +77,28 @@ export async function queryMapValues(
         ${ended}
     ), latest as (
       select max(period_start) as period_start from matching
+    ), windowed as (
+      select m.area_id, m.value, m.provisional, m.period_start, m.period_end
+      from latest l
+      join matching m on m.period_start between ${windowStart} and l.period_start
+    ), in_window as (
+      select a.code, a.name, w.value, w.provisional, w.period_start, w.period_end
+      from windowed w
+      join areas a on a.id = w.area_id
+      where a.code_scheme = 'ons' and a.level = ${dataset.map.areaLevel}
+    ), weeks as (
+      select count(distinct period_start)::int as expected from in_window
     )
-    select a.code, a.name, m.value, m.provisional,
-           m.period_start::text as period_start, m.period_end::text as period_end
-    from latest l
-    join matching m on m.period_start = l.period_start
-    join areas a on a.id = m.area_id
-    where a.code_scheme = 'ons' and a.level = ${dataset.map.areaLevel}
-    order by a.name`);
+    select code, name,
+           sum(value) as value,
+           bool_or(provisional) as provisional,
+           count(*)::int as weeks,
+           (select expected from weeks) as weeks_expected,
+           min(period_start)::text as period_start,
+           max(period_end)::text as period_end
+    from in_window
+    group by code, name
+    order by name`);
 
   const rows = result.rows;
   if (rows.length === 0) throw new NoDataError(dataset.id);
@@ -70,8 +107,16 @@ export async function queryMapValues(
     name: row.name,
     value: Number(row.value),
     provisional: row.provisional,
+    weeks: Number(row.weeks),
   }));
-  return { periodStart: rows[0].period_start, periodEnd: rows[0].period_end, values };
+  return {
+    period,
+    weeksExpected: Number(rows[0].weeks_expected),
+    // The whole period, from the first week that any area has to the last.
+    periodStart: rows.map((row) => row.period_start).sort()[0],
+    periodEnd: rows.map((row) => row.period_end).sort().at(-1) as string,
+    values,
+  };
 }
 
 /**

@@ -23,6 +23,8 @@ import {
   englandRows,
   fixtureDates,
   regionCovidRate,
+  isMissingMeaslesWeek,
+  MEASLES_LATEST_CASES,
   regionMeaslesCases,
 } from "./dates.mts";
 
@@ -102,9 +104,6 @@ const REGIONS = [
   "E45000020",
 ];
 
-/** Measles cases for each region in the last complete week. Four regions have none. */
-const MEASLES_CASES = [0, 0, 0, 0, 1, 2, 3, 5, 8];
-
 /** Loads the fixtures. */
 async function main() {
   try {
@@ -176,7 +175,7 @@ async function main() {
           ...measlesBase,
           periodStart: dates.measlesComplete.start,
           periodEnd: dates.measlesComplete.end,
-          value: MEASLES_CASES[index],
+          value: MEASLES_LATEST_CASES[index],
           // Two regions are provisional.
           provisional: index >= 7,
         });
@@ -203,7 +202,8 @@ async function main() {
             value: regionCovidRate(index, back),
             provisional: back === 0,
           });
-          if (back > 0) {
+          // One region has no row for one week, as the real data can (a week with no cases).
+          if (back > 0 && !isMissingMeaslesWeek(index, back)) {
             rows.push({
               ...base,
               diseaseId: measles.id,

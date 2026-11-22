@@ -62,9 +62,63 @@ export function regionCovidRate(regionIndex: number, weeksBack: number): number 
   return Math.round((englandCovidRate(weeksBack) + (regionIndex - 4) * 0.5) * 10) / 10;
 }
 
-/** A region's measles cases in an older week. The latest week's values are set by the loader. */
+/** A region's measles cases in an older week. The latest week's values are in `MEASLES_LATEST_CASES`. */
 export function regionMeaslesCases(regionIndex: number, weeksBack: number): number {
   return (regionIndex + weeksBack) % 4;
+}
+
+/** Measles cases for each region (in the order of `REGIONS` in the loader) in the latest complete week. Four have none. */
+export const MEASLES_LATEST_CASES = [0, 0, 0, 0, 1, 2, 3, 5, 8];
+
+/**
+ * The first region has no measles row for the week 3 weeks before the latest,
+ * so it is missing from the last 12 weeks and the year to date once.
+ */
+const MISSING_MEASLES_WEEK = { regionIndex: 0, weeksBack: 3 };
+
+/** True if the fixtures leave out this region's measles row for the week `weeksBack` before the latest. */
+export function isMissingMeaslesWeek(regionIndex: number, weeksBack: number): boolean {
+  return (
+    regionIndex === MISSING_MEASLES_WEEK.regionIndex && weeksBack === MISSING_MEASLES_WEEK.weeksBack
+  );
+}
+
+/**
+ * What the map and table show for a region's measles cases in a period,
+ * worked out from the fixture rows the same way the page's query does:
+ *
+ * - `latest`: the latest complete week.
+ * - `12w`: that week and the 11 before it, added up.
+ * - `ytd`: the weeks that start in the same calendar year as the latest week.
+ *
+ * `expected` is the number of weeks in the period (every other region has all of them).
+ */
+export function measlesPeriodTotal(
+  regionIndex: number,
+  period: "latest" | "12w" | "ytd",
+  dates: ReturnType<typeof fixtureDates>,
+) {
+  const latestYear = dates.measlesComplete.start.slice(0, 4);
+  const weeksBack: number[] = [];
+  for (let back = 0; back < ENGLAND_WEEKS; back++) {
+    const start = addDays(dates.measlesComplete.start, -7 * back);
+    const inPeriod =
+      period === "latest" ? back === 0 : period === "12w" ? back < 12 : start.slice(0, 4) === latestYear;
+    if (inPeriod) weeksBack.push(back);
+  }
+  const present = weeksBack.filter((back) => !isMissingMeaslesWeek(regionIndex, back));
+  const oldest = weeksBack[weeksBack.length - 1];
+  return {
+    value: present.reduce(
+      (sum, back) =>
+        sum + (back === 0 ? MEASLES_LATEST_CASES[regionIndex] : regionMeaslesCases(regionIndex, back)),
+      0,
+    ),
+    weeks: present.length,
+    expected: weeksBack.length,
+    start: addDays(dates.measlesComplete.start, -7 * oldest),
+    end: dates.measlesComplete.end,
+  };
 }
 
 /**

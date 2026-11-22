@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { DataUnavailable } from "@/components/map/DataUnavailable";
 import { Sources } from "@/components/map/Sources";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { ValuesTable } from "@/components/ValuesTable";
 import { loadMapValues } from "@/lib/data/map-values";
 import { loadSources } from "@/lib/data/sources";
@@ -28,7 +29,16 @@ export async function TableSection({
   const { period, areas } = parseMapSelection(dataset, await searchParams);
   await connection();
   const [values, sources] = await Promise.all([loadMapValues(dataset, period), loadSources()]);
-  if (values.status !== "ok") return <DataUnavailable reason={values.status} />;
+  // The choice of period stays even if the values can't be loaded, so another can be tried.
+  const picker = <PeriodPicker periods={dataset.periods} period={period} note={dataset.periodNote} />;
+  if (values.status !== "ok") {
+    return (
+      <div className="grid gap-4">
+        {picker}
+        <DataUnavailable reason={values.status} />
+      </div>
+    );
+  }
 
   const inData = new Set(values.data.values.map((area) => area.code));
   const credits =
@@ -37,6 +47,7 @@ export async function TableSection({
       : null;
   return (
     <>
+      <div className="mb-4">{picker}</div>
       <ValuesTable
         dataset={dataset}
         values={values.data}

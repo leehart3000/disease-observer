@@ -68,7 +68,7 @@ Run these from the repository root:
   `pnpm exec playwright install chromium` once first, or set
   `CHROMIUM_PATH` to use a Chromium you already have. The map page tests
   need the test database (see [End-to-end test database](#end-to-end-test-database)).
-  Locally it runs three tests at a time (`workers` in `playwright.config.ts`),
+  Locally it runs two tests at a time (`workers` in `playwright.config.ts`),
   because the map tests wait for WebGL to draw and time out at random when
   the machine is overloaded; CI uses Playwright's default. The fixture
   dates come from the day they are loaded, so run `pnpm test:e2e:db` again
@@ -303,6 +303,19 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   cache stays small. There is no dataset picker: choosing another dataset is
   a link (from `/maps`, the disease page or the breadcrumb), so the map is
   created again on the new page.
+- **The period is in the address** as `?p=12w` or `?p=ytd` (left out for the
+  latest). A dataset lists the periods it offers in `periods`: weekly counts
+  (measles) offer the latest week, the last 12 weeks added up, and the year
+  to date added up (the weeks that start in the same calendar year as the
+  latest complete week); a rate (COVID-19) cannot be added up, so it offers
+  the latest only and shows its `periodNote` instead of the picker. One query
+  (`queryMapValues` in `src/lib/data/map-values.ts`) serves all three, and a
+  total is provisional if any week in it is. An area with no row for some
+  week is added up from the weeks it has, and the map readout and the table
+  say "11 of 12 weeks reported". An unknown or unoffered `p` is ignored, and
+  the old `/map?d=…&p=…` redirect keeps a period the dataset offers. The
+  map and table pages show the picker (`PeriodPicker`), the links between
+  views keep the period, and the chart (when it exists) will not.
 - **The pinned area is in the address** as `?areas=E06000001`. Pinning or
   unpinning rewrites it with `history.replaceState` (no page load, no
   history entry), and a pinned area in the address is pinned on load. Codes

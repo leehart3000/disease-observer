@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { DataUnavailable } from "@/components/map/DataUnavailable";
 import { MapExplorer } from "@/components/map/MapExplorer";
+import { PeriodPicker } from "@/components/PeriodPicker";
 import { loadMapValues } from "@/lib/data/map-values";
 import { loadSources } from "@/lib/data/sources";
 import { parseMapSelection, type SearchParams } from "@/lib/datasets/url";
@@ -27,17 +28,29 @@ export async function MapSection({
   await connection();
   const [values, sources] = await Promise.all([loadMapValues(dataset, period), loadSources()]);
 
-  if (values.status !== "ok") return <DataUnavailable reason={values.status} />;
+  // The choice of period stays even if the values can't be loaded, so another can be tried.
+  const picker = <PeriodPicker periods={dataset.periods} period={period} note={dataset.periodNote} />;
+  if (values.status !== "ok") {
+    return (
+      <div className="grid gap-4">
+        {picker}
+        <DataUnavailable reason={values.status} />
+      </div>
+    );
+  }
 
   const pinnedArea = areas
     .map((code) => values.data.values.find((area) => area.code === code))
     .find((area) => area !== undefined);
   return (
-    <MapExplorer
-      datasetId={dataset.id}
-      values={values.data}
-      sources={sources.status === "ok" ? sources.data : null}
-      initialPinned={pinnedArea ? { code: pinnedArea.code, name: pinnedArea.name } : null}
-    />
+    <div className="grid gap-4">
+      {picker}
+      <MapExplorer
+        datasetId={dataset.id}
+        values={values.data}
+        sources={sources.status === "ok" ? sources.data : null}
+        initialPinned={pinnedArea ? { code: pinnedArea.code, name: pinnedArea.name } : null}
+      />
+    </div>
   );
 }

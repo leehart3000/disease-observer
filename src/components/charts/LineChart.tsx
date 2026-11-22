@@ -2,7 +2,6 @@
 
 import {
   useEffect,
-  useId,
   useMemo,
   useRef,
   useState,
@@ -13,6 +12,7 @@ import { clamp, dayToMs, linePath, monthTicks, nearestIndex, yAxis } from "@/lib
 import { getDataset } from "@/lib/datasets/registry";
 import { formatNumber, formatPeriod, formatValue } from "@/lib/format";
 import type { DiseaseSeries } from "@/lib/series-types";
+import { SegmentedChoice } from "@/components/SegmentedChoice";
 import { ChartTable } from "./ChartTable";
 
 /** Room around the plot for the axis labels. */
@@ -72,7 +72,6 @@ export function LineChart({
   diseaseName: string;
   sinceLabel: string;
 }) {
-  const ids = useId();
   const dataset = getDataset(series.datasetId);
   const boxRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState(DEFAULT_SIZE);
@@ -193,27 +192,13 @@ export function LineChart({
     <figure data-testid="line-chart">
       <figcaption className="text-sm text-muted">{dataset.columnHeading.latest}, weekly</figcaption>
 
-      <fieldset className="mt-3 grid gap-2">
-        <legend className="mb-2 text-sm font-medium text-muted">Time range</legend>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          {ranges.map((option) => (
-            <label
-              key={option.value}
-              className="flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 has-checked:border-brand has-checked:bg-brand has-checked:text-paper has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand sm:max-w-56"
-            >
-              <input
-                type="radio"
-                name={`${ids}-range`}
-                value={option.value}
-                checked={range === option.value}
-                onChange={() => setRange(option.value)}
-                className="sr-only"
-              />
-              <span>{option.label}</span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <SegmentedChoice
+        legend="Time range"
+        options={ranges}
+        value={range}
+        onChange={setRange}
+        className="mt-3"
+      />
 
       <fieldset className="mt-4">
         <legend className="mb-2 text-sm font-medium text-muted">

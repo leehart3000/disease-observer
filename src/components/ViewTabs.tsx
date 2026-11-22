@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { VIEW_LABELS } from "@/lib/datasets/routes";
+import { PERIOD_VIEWS, VIEW_LABELS } from "@/lib/datasets/routes";
 import type { View } from "@/lib/datasets/types";
 import { parseAreaCodes } from "@/lib/datasets/url";
 
@@ -15,13 +15,13 @@ function TabList({
   datasetName,
   tabs,
   current,
-  query,
+  queryFor,
 }: {
   datasetName: string;
   tabs: readonly ViewTab[];
   current: View;
-  /** The state to keep when moving between views, such as `?areas=E06000001`. */
-  query: string;
+  /** The state to keep when moving to a view, such as `?areas=E06000001&p=ytd`. */
+  queryFor: (view: View) => string;
 }) {
   return (
     <nav aria-label={`Views of ${datasetName}`}>
@@ -29,7 +29,7 @@ function TabList({
         {tabs.map(({ view, href }) => (
           <li key={view}>
             <Link
-              href={`${href}${query}`}
+              href={`${href}${queryFor(view)}`}
               aria-current={view === current ? "page" : undefined}
               className="-mb-px inline-flex min-h-11 items-center border-b-2 border-transparent px-4 text-muted hover:border-line hover:text-ink focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-ink"
             >
@@ -42,10 +42,30 @@ function TabList({
   );
 }
 
-/** The same strip, keeping the chosen areas from the page's address (`?areas=`) in every link. */
-function StatefulTabs(props: Omit<Parameters<typeof TabList>[0], "query">) {
-  const areas = parseAreaCodes(useSearchParams().get("areas") ?? undefined, 10);
-  return <TabList {...props} query={areas.length > 0 ? `?areas=${areas.join(",")}` : ""} />;
+/** The periods that can be in an address besides the default (checked again by the page). */
+const KEPT_PERIODS = ["12w", "ytd"];
+
+/**
+ * The same strip, keeping the chosen areas (`?areas=`) in every link, and the
+ * period (`?p=`) in the links to views that show one.
+ */
+function StatefulTabs(props: Omit<Parameters<typeof TabList>[0], "queryFor">) {
+  const params = useSearchParams();
+  const areas = parseAreaCodes(params.get("areas") ?? undefined, 10);
+  const wanted = params.get("p") ?? "";
+  const period = KEPT_PERIODS.includes(wanted) ? wanted : null;
+  return (
+    <TabList
+      {...props}
+      queryFor={(view) => {
+        const query = new URLSearchParams();
+        if (areas.length > 0) query.set("areas", areas.join(","));
+        if (period && PERIOD_VIEWS.includes(view)) query.set("p", period);
+        const text = query.toString().replaceAll("%2C", ",");
+        return text ? `?${text}` : "";
+      }}
+    />
+  );
 }
 
 /**
@@ -65,7 +85,7 @@ export function ViewTabs(props: {
 }) {
   if (props.tabs.length < 2) return null;
   return (
-    <Suspense fallback={<TabList {...props} query="" />}>
+    <Suspense fallback={<TabList {...props} queryFor={() => ""} />}>
       <StatefulTabs {...props} />
     </Suspense>
   );

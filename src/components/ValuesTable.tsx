@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { fieldClass, PAGE_SIZES, PageControls, type PageSize } from "@/components/PageControls";
-import type { DatasetDef } from "@/lib/datasets/types";
-import { formatNumber, formatPeriod } from "@/lib/format";
+import type { DatasetDef, PeriodChoice } from "@/lib/datasets/types";
+import { columnHeading, formatCoverage, formatNumber, formatPeriod } from "@/lib/format";
 import type { MapDataset } from "@/lib/map/types";
 import type { SelectedArea } from "./map/ChoroplethMap";
 
@@ -45,10 +45,22 @@ function PinIcon({ filled }: { filled: boolean }) {
 }
 
 /** The "View on map" link of a row on the table page: the map page with this area pinned. */
-function ViewOnMapLink({ mapPath, area }: { mapPath: string; area: { code: string; name: string } }) {
+function ViewOnMapLink({
+  mapPath,
+  period,
+  area,
+}: {
+  mapPath: string;
+  /** The period of the table, so the map shows the same one. */
+  period: PeriodChoice;
+  area: { code: string; name: string };
+}) {
+  const query = new URLSearchParams();
+  if (period !== "latest") query.set("p", period);
+  query.set("areas", area.code);
   return (
     <Link
-      href={`${mapPath}?areas=${area.code}`}
+      href={`${mapPath}?${query}`}
       aria-label={`View ${area.name} on the map`}
       className="group inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-md px-2 text-brand underline underline-offset-4 hover:bg-brand/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
     >
@@ -127,7 +139,7 @@ export function ValuesTable({
   const filtered = query.trim() !== "";
   const columns: { key: SortKey; label: string; numeric: boolean }[] = [
     { key: "name", label: "Area", numeric: false },
-    { key: "value", label: config.columnHeading.latest, numeric: true },
+    { key: "value", label: columnHeading(config, dataset.period), numeric: true },
   ];
 
   return (
@@ -195,7 +207,7 @@ export function ValuesTable({
           <caption className="px-3 py-3 text-left">
             <span className="block font-medium">{config.title}</span>
             <span className="block text-muted">
-              {formatPeriod(config, dataset.periodStart, dataset.periodEnd)}
+              {formatPeriod(config, dataset.periodStart, dataset.periodEnd, dataset.period)}
             </span>
           </caption>
           <thead>
@@ -281,7 +293,7 @@ export function ValuesTable({
                         </div>
                         {/* On a narrow screen there is no Map column: the link goes under the name. */}
                         <div className="-ml-2 sm:hidden">
-                          <ViewOnMapLink mapPath={action.mapPath} area={area} />
+                          <ViewOnMapLink mapPath={action.mapPath} period={dataset.period} area={area} />
                         </div>
                       </div>
                     )}
@@ -293,10 +305,15 @@ export function ValuesTable({
                       </span>
                     ) : null}
                     {formatNumber(area.value)}
+                    {formatCoverage(area.weeks, dataset.weeksExpected) ? (
+                      <span className="block text-xs text-muted">
+                        {formatCoverage(area.weeks, dataset.weeksExpected)}
+                      </span>
+                    ) : null}
                   </td>
                   {action.kind === "link" ? (
                     <td className="hidden px-3 py-0 sm:table-cell">
-                      <ViewOnMapLink mapPath={action.mapPath} area={area} />
+                      <ViewOnMapLink mapPath={action.mapPath} period={dataset.period} area={area} />
                     </td>
                   ) : null}
                 </tr>

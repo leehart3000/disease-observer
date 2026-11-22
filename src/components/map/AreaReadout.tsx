@@ -1,5 +1,5 @@
 import type { DatasetDef } from "@/lib/datasets/types";
-import { formatPeriod, formatValue } from "@/lib/format";
+import { formatCoverage, formatPeriod, formatValue } from "@/lib/format";
 import type { AreaValue, MapDataset } from "@/lib/map/types";
 import type { SelectedArea } from "./ChoroplethMap";
 
@@ -28,6 +28,7 @@ export function AreaReadout({
     );
   }
   const found: AreaValue | undefined = values.values.find((entry) => entry.code === area.code);
+  const coverage = found ? formatCoverage(found.weeks, values.weeksExpected) : null;
   return (
     <div>
       <p className="font-medium">{area.name}</p>
@@ -35,8 +36,9 @@ export function AreaReadout({
         <>
           <p>{formatValue(dataset, found.value)}</p>
           <p className="text-sm text-muted">
-            {formatPeriod(dataset, values.periodStart, values.periodEnd)}
+            {formatPeriod(dataset, values.periodStart, values.periodEnd, values.period)}
           </p>
+          {coverage ? <p className="text-sm text-muted">{coverage}</p> : null}
           {found.provisional ? <p className="text-sm font-medium">Provisional</p> : null}
         </>
       ) : (
