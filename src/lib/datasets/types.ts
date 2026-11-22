@@ -29,7 +29,11 @@ export type View = "map" | "chart" | "table";
 
 /** One thing that can be shown on the map. */
 export type DatasetDef = {
-  /** Stable, URL-safe identifier. It is the `d` in `/map?d=covid-19-rate`. */
+  /**
+   * Stable, URL-safe identifier, used for cache keys and by the ETL. It was
+   * the `d` in the old `/map?d=covid-19-rate` address, which redirects to the
+   * dataset's page (see `slug`).
+   */
   id: string;
   diseaseSlug: string;
   /**
@@ -47,8 +51,10 @@ export type DatasetDef = {
   views: readonly View[];
   /** The text in the dataset picker. Unique, so it is clear when closed. */
   label: string;
-  /** One sentence on what the map shows, for the disease page. British English. */
+  /** One sentence on what the dataset shows, for lists and the page description. British English. */
   description: string;
+  /** How to read a value, for the dataset page: what it counts and over what period. British English. */
+  howToRead: string;
   /** The heading for the map, the legend and the table. */
   title: string;
   /** The metric name in the `observations` table. */

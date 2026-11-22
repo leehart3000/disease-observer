@@ -56,23 +56,32 @@ const rows = (page: Page) => table(page).locator("tbody tr");
 const topPages = (page: Page) => page.getByRole("navigation", { name: "Table pages (top)" });
 const bottomPages = (page: Page) => page.getByRole("navigation", { name: "Table pages (bottom)" });
 
-/** Opens the map page and waits until the map has drawn the current layer. */
-async function openMap(page: Page) {
-  await page.goto("/map");
+/** The map page of each dataset, by the dataset's label. */
+const MAP_PATHS: Record<string, { path: string; id: string }> = {
+  "COVID-19 rate by local authority": {
+    path: "/diseases/covid-19/rate-by-local-authority/map",
+    id: "covid-19-rate",
+  },
+  "Measles cases by region": {
+    path: "/diseases/measles/cases-by-region/map",
+    id: "measles-cases",
+  },
+};
+
+/** Opens a map page (COVID-19 by default) and waits until the map has drawn it. */
+async function openMap(page: Page, path = MAP_PATHS["COVID-19 rate by local authority"].path) {
+  await page.goto(path);
   await expect(mapCanvas(page)).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
 }
 
-/** The registry id of each dataset, by the text in the picker. */
-const DATASET_IDS: Record<string, string> = {
-  "COVID-19 rate by local authority": "covid-19-rate",
-  "Measles cases by region": "measles-cases",
-};
-
-/** Picks a dataset in the picker and waits for the map to draw it. */
+/**
+ * Goes to a dataset's map page and waits for the map to draw it. Each dataset
+ * has its own page, so this is a new page load, not a change in place.
+ */
 async function chooseLayer(page: Page, label: string) {
-  await page.getByLabel("Dataset").selectOption({ label });
-  await expect(page).toHaveURL(new RegExp(`[?&]d=${DATASET_IDS[label]}`));
-  await expect(mapCanvas(page)).toHaveAttribute("data-dataset", DATASET_IDS[label], { timeout: 30_000 });
+  const { path, id } = MAP_PATHS[label];
+  await page.goto(path);
+  await expect(mapCanvas(page)).toHaveAttribute("data-dataset", id, { timeout: 30_000 });
   await expect(mapCanvas(page)).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
 }
 
@@ -111,74 +120,106 @@ test("the map renders", async ({ page }) => {
   await expect(page.getByRole("region", { name: /^Map: COVID-19 cases per 100,000/ })).toBeVisible();
 });
 
-test("the dataset picker lists the datasets in groups, by disease", async ({ page }) => {
+test("each dataset has its own map page, with no dataset picker", async ({ page }) => {
   await openMap(page);
-
-  const picker = page.getByLabel("Dataset");
-  await expect(picker).toBeVisible();
-  await expect(picker).toHaveValue("covid-19-rate");
-  await expect(picker.locator("optgroup")).toHaveCount(2);
-  await expect(picker.locator("optgroup").nth(0)).toHaveAttribute("label", "COVID-19");
-  await expect(picker.locator("optgroup").nth(1)).toHaveAttribute("label", "Measles");
-  await expect(picker.locator("optgroup").nth(0).locator("option")).toHaveText([
-    "COVID-19 rate by local authority",
-  ]);
-  await expect(picker.locator("optgroup").nth(1).locator("option")).toHaveText(["Measles cases by region"]);
-  // The old radio buttons are gone.
-  await expect(page.getByRole("radio")).toHaveCount(0);
-});
-
-test("choosing a dataset changes the URL and the page without reloading or recreating the map", async ({
-  page,
-}) => {
-  await openMap(page);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");
   await expect(page.getByRole("list", { name: /COVID-19 cases per 100,000/ })).toBeVisible();
-  // Mark the page and the map's own canvas, to see that neither is replaced.
-  await page.evaluate(() => {
-    const w = window as unknown as { stillHere: boolean; canvas: Element | null };
-    w.stillHere = true;
-    w.canvas = document.querySelector(".maplibregl-canvas");
-  });
+  await expect(table(page).locator("caption")).toContainText("COVID-19");
+  // Choosing another dataset is now a link to its page, not a picker on this one.
+  await expect(page.getByLabel("Dataset")).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Dataset" })).toHaveCount(0);
+  await expect(page.getByRole("radio")).toHaveCount(0);
 
-  await chooseLayer(page, "Measles cases by region");
-
-  await expect(page).toHaveURL(/\/map\?d=measles-cases$/);
-  await expect(page.getByLabel("Dataset")).toHaveValue("measles-cases");
+  await openMap(page, MAP_PATHS["Measles cases by region"].path);
+  await expect(mapCanvas(page)).toHaveAttribute("data-dataset", "measles-cases");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region");
   await expect(table(page).locator("caption")).toContainText("Measles");
   await expect(table(page).locator("caption")).toContainText("Week of onset");
   await expect(page.getByRole("list", { name: /Measles cases/ })).toBeVisible();
-  expect(
-    await page.evaluate(() => {
-      const w = window as unknown as { stillHere?: boolean; canvas: Element | null };
-      return {
-        samePage: w.stillHere === true,
-        sameMap: w.canvas !== null && w.canvas === document.querySelector(".maplibregl-canvas"),
-      };
-    }),
-  ).toEqual({ samePage: true, sameMap: true });
-
-  // And back again.
-  await chooseLayer(page, "COVID-19 rate by local authority");
-  await expect(page).toHaveURL(/\/map\?d=covid-19-rate$/);
-  await expect(table(page).locator("caption")).toContainText("COVID-19");
 });
 
-test("a link to a dataset opens it, and an unknown one shows the default", async ({ page }) => {
+test("the old map address opens the dataset's map page", async ({ page }) => {
   await page.goto("/map?d=measles-cases");
+  await expect(page).toHaveURL("/diseases/measles/cases-by-region/map");
   await expect(mapCanvas(page)).toHaveAttribute("data-dataset", "measles-cases", { timeout: 30_000 });
   await expect(mapCanvas(page)).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
-  await expect(page.getByLabel("Dataset")).toHaveValue("measles-cases");
-  await expect(table(page).locator("caption")).toContainText("Measles");
 
-  // An unknown dataset, or a period that the dataset does not offer, is ignored.
+  // An unknown dataset gives the default one, and a period that is not offered is dropped.
   await page.goto("/map?d=not-a-dataset&p=12w");
+  await expect(page).toHaveURL("/diseases/covid-19/rate-by-local-authority/map");
   await expect(mapCanvas(page)).toHaveAttribute("data-dataset", "covid-19-rate", { timeout: 30_000 });
-  await expect(page.getByLabel("Dataset")).toHaveValue("covid-19-rate");
-  await expect(table(page).locator("caption")).toContainText("COVID-19");
+});
+
+test("a pinned area is kept in the address, without a new page load", async ({ page }) => {
+  await openMap(page);
+  await page.evaluate(() => {
+    (window as unknown as { stillHere: boolean }).stillHere = true;
+  });
+  const samePage = () =>
+    page.evaluate(() => (window as unknown as { stillHere?: boolean }).stillHere === true);
+
+  await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
+  await expect(page).toHaveURL(/\/map\?areas=E06000001$/);
+  await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
+
+  // Pinning another area replaces the pin, and the address follows.
+  await page.getByRole("button", { name: "Pin Middlesbrough on the map" }).click();
+  await expect(page).toHaveURL(/\/map\?areas=E06000002$/);
+
+  // Unpinning takes it out of the address.
+  await page.getByRole("button", { name: "Unpin Middlesbrough from the map" }).click();
+  await expect(page).toHaveURL(/\/map$/);
+  await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
+  expect(await samePage()).toBe(true);
+
+  // Escape unpins too.
+  await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
+  await expect(page).toHaveURL(/\?areas=E06000001$/);
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/map$/);
+  expect(await samePage()).toBe(true);
+});
+
+test("a pinned area in the address is pinned on load, and unknown codes are ignored", async ({
+  page,
+}) => {
+  await openMap(page, `${MAP_PATHS["COVID-19 rate by local authority"].path}?areas=E06000001`);
+  await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
+  await expect(readout(page)).toContainText("Hartlepool");
+  await expect(readout(page)).toContainText("Pinned");
+  await expect(page.getByRole("button", { name: "Unpin Hartlepool from the map" })).toBeVisible();
+
+  // A code that is not shaped like an area code, or is not in this dataset,
+  // is skipped; the first one that is in the data is pinned.
+  await openMap(
+    page,
+    `${MAP_PATHS["COVID-19 rate by local authority"].path}?areas=not-a-code,E99999999,E06000002`,
+  );
+  await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000002");
+  await expect(readout(page)).toContainText("Middlesbrough");
+
+  // An area of another dataset (a region on the local authority map) pins nothing.
+  await openMap(page, `${MAP_PATHS["COVID-19 rate by local authority"].path}?areas=E45000001`);
+  await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
+  await expect(readout(page)).toHaveAttribute("data-empty", "true");
+});
+
+test("the map page has a breadcrumb back to the dataset, the disease and the list of diseases", async ({
+  page,
+}) => {
+  await openMap(page);
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem");
+
+  // Earlier steps are followed by a separator that is hidden from screen readers.
+  await expect(crumbs).toHaveText([/^Diseases/, /^COVID-19/, /^Rate by local authority/, /^Map$/]);
+  await expect(crumbs.nth(3).locator('[aria-current="page"]')).toHaveText("Map");
+  await crumbs.nth(2).getByRole("link").click();
+  await expect(page).toHaveURL("/diseases/covid-19/rate-by-local-authority");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");
 });
 
 test("the server sends the chosen dataset in the HTML", async ({ request }) => {
-  const html = await (await request.get("/map?d=measles-cases")).text();
+  const html = await (await request.get(MAP_PATHS["Measles cases by region"].path)).text();
 
   expect(html).toContain("Week of onset");
   expect(html).toContain("Cases (week)");
@@ -327,7 +368,9 @@ test("the server sends the first page of the table in the HTML", async ({ reques
   // The table is rendered on the server, not built by the browser. (React
   // streams it into a hidden element that a script reveals, so a browser
   // with JavaScript turned off does not display it.)
-  const html = await (await request.get("/map")).text();
+  const html = await (
+    await request.get(MAP_PATHS["COVID-19 rate by local authority"].path)
+  ).text();
 
   // 25 rows and the heading row.
   expect(html.match(/<tr[ >]/g)).toHaveLength(26);
@@ -472,7 +515,7 @@ test("a table button's name includes the area name, even with a comma", async ({
   await expect(pin).toContainText("Herefordshire, County of");
 });
 
-test("a pinned area is cleared when the layer changes", async ({ page }) => {
+test("a pin does not carry over to another dataset's map", async ({ page }) => {
   await openMap(page);
 
   await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
@@ -855,7 +898,7 @@ test("the home page does not load the map", async ({ page }) => {
   const requested: string[] = [];
   page.on("request", (request) => requested.push(request.url()));
   await page.goto("/");
-  await expect(page.getByRole("article").getByRole("link", { name: "Map" })).toBeVisible();
+  await expect(page.getByRole("article").getByRole("link", { name: "Maps" })).toBeVisible();
   await page.waitForLoadState("networkidle");
 
   expect(requested.filter((url) => url.includes("tiles.openfreemap.org"))).toEqual([]);

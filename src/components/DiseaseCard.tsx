@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { MAPS_HREF } from "@/lib/datasets/routes";
 import { DiseaseHeadline } from "./Headline";
 
 type CardProps = {
@@ -73,10 +74,10 @@ export function DiseaseCard({
   );
 }
 
-/** A card that links to the map. */
+/** A card that links to the list of maps. */
 export function MapCard({ headingLevel }: { headingLevel: "h2" | "h3" }) {
   return (
-    <Card href="/map" title="Map" headingLevel={headingLevel}>
+    <Card href={MAPS_HREF} title="Maps" headingLevel={headingLevel}>
       See where cases are being reported, area by area.
     </Card>
   );

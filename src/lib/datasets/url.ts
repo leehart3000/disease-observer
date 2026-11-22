@@ -1,11 +1,12 @@
 /**
- * Reads and builds the map's URL: `/map?d=<dataset>&p=<period>`.
+ * Reads the state in a map page's URL: `?p=<period>` and `?areas=<code>`.
+ * The dataset itself is in the path (`/diseases/covid-19/rate-by-local-authority/map`).
  *
- * Anything from the URL is checked against the registry before it is used.
- * That also keeps unknown values out of the cache keys of the data
- * functions, so a visitor cannot create unlimited cache entries.
+ * Anything from the URL is checked before it is used. The period is checked
+ * against the dataset, which also keeps unknown values out of the cache keys
+ * of the data functions, so a visitor cannot create unlimited cache entries.
  */
-import { DEFAULT_DATASET_ID, getDataset, offersPeriod } from "./registry.ts";
+import { offersPeriod } from "./registry.ts";
 import type { DatasetDef, PeriodChoice } from "./types.ts";
 
 /** The shape of `searchParams` in a page. */
@@ -16,26 +17,37 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-/** What the map is showing. */
-export type MapSelection = { dataset: DatasetDef; period: PeriodChoice };
+/** The longest an area code can be, and the characters it can have: ONS codes such as `E06000001`. */
+const AREA_CODE = /^[A-Z0-9]{9}$/;
 
 /**
- * Works out which dataset and period to show. A missing or unknown dataset
- * gives the default one, and a missing or unavailable period gives `latest`.
+ * Reads a list of area codes, such as `?areas=E06000001,E06000002`. Anything
+ * that is not shaped like an area code is dropped, repeats are removed, and
+ * only the first `limit` are kept. Whether a code is a real area of the
+ * dataset is checked by the caller, against the values it has loaded.
  */
-export function parseMapSelection(params: SearchParams): MapSelection {
-  const requested = firstValue(params.d);
-  const dataset =
-    (requested !== undefined ? getDataset(requested) : undefined) ??
-    (getDataset(DEFAULT_DATASET_ID) as DatasetDef);
-  const wanted = firstValue(params.p);
-  const period = wanted !== undefined && offersPeriod(dataset, wanted) ? wanted : "latest";
-  return { dataset, period };
+export function parseAreaCodes(value: string | string[] | undefined, limit: number): string[] {
+  const codes = (firstValue(value) ?? "")
+    .split(",")
+    .map((code) => code.trim())
+    .filter((code) => AREA_CODE.test(code));
+  return [...new Set(codes)].slice(0, limit);
 }
 
-/** The URL of the map for a dataset. The period is left out when it is `latest`. */
-export function mapHref(datasetId: string, period: PeriodChoice = "latest"): string {
-  const query = new URLSearchParams({ d: datasetId });
-  if (period !== "latest") query.set("p", period);
-  return `/map?${query}`;
+/** What a map page is showing, beyond its dataset. */
+export type MapSelection = {
+  period: PeriodChoice;
+  /** The area codes in the URL (the map pins the first one that is in the data). */
+  areas: string[];
+};
+
+/**
+ * Works out the period and areas to show. A missing or unavailable period
+ * gives `latest`. Up to ten area codes are read, so that a code that is not
+ * in the data does not hide the next one.
+ */
+export function parseMapSelection(dataset: DatasetDef, params: SearchParams): MapSelection {
+  const wanted = firstValue(params.p);
+  const period = wanted !== undefined && offersPeriod(dataset, wanted) ? wanted : "latest";
+  return { period, areas: parseAreaCodes(params.areas, 10) };
 }

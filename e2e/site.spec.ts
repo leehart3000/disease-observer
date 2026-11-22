@@ -12,7 +12,11 @@ const PAGES = [
   { path: "/diseases", h1: "Diseases" },
   { path: "/diseases/covid-19", h1: "COVID-19" },
   { path: "/diseases/measles", h1: "Measles" },
-  { path: "/map", h1: "Map" },
+  { path: "/maps", h1: "Maps" },
+  { path: "/diseases/covid-19/rate-by-local-authority", h1: "COVID-19 rate by local authority" },
+  { path: "/diseases/covid-19/rate-by-local-authority/map", h1: "COVID-19 rate by local authority" },
+  { path: "/diseases/measles/cases-by-region", h1: "Measles cases by region" },
+  { path: "/diseases/measles/cases-by-region/map", h1: "Measles cases by region" },
   { path: "/sources", h1: "Sources and licences" },
   { path: "/about", h1: "About" },
 ];
@@ -44,24 +48,33 @@ test("the header links work and mark the current page", async ({ page }) => {
     "aria-current",
     "page",
   );
-  await expect(nav.getByRole("link", { name: "Map" })).not.toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Maps" })).not.toHaveAttribute("aria-current", "page");
 
-  // A page inside Diseases keeps Diseases marked.
+  // A page inside Diseases keeps Diseases marked, including a dataset's map page.
   await page.goto("/diseases/measles");
   await expect(nav.getByRole("link", { name: "Diseases" })).toHaveAttribute(
     "aria-current",
     "page",
   );
+  await page.goto("/diseases/measles/cases-by-region");
+  await expect(nav.getByRole("link", { name: "Diseases" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 
-  await nav.getByRole("link", { name: "Map" }).click();
-  await expect(page).toHaveURL("/map");
-  await expect(nav.getByRole("link", { name: "Map" })).toHaveAttribute("aria-current", "page");
+  await nav.getByRole("link", { name: "Maps" }).click();
+  await expect(page).toHaveURL("/maps");
+  await expect(nav.getByRole("link", { name: "Maps" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Diseases" })).not.toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
 test("the header links fit on a second row on a phone, with 44 px targets", async ({ page }) => {
   await page.goto("/");
   const logo = page.getByRole("link", { name: "disease.observer" });
-  const link = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Map" });
+  const link = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Maps" });
 
   const [logoBox, linkBox] = [await logo.boundingBox(), await link.boundingBox()];
   expect(linkBox!.height).toBeGreaterThanOrEqual(44);
@@ -127,7 +140,8 @@ test("the home page has one card for each disease, and one for the map", async (
 
   const cards = page.getByRole("article");
   await expect(cards).toHaveCount(3);
-  await expect(cards.getByRole("link")).toHaveText(["COVID-19", "Measles", "Map"]);
+  await expect(cards.getByRole("link")).toHaveText(["COVID-19", "Measles", "Maps"]);
+  await expect(cards.getByRole("link", { name: "Maps" })).toHaveAttribute("href", "/maps");
 
   await cards.getByRole("link", { name: "Measles" }).click();
   await expect(page).toHaveURL("/diseases/measles");
@@ -139,21 +153,30 @@ test("the diseases page lists the same diseases", async ({ page }) => {
   await expect(page.getByRole("article").getByRole("link")).toHaveText(["COVID-19", "Measles"]);
 });
 
-test("a disease page links to its map and lists only its sources", async ({ page }) => {
+test("a disease page lists its datasets, with a link to each view, and only its sources", async ({
+  page,
+}) => {
   await page.goto("/diseases/measles");
 
-  await expect(page.getByRole("link", { name: "Measles cases by region" })).toHaveAttribute(
+  await expect(page.getByRole("heading", { level: 2, name: "Datasets" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Cases by region", exact: true })).toHaveAttribute(
     "href",
-    "/map?d=measles-cases",
+    "/diseases/measles/cases-by-region",
   );
-  await expect(page.getByRole("link", { name: "COVID-19 rate by local authority" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Map: Cases by region" })).toHaveAttribute(
+    "href",
+    "/diseases/measles/cases-by-region/map",
+  );
+  // Only the views that have a page are linked.
+  await expect(page.getByRole("link", { name: /^(Chart|Table)/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Rate by local authority/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "UKHSA data dashboard" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Office for National Statistics/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "WHO FluNet" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "OpenFreeMap base map" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Measles cases by region" }).click();
-  await expect(page).toHaveURL("/map?d=measles-cases");
+  await page.getByRole("link", { name: "Map: Cases by region" }).click();
+  await expect(page).toHaveURL("/diseases/measles/cases-by-region/map");
 });
 
 test("an unknown disease is a 404", async ({ page }) => {
@@ -175,31 +198,41 @@ test("the sources page lists the sources that are used and the base map credit",
   await expect(page.getByRole("link", { name: "WHO FluNet" })).toHaveCount(0);
 });
 
-test("the map page has a canonical link to /map", async ({ page }) => {
-  await page.goto("/map?d=measles-cases");
-
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
-    "href",
-    "https://disease.observer/map",
-  );
-});
-
-test("the disease check runs only for disease pages", async ({ request }) => {
-  // A known disease goes through the check, which marks the response.
-  const disease = await request.get("/diseases/covid-19");
-  expect(disease.status()).toBe(200);
-  expect(disease.headers()["x-disease-checked"]).toBe("1");
+test("the address check runs only for disease, dataset and map-view pages", async ({ request }) => {
+  // Known pages go through the check, which marks the response.
+  for (const path of [
+    "/diseases/covid-19",
+    "/diseases/covid-19/rate-by-local-authority",
+    "/diseases/covid-19/rate-by-local-authority/map",
+  ]) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    expect(response.headers()["x-disease-checked"], path).toBe("1");
+  }
 
   // Other pages, assets and images do not.
-  for (const path of ["/", "/diseases", "/map", "/about", "/sources", "/icon.svg", "/boundaries/rgn-dec-2022.json"]) {
+  for (const path of ["/", "/diseases", "/maps", "/about", "/sources", "/icon.svg", "/boundaries/rgn-dec-2022.json"]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(200);
     expect(response.headers()["x-disease-checked"], path).toBeUndefined();
   }
 });
 
-test("an unknown or malformed disease slug is a 404, not an error", async ({ request }) => {
-  for (const path of ["/diseases/not-a-disease", "/diseases/%E0%A4%A", "/diseases/covid-19%20"]) {
+test("an unknown or malformed disease, dataset or view address is a 404, not an error", async ({
+  request,
+}) => {
+  for (const path of [
+    "/diseases/not-a-disease",
+    "/diseases/%E0%A4%A",
+    "/diseases/covid-19%20",
+    "/diseases/covid-19/not-a-dataset",
+    "/diseases/covid-19/cases-by-region",
+    "/diseases/covid-19/%E0%A4%A",
+    "/diseases/covid-19/rate-by-local-authority/chart",
+    "/diseases/covid-19/rate-by-local-authority/table",
+    "/diseases/covid-19/rate-by-local-authority/bogus",
+    "/diseases/covid-19/rate-by-local-authority/map/extra",
+  ]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(404);
   }

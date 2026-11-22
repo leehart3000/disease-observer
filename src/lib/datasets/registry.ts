@@ -41,10 +41,12 @@ export const DATASETS = [
     diseaseSlug: "covid-19",
     slug: "rate-by-local-authority",
     name: "Rate by local authority",
-    views: [],
+    views: ["map"],
     label: "COVID-19 rate by local authority",
     description:
       "The rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people.",
+    howToRead:
+      "Each value is the number of newly reported cases in the 7 days ending on the date shown, for every 100,000 people who live in the local authority. The most recent days are provisional, because cases are still being reported.",
     title: "COVID-19 cases per 100,000 people, by local authority",
     // UKHSA documents this as the rate of reported new cases in the 7 days
     // ending on the date shown.
@@ -71,10 +73,12 @@ export const DATASETS = [
     diseaseSlug: "measles",
     slug: "cases-by-region",
     name: "Cases by region",
-    views: [],
+    views: ["map"],
     label: "Measles cases by region",
     description:
       "The number of confirmed cases in each UKHSA region in the latest complete week, by the week that symptoms began.",
+    howToRead:
+      "Each value is the number of confirmed cases whose symptoms began in the week shown, from Monday to Sunday. Only complete weeks are shown, and the most recent weeks are provisional, because cases are still being reported.",
     title: "Measles cases, by UKHSA region",
     metric: "cases",
     valueKind: "count",

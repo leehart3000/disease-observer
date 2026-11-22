@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 /** The links in the header. Add a line here to add a page to the menu. */
 const LINKS = [
   { href: "/diseases", label: "Diseases" },
-  { href: "/map", label: "Map" },
+  { href: "/maps", label: "Maps" },
 ] as const;
 
 /**

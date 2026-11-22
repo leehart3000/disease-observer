@@ -6,7 +6,6 @@ import { buildScale } from "@/lib/map/scale";
 import type { MapDataset, SourceCredit } from "@/lib/map/types";
 import { AreaReadout } from "./AreaReadout";
 import { ChoroplethMap, type AreaRect, type SelectedArea } from "./ChoroplethMap";
-import { DatasetPicker } from "./DatasetPicker";
 import { Legend } from "./Legend";
 import { MapErrorBoundary } from "./MapErrorBoundary";
 import { Sources } from "./Sources";
@@ -40,14 +39,27 @@ const READOUT_ROOM = {
 };
 
 /**
- * The map page's interactive part: the dataset picker, the map with its key
- * and readout, the table of values and the sources. It is rendered on the
- * server too, so the table is in the first HTML. The map itself only starts
- * in the browser.
+ * Puts the pinned area in the page's address as `?areas=CODE` (or takes it
+ * out), without a new page load or a history entry, so the view can be
+ * shared. It reads the address in the handler rather than with a hook, and
+ * keeps any other state (such as `?p=`).
+ */
+function writePinToAddress(area: SelectedArea | null) {
+  const url = new URL(window.location.href);
+  if (area) url.searchParams.set("areas", area.code);
+  else url.searchParams.delete("areas");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+/**
+ * The map page's interactive part: the map with its key and readout, the
+ * table of values and the sources. It is rendered on the server too, so the
+ * table is in the first HTML. The map itself only starts in the browser.
  *
  * Pointing at an area previews it. Clicking or tapping it, or choosing it
- * in the table, pins it, so the readout stays. Pressing Escape, clicking
- * empty map, or choosing the pinned area again unpins it.
+ * in the table, pins it, so the readout stays, and the pin is kept in the
+ * address (`?areas=CODE`). Pressing Escape, clicking empty map, or choosing
+ * the pinned area again unpins it.
  *
  * The full screen button expands one wrapper that holds the map, the key
  * and the readout (see `useExpandable`). In full screen on a narrow screen,
@@ -60,6 +72,7 @@ export function MapExplorer({
   datasetId,
   values,
   sources,
+  initialPinned,
 }: {
   /** The registry id of the dataset to show. */
   datasetId: string;
@@ -67,21 +80,15 @@ export function MapExplorer({
   values: MapDataset;
   /** All the credits from the `sources` table, or `null` if they could not be loaded. */
   sources: SourceCredit[] | null;
+  /** The area pinned by `?areas=` in the page's address, if it is one of the dataset's areas. */
+  initialPinned: SelectedArea | null;
 }) {
   const dataset = getDataset(datasetId);
   if (!dataset) throw new Error(`Unknown dataset ${datasetId}`);
 
   const [hovered, setHovered] = useState<SelectedArea | null>(null);
-  const [pinned, setPinned] = useState<SelectedArea | null>(null);
+  const [pinned, setPinned] = useState<SelectedArea | null>(initialPinned);
   const [areaCounts, setAreaCounts] = useState<Record<string, number>>({});
-  // A pin belongs to one dataset. This component is not remounted when the
-  // dataset changes (so the map is not recreated), so clear it here.
-  const [shownDatasetId, setShownDatasetId] = useState(datasetId);
-  if (shownDatasetId !== datasetId) {
-    setShownDatasetId(datasetId);
-    setHovered(null);
-    setPinned(null);
-  }
   const frameRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const expand = useExpandable(frameRef, buttonRef);
@@ -120,10 +127,19 @@ export function MapExplorer({
     setAreaCounts((current) => (current[id] === count ? current : { ...current, [id]: count }));
   }, []);
 
-  /** Pins an area, or unpins it if it is already pinned. `null` unpins. */
-  const togglePin = useCallback((area: SelectedArea | null) => {
-    setPinned((current) => (area === null || current?.code === area.code ? null : area));
+  /** Sets the pin and writes it to the address (`?areas=CODE`), so the view can be shared. */
+  const changePin = useCallback((next: SelectedArea | null) => {
+    setPinned(next);
+    writePinToAddress(next);
   }, []);
+
+  /** Pins an area, or unpins it if it is already pinned. `null` unpins. */
+  const togglePin = useCallback(
+    (area: SelectedArea | null) => {
+      changePin(area === null || pinned?.code === area.code ? null : area);
+    },
+    [changePin, pinned],
+  );
 
   return (
     <div
@@ -132,15 +148,11 @@ export function MapExplorer({
         // In the CSS expanded mode, Escape leaves the mode (see useExpandable)
         // and keeps the pin.
         if (event.key === "Escape" && !behind) {
-          setPinned(null);
+          changePin(null);
           setHovered(null);
         }
       }}
     >
-      <div inert={behind}>
-        <DatasetPicker selectedId={datasetId} />
-      </div>
-
       <a
         href="#values-table"
         inert={behind}

@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DiseaseChart } from "@/components/DiseaseChart";
 import { DiseaseHeadline } from "@/components/Headline";
-import { strongLink } from "@/components/link-styles";
+import { strongLink, textLink } from "@/components/link-styles";
 import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
 import {
   DISEASES,
@@ -13,8 +13,7 @@ import {
   getDisease,
   sourceSlugsForDisease,
 } from "@/lib/datasets/registry";
-import { diseaseHref } from "@/lib/datasets/routes";
-import { mapHref } from "@/lib/datasets/url";
+import { datasetHref, diseaseHref, VIEW_LABELS, viewHref } from "@/lib/datasets/routes";
 import { canonicalFor } from "@/lib/seo";
 
 /** Every disease in the registry is built ahead of time. */
@@ -67,18 +66,34 @@ export default async function DiseasePage({ params }: PageProps<"/diseases/[slug
       <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Over time</h2>
       <DiseaseChart slug={disease.slug} name={disease.name} />
 
-      <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Maps</h2>
-      <ul className="grid max-w-2xl gap-4">
+      <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Datasets</h2>
+      <ul className="grid max-w-2xl gap-5">
         {datasetsForDisease(disease.slug).map((dataset) => (
           <li key={dataset.id}>
             <Link
-              href={mapHref(dataset.id)}
+              href={datasetHref(dataset)}
               prefetch
               className={`${strongLink} inline-flex min-h-11 items-center text-lg`}
             >
-              {dataset.label}
+              {dataset.name}
             </Link>
             <p className="text-muted">{dataset.description}</p>
+            {/* One link for each view that has a page. */}
+            <ul className="flex flex-wrap gap-x-4" aria-label={`Views of ${dataset.name}`}>
+              {dataset.views.map((view) => (
+                <li key={view}>
+                  <Link
+                    href={viewHref(dataset, view)}
+                    prefetch
+                    // The visible text starts the name, so the two agree.
+                    aria-label={`${VIEW_LABELS[view]}: ${dataset.name}`}
+                    className={`${textLink} inline-flex min-h-11 items-center`}
+                  >
+                    {VIEW_LABELS[view]}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>

@@ -6,8 +6,15 @@
  * Erasable TypeScript only, with relative imports that end in `.ts`, so
  * tests can import it too.
  */
-import { DISEASES } from "./registry.ts";
+import { DATASETS, DISEASES } from "./registry.ts";
 import type { DatasetDef, View } from "./types.ts";
+
+/** The names of the views, as they are written in links, tabs and breadcrumbs. */
+export const VIEW_LABELS: Record<View, string> = {
+  map: "Map",
+  chart: "Chart",
+  table: "Table",
+};
 
 /** The page of a disease: `/diseases/covid-19`. */
 export function diseaseHref(diseaseSlug: string): string {
@@ -24,18 +31,25 @@ export function viewHref(dataset: Pick<DatasetDef, "diseaseSlug" | "slug">, view
   return `${datasetHref(dataset)}/${view}`;
 }
 
+/** The page that lists every map: `/maps`. */
+export const MAPS_HREF = "/maps";
+
 /**
  * Every page the site has, as paths, for the sitemap. Generated from the
- * registry, so a new disease is listed without more work. Dataset pages
- * will be added here when they exist (a dataset's `views` says which); for
- * now the map is the single `/map` page.
+ * registry, so a new disease, dataset or view is listed without more work:
+ * a dataset's pages are its own page and one page for each view in its
+ * `views`.
  */
 export function sitePaths(): string[] {
   return [
     "/",
     "/diseases",
     ...DISEASES.map((disease) => diseaseHref(disease.slug)),
-    "/map",
+    MAPS_HREF,
+    ...DATASETS.flatMap((dataset) => [
+      datasetHref(dataset),
+      ...dataset.views.map((view) => viewHref(dataset, view)),
+    ]),
     "/sources",
     "/about",
   ];

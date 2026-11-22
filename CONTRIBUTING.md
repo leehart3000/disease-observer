@@ -210,25 +210,37 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   same weeks as a table, newest first, paged like the map's table
   (`src/components/PageControls.tsx`).
 - The disease page reads, from the top: the heading and introduction, the
-  latest figure, the chart, the maps (each with its `description` from the
-  registry) and the sources.
-- `src/proxy.ts` runs only for `/diseases/<slug>` (its matcher), and marks
-  a known disease with an `x-disease-checked` header so the tests can see
-  where it ran. The checks themselves are in `src/lib/routing.ts`.
+  latest figure, the chart, the datasets (each with its `description` from
+  the registry and a link to each of its views) and the sources.
+- **Dataset pages.** Each dataset has its own page,
+  `/diseases/<disease>/<dataset>` (what it shows, how to read it, a card for
+  each view, and its sources), and a page for each view in its `views` list
+  (only `map` so far; `chart` and `table` are added to the list when their
+  pages are built, and the cards, the disease page's links and the sitemap
+  follow). The disease page lists its datasets, with a link to each view.
+  `/maps` lists every map, grouped by disease, and replaces "Map" in the
+  header.
+- `src/proxy.ts` runs only for `/map` and `/diseases/…` addresses (its
+  matcher). `decideRoute` in `src/lib/routing.ts` makes the decision: an
+  unknown disease, dataset or view is a 404 (a Cache Components page cannot
+  change its status once its shell is sent), and `/map` redirects to the
+  dataset's map page. A request that carries on is marked with an
+  `x-disease-checked` header so the tests can see where it ran.
 - A trail of two or more steps is shown as a breadcrumb (`Breadcrumbs.tsx`:
   a `nav` named "Breadcrumb" with an ordered list, the current page last
   and marked `aria-current="page"`, plus the same trail as `BreadcrumbList`
-  JSON-LD). Today that means the disease pages (Diseases > COVID-19). Pages
-  with a single step, such as Diseases, About and Sources, have none, and
+  JSON-LD). That means the disease pages (Diseases > COVID-19) and the
+  dataset pages below them (… > Rate by local authority > Map). Pages with
+  a single step, such as Diseases, Maps, About and Sources, have none, and
   there is no "Home" step because the wordmark is the home link.
 - Page addresses are built in one place, `src/lib/datasets/routes.ts`, from
   the registry: each dataset has a `slug` and a short `name` (for example
-  `rate-by-local-authority` and "Rate by local authority") for the dataset
-  pages that are coming, and a `views` list of the views that have a page
-  (empty for now). `sitePaths()` lists every page for `/sitemap.xml`
-  (`src/app/sitemap.ts`), so a new disease is in the sitemap without more
-  work. `/robots.txt` (`src/app/robots.ts`) allows everything except `/api/`
-  and names the sitemap.
+  `rate-by-local-authority` and "Rate by local authority"), a `howToRead`
+  text, and a `views` list of the views that have a page. `sitePaths()`
+  lists every page for `/sitemap.xml` (`src/app/sitemap.ts`), so a new
+  disease, dataset or view is in the sitemap without more work.
+  `/robots.txt` (`src/app/robots.ts`) allows everything except `/api/` and
+  names the sitemap.
 - Every page has a canonical link to its own address with no query string
   (`canonicalFor` in `src/lib/seo.ts`; `SITE_URL` is the one place that
   knows the site's address). States such as `?d=…` are views of the same
@@ -241,24 +253,34 @@ every page has them. The header links are listed in `NavLinks.tsx`.
 
 ## The map page
 
-The map page (`/map`) shows the latest COVID-19 rate by local authority and
-the latest complete week of measles cases by region, on an OpenFreeMap base
-map drawn with MapLibre GL JS.
+Each dataset has a map page, such as
+`/diseases/covid-19/rate-by-local-authority/map`, that shows its latest
+values (the latest COVID-19 rate by local authority, or the latest complete
+week of measles cases by region) on an OpenFreeMap base map drawn with
+MapLibre GL JS. `/maps` lists every map. The old `/map` and `/map?d=…`
+addresses redirect permanently (308) to the right page (see `src/proxy.ts`
+and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
 
 - **The dataset registry** (`src/lib/datasets/registry.ts`) lists the
   diseases and the datasets that the map can show: each dataset's id, label,
   metric, unit, column heading, period rules, boundary file, colour scale
-  and sources. The picker, the table, the legend and the credits all read
-  from it, so adding a dataset is mostly adding an entry to `DATASETS`
+  and sources. The dataset pages, the lists, the table, the legend and the
+  credits all read from it, so adding a dataset is mostly adding an entry to
+  `DATASETS`
   (and the disease to `DISEASES`, if it is new). A disease appears only when
   the site has data for it. The registry is erasable TypeScript with no `@/`
   imports, so scripts can import it too.
-- **The dataset is in the URL:** `/map?d=measles-cases`. The page checks the
-  value against the registry, and shows the default dataset if it is
-  missing or unknown. The checked values are the only arguments of the
-  cached data function, so the cache stays small.
-- Choosing a dataset in the picker navigates without reloading the page,
-  and the map itself is not recreated.
+- **The dataset is in the path** (`…/measles/cases-by-region/map`), and an
+  unknown disease, dataset or view is a real 404 from the proxy. The checked
+  period is the only other argument of the cached data function, so the
+  cache stays small. There is no dataset picker: choosing another dataset is
+  a link (from `/maps`, the disease page or the breadcrumb), so the map is
+  created again on the new page.
+- **The pinned area is in the address** as `?areas=E06000001`. Pinning or
+  unpinning rewrites it with `history.replaceState` (no page load, no
+  history entry), and a pinned area in the address is pinned on load. Codes
+  that are not shaped like an area code, or are not in the dataset, are
+  ignored. The page's canonical link has no query string.
 - MapLibre is only loaded in the browser, and only on this page.
 - The boundaries come from the committed files in `data/ons/`.
   `pnpm boundaries:web` turns them into `public/boundaries/` (ignored by
@@ -274,8 +296,8 @@ map drawn with MapLibre GL JS.
   refreshes in the background once a day. `loadWithFallback` in
   `src/lib/data/load.ts` is the pattern for every data function: if the
   cache fails or is slow, the page queries the database directly, and if
-  that fails too it shows "Data unavailable" (with the dataset picker still
-  there) and the rest of the page still works.
+  that fails too it shows "Data unavailable" and the rest of the page (the
+  breadcrumb and heading) still works.
 - The base map follows the theme toggle, switching between OpenFreeMap's
   positron (light) and dark styles without reloading the page. The style
   files are not edited: `transformStyle` (in `ChoroplethMap.tsx`) raises
