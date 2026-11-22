@@ -34,6 +34,15 @@ export function parseAreaCodes(value: string | string[] | undefined, limit: numb
   return [...new Set(codes)].slice(0, limit);
 }
 
+/**
+ * Reads a chart's time range, `?range=all` for the whole series. Anything
+ * else (including a missing or repeated value) is the default, the last 12
+ * months.
+ */
+export function parseChartRange(params: SearchParams): "12m" | "all" {
+  return firstValue(params.range) === "all" ? "all" : "12m";
+}
+
 /** What a map page is showing, beyond its dataset. */
 export type MapSelection = {
   period: PeriodChoice;

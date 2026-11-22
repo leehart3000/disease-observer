@@ -78,6 +78,13 @@ export type DatasetDef = {
    * period, to say why there is no choice. British English.
    */
   periodNote?: string;
+  /**
+   * How the chart page of this dataset works. `all-areas` draws England and
+   * every region, for a dataset with few areas. `pick-areas` is for a dataset
+   * with many areas, where the visitor chooses which to compare; its chart
+   * page is not built yet, so it is not in `views`.
+   */
+  chart: { mode: "all-areas" | "pick-areas" };
   map: {
     areaLevel: AreaLevel;
     /** The static boundary file for these areas. */

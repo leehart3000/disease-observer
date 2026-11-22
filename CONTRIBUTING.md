@@ -68,7 +68,7 @@ Run these from the repository root:
   `pnpm exec playwright install chromium` once first, or set
   `CHROMIUM_PATH` to use a Chromium you already have. The map page tests
   need the test database (see [End-to-end test database](#end-to-end-test-database)).
-  Locally it runs two tests at a time (`workers` in `playwright.config.ts`),
+  Locally it runs three tests at a time (`workers` in `playwright.config.ts`),
   because the map tests wait for WebGL to draw and time out at random when
   the machine is overloaded; CI uses Playwright's default. The fixture
   dates come from the day they are loaded, so run `pnpm test:e2e:db` again
@@ -208,8 +208,11 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   legend highlights it, drawn on top of England, in one of three colours
   (`--chart-1` to `--chart-3` in `globals.css`, checked together in both
   themes). The range starts on the last 12 months, with a choice of the
-  whole series since `chart.since` (it is not in the URL yet), and the y
-  axis always starts at zero. Pointing at or touching the chart, or using
+  whole series since `chart.since` (on the disease page it is not in the
+  URL; see the chart view below), and the y axis always starts at zero.
+  `LineChart.tsx` holds the controls (range and region checkboxes) and
+  `LineChartPlot.tsx` the drawing, slider, readout and data table, which a
+  second set of controls can reuse. Pointing at or touching the chart, or using
   the arrow, Page Up, Page Down, Home and End keys on it, moves a marker
   and shows that week's values. A "View data table" disclosure holds the
   same weeks as a table, newest first, paged like the map's table
@@ -220,10 +223,19 @@ every page has them. The header links are listed in `NavLinks.tsx`.
 - **Dataset pages.** Each dataset has its own page,
   `/diseases/<disease>/<dataset>` (what it shows, how to read it, a card for
   each view, and its sources), and a page for each view in its `views` list
-  (`map` and `table` so far; `chart` is added to the list when its page is
-  built, and the cards, the disease page's links and the sitemap follow).
+  (a view is added to the list when its page is built, and the cards, the
+  disease page's links and the sitemap follow).
   The disease page lists its datasets, with a link to each view. `/maps`
   lists every map, grouped by disease, and replaces "Map" in the header.
+- **The chart view** (`…/chart`) exists for a dataset whose `chart.mode` is
+  `all-areas` (few areas, such as measles by region) and that lists `chart`
+  in its `views`. It is the disease page's chart (England and every region,
+  tick up to three to highlight), with the time range in the address as
+  `?range=all` (left out for the last 12 months, rewritten without a page
+  load, and read again on a reload). Any other `range` is ignored. A dataset
+  with `chart.mode` of `pick-areas` (the local authorities) has no chart page
+  yet, so it does not list `chart`. The page's series is the disease's
+  headline dataset, so an `all-areas` dataset must be its disease's headline.
 - **Moving between views.** The map and table pages show a strip of links to
   the dataset's views (`ViewTabs.tsx`, from the `views` list; nothing is
   shown for fewer than two). They are page links with `aria-current="page"`,
@@ -315,7 +327,7 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   say "11 of 12 weeks reported". An unknown or unoffered `p` is ignored, and
   the old `/map?d=…&p=…` redirect keeps a period the dataset offers. The
   map and table pages show the picker (`PeriodPicker`), the links between
-  views keep the period, and the chart (when it exists) will not.
+  views keep the period, and the chart does not (it shows every week).
 - **The pinned area is in the address** as `?areas=E06000001`. Pinning or
   unpinning rewrites it with `history.replaceState` (no page load, no
   history entry), and a pinned area in the address is pinned on load. Codes

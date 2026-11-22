@@ -44,6 +44,8 @@ test.describe("address helpers", () => {
     }
     expect(paths).toContain("/diseases/covid-19/rate-by-local-authority/map");
     expect(paths).toContain("/diseases/covid-19/rate-by-local-authority/table");
+    expect(paths).toContain("/diseases/measles/cases-by-region/chart");
+    // The local authority chart is not built yet.
     expect(paths).not.toContain("/diseases/covid-19/rate-by-local-authority/chart");
     // The old address redirects, so it is not a page to list.
     expect(paths).not.toContain("/map");
@@ -58,6 +60,7 @@ test.describe("address helpers", () => {
     expect(decide("/diseases/covid-19/rate-by-local-authority")).toEqual(carryOn);
     expect(decide("/diseases/covid-19/rate-by-local-authority/map")).toEqual(carryOn);
     expect(decide("/diseases/covid-19/rate-by-local-authority/table")).toEqual(carryOn);
+    expect(decide("/diseases/measles/cases-by-region/chart")).toEqual(carryOn);
     expect(decide("/diseases/not-a-disease")).toEqual(notFound);
     expect(decide("/diseases/covid-19/not-a-dataset")).toEqual(notFound);
     // A dataset of another disease.

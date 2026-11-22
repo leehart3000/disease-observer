@@ -174,7 +174,10 @@ test("a disease page lists its datasets, with a link to each view, and only its 
     "href",
     "/diseases/measles/cases-by-region/table",
   );
-  await expect(page.getByRole("link", { name: /^Chart/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Chart: Cases by region" })).toHaveAttribute(
+    "href",
+    "/diseases/measles/cases-by-region/chart",
+  );
   await expect(page.getByRole("link", { name: /Rate by local authority/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "UKHSA data dashboard" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Office for National Statistics/ })).toBeVisible();

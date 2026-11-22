@@ -321,3 +321,80 @@ test("the chart does not make the page scroll sideways, even with the table open
   });
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+const MEASLES_CHART = "/diseases/measles/cases-by-region/chart";
+
+test.describe("the chart page of a dataset", () => {
+  test("shows the chart, with a breadcrumb and the view links, and the chart tab is current", async ({
+    page,
+  }) => {
+    await page.goto(MEASLES_CHART);
+
+    await expect(page).toHaveTitle("Measles cases by region: chart | Disease Observer");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region");
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem")).toHaveText([
+      "Diseases›",
+      "Measles›",
+      "Cases by region›",
+      "Chart",
+    ]);
+    const views = page.getByRole("navigation", { name: "Views of Cases by region" });
+    await expect(views.getByRole("link")).toHaveText(["Map", "Chart", "Table"]);
+    await expect(views.getByRole("link", { name: "Chart" })).toHaveAttribute("aria-current", "page");
+
+    await expect(page.getByTestId("line-chart")).toBeVisible();
+    await expect(regionGroup(page).getByRole("checkbox")).toHaveCount(9);
+    await expect(readout(page)).toContainText(`England ${englandMeaslesCases(0)} cases`);
+    await expect(slider(page)).toHaveAttribute("aria-valuemax", String(LAST_IN_YEAR));
+    await expect(page.getByRole("heading", { level: 2, name: "Sources" })).toBeVisible();
+    // The canonical link has no query string.
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/cases-by-region\/chart$/);
+  });
+
+  test("?range=all opens on the whole series, and an invalid range is ignored", async ({ page }) => {
+    await page.goto(`${MEASLES_CHART}?range=all`);
+    await expect(rangeGroup(page).getByRole("radio", { name: "Since 2023" })).toBeChecked();
+    await expect(slider(page)).toHaveAttribute("aria-valuemax", String(LAST));
+
+    for (const bad of ["?range=bogus", "?range=", "?range=12m", "?range=ALL"]) {
+      await page.goto(`${MEASLES_CHART}${bad}`);
+      await expect(rangeGroup(page).getByRole("radio", { name: "Last 12 months" })).toBeChecked();
+      await expect(slider(page)).toHaveAttribute("aria-valuemax", String(LAST_IN_YEAR));
+    }
+  });
+
+  test("the range is kept in the address and survives a reload", async ({ page }) => {
+    await page.goto(MEASLES_CHART);
+    await expect(page.getByTestId("line-chart")).toBeVisible();
+
+    await chooseRange(page, "Since 2023");
+    await expect(page).toHaveURL(`${MEASLES_CHART}?range=all`);
+    await page.reload();
+    await expect(rangeGroup(page).getByRole("radio", { name: "Since 2023" })).toBeChecked();
+    await expect(slider(page)).toHaveAttribute("aria-valuemax", String(LAST));
+
+    // Going back to the default leaves the parameter out.
+    await chooseRange(page, "Last 12 months");
+    await expect(page).toHaveURL(MEASLES_CHART);
+  });
+
+  test("the links to the other views drop the range but keep the areas", async ({ page }) => {
+    await page.goto(`${MEASLES_CHART}?range=all&areas=E12000001`);
+    await expect(page.getByTestId("line-chart")).toBeVisible();
+
+    const views = page.getByRole("navigation", { name: "Views of Cases by region" });
+    await expect(views.getByRole("link", { name: "Map" })).toHaveAttribute(
+      "href",
+      "/diseases/measles/cases-by-region/map?areas=E12000001",
+    );
+    await expect(views.getByRole("link", { name: "Table" })).toHaveAttribute(
+      "href",
+      "/diseases/measles/cases-by-region/table?areas=E12000001",
+    );
+  });
+
+  test("the local authority dataset has no chart page yet", async ({ page }) => {
+    await page.goto("/diseases/covid-19/rate-by-local-authority");
+    await expect(page.getByRole("link", { name: /^Chart/ })).toHaveCount(0);
+  });
+});

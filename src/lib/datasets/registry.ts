@@ -60,6 +60,7 @@ export const DATASETS = [
     columnHeading: { latest: "Cases per 100,000 (7 days)" },
     periodNote:
       "COVID-19 rates are shown for the latest 7 days only, because rates can’t be added together.",
+    chart: { mode: "pick-areas" },
     map: {
       areaLevel: "lower_tier_local_authority",
       boundaryUrl: "/boundaries/lad-dec-2022.json",
@@ -75,7 +76,7 @@ export const DATASETS = [
     diseaseSlug: "measles",
     slug: "cases-by-region",
     name: "Cases by region",
-    views: ["map", "table"],
+    views: ["map", "chart", "table"],
     label: "Measles cases by region",
     description:
       "The number of confirmed cases in each UKHSA region, by the week that symptoms began: for the latest complete week, the last 12 weeks or the year so far.",
@@ -94,6 +95,7 @@ export const DATASETS = [
       "12w": "Cases (12 weeks)",
       ytd: "Cases (year to date)",
     },
+    chart: { mode: "all-areas" },
     map: {
       areaLevel: "region",
       boundaryUrl: "/boundaries/rgn-dec-2022.json",
