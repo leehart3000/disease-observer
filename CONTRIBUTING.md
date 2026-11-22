@@ -88,8 +88,14 @@ Run these from the repository root:
 
 - `pnpm boundaries:prepare`: rebuild the England-only boundary files in
   `data/ons/` from the raw ONS downloads (see `data/ons/README.md`).
-- `pnpm db:boundaries`: load those boundaries into the `areas` table. Run
-  it after `pnpm db:seed`. It is safe to run more than once.
+- `pnpm boundaries:prepare:natural-earth`: rebuild the committed country
+  and US state files in `data/natural-earth/` from the raw Natural Earth
+  downloads (see `data/natural-earth/README.md`, which lists the two files
+  and where to get them).
+- `pnpm db:boundaries`: load those boundaries into the `areas` table, and
+  the Natural Earth countries (242) and US states (51), as codes, names and
+  centroids only. Run it after `pnpm db:seed`. It is safe to run more than
+  once.
 - `pnpm etl:ukhsa`: load UKHSA data (COVID-19 for England, the UKHSA
   regions and the local authorities, and measles for England and the
   regions) into the database. It needs `DATABASE_URL_UNPOOLED` and
@@ -390,6 +396,15 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   Git): codes and names follow UKHSA (see `scripts/boundaries/ukhsa-codes.mts`),
   and coordinates are rounded to 5 decimal places. They are static files
   with long cache headers, so no geometry is queried from the database.
+- **Country and US state boundaries** come from Natural Earth (1:50m, public
+  domain), committed in `data/natural-earth/` (see its README for the files,
+  codes, names and slugs). `pnpm boundaries:web` turns them into
+  `public/boundaries/countries-50m.json` (about 1.6 MB, 570 KB compressed) and
+  `us-states-50m.json` (about 195 KB). Countries use ISO 3166-1 alpha-3
+  codes (code scheme `iso3166-1-alpha3`, level `country`) and US states ISO
+  3166-2 codes (`US-AL`, scheme `iso3166-2`, level `region`, parent the `USA`
+  country). No dataset uses them yet. The files are only loaded by a map
+  whose dataset names them as its `boundaryUrl`.
 - `pnpm maplibre:worker` copies MapLibre's web worker to `public/maplibre/`
   (ignored by Git), because the bundler moves the library and it can no
   longer find the worker beside it.

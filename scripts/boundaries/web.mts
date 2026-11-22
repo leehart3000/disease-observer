@@ -1,6 +1,7 @@
 /**
  * Builds the boundary files that the map page loads in the browser, from
- * the committed ONS files in `data/ons/`. The output goes to
+ * the committed ONS files in `data/ons/` and Natural Earth files in
+ * `data/natural-earth/`. The output goes to
  * `public/boundaries/` (ignored by Git) and is rebuilt by `pnpm dev` and
  * `pnpm build`, so it always matches the committed sources.
  *
@@ -135,6 +136,25 @@ if (regionFeatures.length !== 9) {
   throw new Error(`Expected 9 regions, got ${regionFeatures.length}`);
 }
 
+// Natural Earth: every country, and the US states. Their committed files
+// already have the codes and names this site uses, and rounded coordinates,
+// so they only need the same shape as the others (every feature a
+// MultiPolygon with just a code and a name).
+const countryFeatures = [...readFeatures("data/natural-earth/countries-50m.geojson").values()].map(
+  (feature) => makeFeature(feature.properties.code, feature.properties.name, [feature]),
+);
+const usStateFeatures = [...readFeatures("data/natural-earth/us-states-50m.geojson").values()].map(
+  (feature) => makeFeature(feature.properties.code, feature.properties.name, [feature]),
+);
+if (countryFeatures.length !== 242) {
+  throw new Error(`Expected 242 countries, got ${countryFeatures.length}`);
+}
+if (usStateFeatures.length !== 51) {
+  throw new Error(`Expected 51 US states, got ${usStateFeatures.length}`);
+}
+
 mkdirSync(OUTPUT_DIR, { recursive: true });
 write("lad-dec-2022.json", ladFeatures);
 write("rgn-dec-2022.json", regionFeatures);
+write("countries-50m.json", countryFeatures);
+write("us-states-50m.json", usStateFeatures);

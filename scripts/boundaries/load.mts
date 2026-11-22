@@ -11,8 +11,11 @@
  * - It identifies regions with `E45` codes, where ONS uses `E12` (see
  *   `REGIONS`). The shapes are stored on the `E45` areas.
  *
- * An existing area keeps its name and level (the ETL sets them from UKHSA);
- * only its boundary, centroid and parent are written here.
+ * An existing ONS area keeps its name and level (the ETL sets them from
+ * UKHSA); only its boundary, centroid and parent are written here.
+ *
+ * It also loads the Natural Earth countries and US states (see
+ * `loadNaturalEarth`), from `data/natural-earth/`.
  *
  * Run with `pnpm db:boundaries`. It uses the direct connection
  * (`DATABASE_URL_UNPOOLED`).
@@ -20,6 +23,7 @@
 import { readFileSync } from "node:fs";
 import { sql, type SQL } from "drizzle-orm";
 import { createDb } from "../../src/db/client.ts";
+import { COUNTRY_CODE_SCHEME, US_STATE_CODE_SCHEME } from "./country-codes.mts";
 import { COMBINED_AREAS, MERGED_AWAY, REGIONS } from "./ukhsa-codes.mts";
 
 try {
@@ -108,6 +112,57 @@ for (const code of regions.keys()) {
   if (!(code in REGIONS)) throw new Error(`No UKHSA code is mapped for region ${code}`);
 }
 
+/** A database transaction, as `db.transaction` passes it to its callback. */
+type Transaction = Parameters<Parameters<ReturnType<typeof createDb>["db"]["transaction"]>[0]>[0];
+
+/**
+ * Loads the Natural Earth countries (`iso3166-1-alpha3`, level `country`) and
+ * US states (`iso3166-2`, level `region`, with the `USA` country as parent).
+ * Only the code, name, level and a centroid are written: the shapes are drawn
+ * from the static files in `public/boundaries/`, and nothing queries them, so
+ * they stay out of the database. Nothing else sets these areas' names, so
+ * here a second run does update them.
+ *
+ * @throws If the files do not hold the expected 242 countries and 51 states,
+ *   or a state has no parent.
+ */
+async function loadNaturalEarth(tx: Transaction) {
+  const countries = [...readFeatures("data/natural-earth/countries-50m.geojson").values()];
+  const states = [...readFeatures("data/natural-earth/us-states-50m.geojson").values()];
+  if (countries.length !== 242) throw new Error(`Expected 242 countries, got ${countries.length}`);
+  if (states.length !== 51) throw new Error(`Expected 51 US states, got ${states.length}`);
+
+  const sets = [
+    { scheme: COUNTRY_CODE_SCHEME, level: "country", features: countries },
+    { scheme: US_STATE_CODE_SCHEME, level: "region", features: states },
+  ] as const;
+  for (const { scheme, level, features } of sets) {
+    for (const feature of features) {
+      const shape = sql`ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(feature.geometry)}::text), 4326))`;
+      await tx.execute(sql`
+        INSERT INTO areas (code_scheme, code, name, level, centroid)
+        VALUES (${scheme}, ${feature.properties.code}, ${feature.properties.name}, ${level},
+                ST_PointOnSurface(${shape})::geography)
+        ON CONFLICT (code_scheme, code) DO UPDATE
+          SET name = excluded.name, level = excluded.level, centroid = excluded.centroid`);
+    }
+  }
+
+  await tx.execute(sql`
+    UPDATE areas AS state
+    SET parent_id = country.id
+    FROM areas AS country
+    WHERE state.code_scheme = ${US_STATE_CODE_SCHEME} AND state.code LIKE 'US-%'
+      AND country.code_scheme = ${COUNTRY_CODE_SCHEME} AND country.code = 'USA'`);
+  const orphans = await tx.execute<{ code: string }>(sql`
+    SELECT code FROM areas
+    WHERE code_scheme = ${US_STATE_CODE_SCHEME} AND code LIKE 'US-%' AND parent_id IS NULL`);
+  if (orphans.rows.length > 0) {
+    throw new Error(`US states with no parent: ${orphans.rows.map((row) => row.code).join(", ")}`);
+  }
+  return { countries: countries.length, states: states.length };
+}
+
 const { db, pool } = createDb(process.env.DATABASE_URL_UNPOOLED, { max: 1 });
 try {
   const report = await db.transaction(async (tx) => {
@@ -164,7 +219,11 @@ try {
         AND code IN ${codeList} AND parent_id IS NULL
       ORDER BY code`);
 
+    // Natural Earth: every country, and the US states under the United States.
+    const naturalEarth = await loadNaturalEarth(tx);
+
     return {
+      naturalEarth,
       inserted,
       updated,
       withoutBoundary: withoutBoundary.rows,
@@ -183,6 +242,9 @@ try {
     `Boundaries for areas with no observations yet: ${report.withoutObservations}`,
   );
   console.log(`Local authorities with no parent region: ${list(report.withoutParent)}`);
+  console.log(
+    `Natural Earth: ${report.naturalEarth.countries} countries and ${report.naturalEarth.states} US states loaded.`,
+  );
 } finally {
   await pool.end();
 }

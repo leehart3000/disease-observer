@@ -17,6 +17,7 @@
     "db:seed": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed.mts",
     "db:boundaries": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/boundaries/load.mts",
     "boundaries:prepare": "node scripts/boundaries/prepare.mts",
+    "boundaries:prepare:natural-earth": "node scripts/boundaries/prepare-natural-earth.mts",
     "boundaries:web": "node scripts/boundaries/web.mts",
     "maplibre:worker": "node scripts/maplibre-worker.mts",
     "etl:ukhsa": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/etl/ukhsa.mts"

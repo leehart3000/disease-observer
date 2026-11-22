@@ -41,6 +41,14 @@ const sourceRows = [
       "Source: Office for National Statistics licensed under the Open Government Licence v.3.0. Contains OS data © Crown copyright and database right 2022.",
   },
   {
+    slug: "natural-earth",
+    name: "Natural Earth",
+    url: "https://www.naturalearthdata.com/",
+    licenceName: "Public domain",
+    licenceUrl: "https://www.naturalearthdata.com/about/terms-of-use/",
+    attribution: "Made with Natural Earth.",
+  },
+  {
     slug: "who-flunet",
     name: "WHO FluNet",
     url: "https://www.who.int/tools/flunet",
