@@ -15,6 +15,8 @@ const PAGES = [
   { path: "/maps", h1: "Maps" },
   { path: "/diseases/covid-19/rate-by-local-authority", h1: "COVID-19 rate by local authority" },
   { path: "/diseases/covid-19/rate-by-local-authority/map", h1: "COVID-19 rate by local authority" },
+  { path: "/diseases/covid-19/rate-by-local-authority/table", h1: "COVID-19 rate by local authority" },
+  { path: "/diseases/measles/cases-by-region/table", h1: "Measles cases by region" },
   { path: "/diseases/measles/cases-by-region", h1: "Measles cases by region" },
   { path: "/diseases/measles/cases-by-region/map", h1: "Measles cases by region" },
   { path: "/sources", h1: "Sources and licences" },
@@ -168,7 +170,11 @@ test("a disease page lists its datasets, with a link to each view, and only its 
     "/diseases/measles/cases-by-region/map",
   );
   // Only the views that have a page are linked.
-  await expect(page.getByRole("link", { name: /^(Chart|Table)/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Table: Cases by region" })).toHaveAttribute(
+    "href",
+    "/diseases/measles/cases-by-region/table",
+  );
+  await expect(page.getByRole("link", { name: /^Chart/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Rate by local authority/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "UKHSA data dashboard" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Office for National Statistics/ })).toBeVisible();
@@ -204,6 +210,7 @@ test("the address check runs only for disease, dataset and map-view pages", asyn
     "/diseases/covid-19",
     "/diseases/covid-19/rate-by-local-authority",
     "/diseases/covid-19/rate-by-local-authority/map",
+    "/diseases/covid-19/rate-by-local-authority/table",
   ]) {
     const response = await request.get(path);
     expect(response.status(), path).toBe(200);
@@ -229,7 +236,6 @@ test("an unknown or malformed disease, dataset or view address is a 404, not an 
     "/diseases/covid-19/cases-by-region",
     "/diseases/covid-19/%E0%A4%A",
     "/diseases/covid-19/rate-by-local-authority/chart",
-    "/diseases/covid-19/rate-by-local-authority/table",
     "/diseases/covid-19/rate-by-local-authority/bogus",
     "/diseases/covid-19/rate-by-local-authority/map/extra",
   ]) {

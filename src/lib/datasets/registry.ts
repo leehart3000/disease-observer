@@ -41,7 +41,7 @@ export const DATASETS = [
     diseaseSlug: "covid-19",
     slug: "rate-by-local-authority",
     name: "Rate by local authority",
-    views: ["map"],
+    views: ["map", "table"],
     label: "COVID-19 rate by local authority",
     description:
       "The rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people.",
@@ -73,7 +73,7 @@ export const DATASETS = [
     diseaseSlug: "measles",
     slug: "cases-by-region",
     name: "Cases by region",
-    views: ["map"],
+    views: ["map", "table"],
     label: "Measles cases by region",
     description:
       "The number of confirmed cases in each UKHSA region in the latest complete week, by the week that symptoms began.",

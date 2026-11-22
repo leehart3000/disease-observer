@@ -120,6 +120,71 @@ test("the map renders", async ({ page }) => {
   await expect(page.getByRole("region", { name: /^Map: COVID-19 cases per 100,000/ })).toBeVisible();
 });
 
+test("the map's attribution links are external links", async ({ page }) => {
+  await openMap(page);
+
+  const links = page.locator(".maplibregl-ctrl-attrib a");
+  await expect(links).toHaveCount(3);
+  for (const link of await links.all()) {
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(link.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+    await expect(link.locator(".sr-only")).toHaveText("(opens in a new tab)");
+  }
+  await expect(page.getByRole("link", { name: "OpenFreeMap (opens in a new tab)" })).toBeVisible();
+
+  // They are decorated again if MapLibre rewrites the box, as it does when the theme changes.
+  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await expect(mapCanvas(page)).toHaveAttribute("data-base-style", "dark", { timeout: 15_000 });
+  for (const link of await page.locator(".maplibregl-ctrl-attrib a").all()) {
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+  }
+});
+
+test("the table says that choosing an area pins it, and each name has a map pin", async ({ page }) => {
+  await openMap(page);
+
+  const instruction = page.getByTestId("table-instruction");
+  await expect(instruction).toHaveText("Select an area to pin it on the map.");
+  // It is above the table, and below the result count.
+  const [text, tableBox, count] = [
+    (await instruction.boundingBox())!,
+    (await table(page).boundingBox())!,
+    (await page.getByText(/^Showing 1 to 25/).boundingBox())!,
+  ];
+  expect(text.y + text.height).toBeLessThanOrEqual(tableBox.y);
+  expect(text.y).toBeGreaterThan(count.y);
+
+  // Each area's name is a button with a decorative pin, still named by what it does.
+  const button = page.getByRole("button", { name: "Pin Hartlepool on the map" });
+  await expect(button).toContainText("Hartlepool");
+  await expect(button.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+  expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+
+  // Hovering gives more than an underline: a background and the brand colour.
+  const before = await button.evaluate((el) => {
+    const style = getComputedStyle(el);
+    return { background: style.backgroundColor, color: style.color };
+  });
+  if (!isPhone()) {
+    await button.hover();
+    await expect
+      .poll(() =>
+        button.evaluate((el) => {
+          const style = getComputedStyle(el);
+          return { background: style.backgroundColor, color: style.color };
+        }),
+      )
+      .not.toEqual(before);
+  }
+
+  // Pinned, the pin is filled.
+  await button.click();
+  const pinned = page.getByRole("button", { name: "Unpin Hartlepool from the map" });
+  await expect(pinned.locator("svg")).toHaveAttribute("fill", "currentColor");
+});
+
 test("each dataset has its own map page, with no dataset picker", async ({ page }) => {
   await openMap(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");

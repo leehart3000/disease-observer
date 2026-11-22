@@ -14,6 +14,7 @@ import type {
   StyleSpecification,
   TransformStyleFunction,
 } from "maplibre-gl";
+import { decorateExternalAnchor } from "@/lib/external-link";
 import type { Scale } from "@/lib/map/scale";
 import type { MapDataset } from "@/lib/map/types";
 import { useTheme, type Theme } from "../useTheme";
@@ -447,6 +448,7 @@ export function ChoroplethMap({
   useEffect(() => {
     let cancelled = false;
     let created: MapLibreMap | undefined;
+    let attributionObserver: MutationObserver | undefined;
 
     (async () => {
       try {
@@ -479,6 +481,20 @@ export function ChoroplethMap({
         fullscreenRef.current = fullscreen;
         instance.addControl(fullscreen.control, "top-right");
         callbacksRef.current.onFullscreenButton(fullscreen.button);
+
+        // The credits in the attribution box are links to other websites. They
+        // come from the base map's style, so they are made into external
+        // links here, now and whenever MapLibre rewrites the box.
+        const credit = instance.getContainer().querySelector(".maplibregl-ctrl-attrib");
+        if (credit) {
+          const decorate = () =>
+            credit
+              .querySelectorAll<HTMLAnchorElement>("a[href]")
+              .forEach((anchor) => decorateExternalAnchor(anchor));
+          decorate();
+          attributionObserver = new MutationObserver(decorate);
+          attributionObserver.observe(credit, { childList: true, subtree: true });
+        }
 
         instance.on("style.load", () => {
           state.styleLoaded = true;
@@ -542,6 +558,7 @@ export function ChoroplethMap({
 
     return () => {
       cancelled = true;
+      attributionObserver?.disconnect();
       created?.remove();
       fullscreenRef.current = null;
       callbacksRef.current.onFullscreenButton(null);

@@ -68,6 +68,11 @@ Run these from the repository root:
   `pnpm exec playwright install chromium` once first, or set
   `CHROMIUM_PATH` to use a Chromium you already have. The map page tests
   need the test database (see [End-to-end test database](#end-to-end-test-database)).
+  Locally it runs three tests at a time (`workers` in `playwright.config.ts`),
+  because the map tests wait for WebGL to draw and time out at random when
+  the machine is overloaded; CI uses Playwright's default. The fixture
+  dates come from the day they are loaded, so run `pnpm test:e2e:db` again
+  after midnight.
 - `pnpm test:e2e:db`: create and prepare the local test database
   `disease_observer_test` for the end-to-end tests. Safe to run more than
   once.
@@ -215,11 +220,33 @@ every page has them. The header links are listed in `NavLinks.tsx`.
 - **Dataset pages.** Each dataset has its own page,
   `/diseases/<disease>/<dataset>` (what it shows, how to read it, a card for
   each view, and its sources), and a page for each view in its `views` list
-  (only `map` so far; `chart` and `table` are added to the list when their
-  pages are built, and the cards, the disease page's links and the sitemap
-  follow). The disease page lists its datasets, with a link to each view.
-  `/maps` lists every map, grouped by disease, and replaces "Map" in the
-  header.
+  (`map` and `table` so far; `chart` is added to the list when its page is
+  built, and the cards, the disease page's links and the sitemap follow).
+  The disease page lists its datasets, with a link to each view. `/maps`
+  lists every map, grouped by disease, and replaces "Map" in the header.
+- **Moving between views.** The map and table pages show a strip of links to
+  the dataset's views (`ViewTabs.tsx`, from the `views` list; nothing is
+  shown for fewer than two). They are page links with `aria-current="page"`,
+  not ARIA tabs. The chosen areas (`?areas=`) are kept in every link,
+  including a pin made after the page loaded, so the strip reads the
+  address in the browser (before that, the links are plain ones).
+- **The table page** (`…/table`) shows the same cached values as the map in
+  the shared `ValuesTable`, with search, sorting and paging, and no map code.
+  Each row has a "View on map" link (under the area's name on a phone, in a
+  column of its own otherwise) to the map with that area pinned, and the
+  rows for the areas in `?areas=` are highlighted. On the map page the same
+  table has a line above it, "Select an area to pin it on the map.", and each
+  area's name is a button with a map pin that pins it.
+- **Links to other websites** all use `ExternalLink` (`src/components/`): they
+  open in a new tab with `rel="noopener noreferrer"`, show a small "opens in
+  a new tab" icon joined to the last word of the text, and have the hidden
+  words "(opens in a new tab)". The map's attribution box is built by
+  MapLibre from the base map's style, so its links are given the same
+  treatment by script (`decorateExternalAnchor` in `src/lib/external-link.ts`,
+  which holds what both share). Do not write `target="_blank"` links by hand.
+- Next.js keeps the page you navigated from, hidden, so after a link
+  inside the site both pages can be in the document. In tests, use role
+  queries (which skip hidden elements), not label or text queries.
 - `src/proxy.ts` runs only for `/map` and `/diseases/…` addresses (its
   matcher). `decideRoute` in `src/lib/routing.ts` makes the decision: an
   unknown disease, dataset or view is a 404 (a Cache Components page cannot
@@ -325,8 +352,9 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   (it is not stored in the browser). On a narrow full screen map, the
   readout is compact, and moves to the bottom if the pinned area would be
   under it.
-- The table can be searched, sorted and paged (25 rows by default). The
-  credits under it are only those of the dataset that is shown.
+- The table can be searched, sorted and paged (25 rows by default), and
+  choosing an area's name in it pins the area. The credits under it are only
+  those of the dataset that is shown.
 - The server renders the first page of the table into the HTML. React
   streams the data-dependent part of the page, and a script reveals it, so
   a browser with JavaScript turned off shows only "Loading the map".

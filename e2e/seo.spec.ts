@@ -43,6 +43,7 @@ test.describe("address helpers", () => {
       for (const view of dataset.views) expect(paths).toContain(viewHref(dataset, view));
     }
     expect(paths).toContain("/diseases/covid-19/rate-by-local-authority/map");
+    expect(paths).toContain("/diseases/covid-19/rate-by-local-authority/table");
     expect(paths).not.toContain("/diseases/covid-19/rate-by-local-authority/chart");
     // The old address redirects, so it is not a page to list.
     expect(paths).not.toContain("/map");
@@ -56,12 +57,14 @@ test.describe("address helpers", () => {
     expect(decide("/diseases/covid-19")).toEqual(carryOn);
     expect(decide("/diseases/covid-19/rate-by-local-authority")).toEqual(carryOn);
     expect(decide("/diseases/covid-19/rate-by-local-authority/map")).toEqual(carryOn);
+    expect(decide("/diseases/covid-19/rate-by-local-authority/table")).toEqual(carryOn);
     expect(decide("/diseases/not-a-disease")).toEqual(notFound);
     expect(decide("/diseases/covid-19/not-a-dataset")).toEqual(notFound);
     // A dataset of another disease.
     expect(decide("/diseases/covid-19/cases-by-region")).toEqual(notFound);
     // A view that is not built yet, and one that does not exist.
     expect(decide("/diseases/covid-19/rate-by-local-authority/chart")).toEqual(notFound);
+    expect(decide("/diseases/covid-19/rate-by-local-authority/data.csv")).toEqual(notFound);
     expect(decide("/diseases/covid-19/rate-by-local-authority/bogus")).toEqual(notFound);
     expect(decide("/diseases/covid-19/rate-by-local-authority/map/extra")).toEqual(notFound);
     // Bad encoding is a 404, not an error.

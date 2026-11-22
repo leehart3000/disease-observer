@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { ValuesTable } from "@/components/ValuesTable";
 import { getDataset } from "@/lib/datasets/registry";
 import { buildScale } from "@/lib/map/scale";
 import type { MapDataset, SourceCredit } from "@/lib/map/types";
@@ -10,7 +11,6 @@ import { Legend } from "./Legend";
 import { MapErrorBoundary } from "./MapErrorBoundary";
 import { Sources } from "./Sources";
 import { useExpandable } from "./useExpandable";
-import { ValuesTable } from "./ValuesTable";
 
 /** Screens narrower than this (Tailwind's `sm`) are "narrow". */
 const NARROW_QUERY = "(max-width: 639.98px)";
@@ -233,8 +233,7 @@ export function MapExplorer({
           dataset={dataset}
           values={values}
           areaCount={areaCounts[datasetId] ?? null}
-          pinned={pinned}
-          onPin={togglePin}
+          action={{ kind: "pin", pinned, onPin: togglePin }}
         />
       </section>
 

@@ -39,19 +39,20 @@ test("a dataset page describes the dataset and links to its views", async ({ pag
   await expect(page.getByRole("heading", { level: 2, name: "How to read it" })).toBeVisible();
   await expect(page.getByText("for every 100,000 people who live in the local authority")).toBeVisible();
 
-  // One card for each view that has a page. Only the map exists so far.
+  // One card for each view that has a page: the map and the table so far.
   await expect(page.getByRole("heading", { level: 2, name: "Ways to look at it" })).toBeVisible();
   const cards = page.getByRole("article");
-  await expect(cards).toHaveCount(1);
-  await expect(cards.getByRole("link")).toHaveText("Map");
-  await expect(cards.getByRole("link")).toHaveAttribute("href", `${COVID}/map`);
+  await expect(cards).toHaveCount(2);
+  await expect(cards.getByRole("link")).toHaveText(["Map", "Table"]);
+  await expect(cards.getByRole("link").nth(0)).toHaveAttribute("href", `${COVID}/map`);
+  await expect(cards.getByRole("link").nth(1)).toHaveAttribute("href", `${COVID}/table`);
 
   // Only this dataset's sources.
   await expect(page.getByRole("link", { name: "UKHSA data dashboard" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Office for National Statistics/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "WHO FluNet" })).toHaveCount(0);
 
-  await cards.getByRole("link").click();
+  await cards.getByRole("link", { name: "Map" }).click();
   await expect(page).toHaveURL(`${COVID}/map`);
 });
 

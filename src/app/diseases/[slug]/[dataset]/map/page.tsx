@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { ViewTabs } from "@/components/ViewTabs";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
-import { datasetHref, diseaseHref, viewHref } from "@/lib/datasets/routes";
+import { datasetHref, diseaseHref, viewHref, viewTabs } from "@/lib/datasets/routes";
 import { canonicalFor } from "@/lib/seo";
 import { MapSection } from "./MapSection";
 
@@ -54,6 +55,9 @@ export default async function MapViewPage({
       />
       <h1 className="mt-4 text-3xl font-medium tracking-tight sm:text-4xl">{dataset.label}</h1>
       <p className="mt-3 mb-6 max-w-2xl text-lg text-muted">{dataset.description}</p>
+      <div className="mb-6">
+        <ViewTabs datasetName={dataset.name} tabs={viewTabs(dataset)} current="map" />
+      </div>
       <Suspense
         fallback={
           <div

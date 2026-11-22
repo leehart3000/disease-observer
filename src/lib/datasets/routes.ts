@@ -31,6 +31,13 @@ export function viewHref(dataset: Pick<DatasetDef, "diseaseSlug" | "slug">, view
   return `${datasetHref(dataset)}/${view}`;
 }
 
+/** The views a dataset has a page for, each with its address, in the order of its `views`. */
+export function viewTabs(
+  dataset: Pick<DatasetDef, "diseaseSlug" | "slug" | "views">,
+): Array<{ view: View; href: string }> {
+  return dataset.views.map((view) => ({ view, href: viewHref(dataset, view) }));
+}
+
 /** The page that lists every map: `/maps`. */
 export const MAPS_HREF = "/maps";
 

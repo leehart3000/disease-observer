@@ -1,41 +1,86 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { fieldClass, PAGE_SIZES, PageControls, type PageSize } from "@/components/PageControls";
 import type { DatasetDef } from "@/lib/datasets/types";
 import { formatNumber, formatPeriod } from "@/lib/format";
 import type { MapDataset } from "@/lib/map/types";
-import type { SelectedArea } from "./ChoroplethMap";
+import type { SelectedArea } from "./map/ChoroplethMap";
 
 type SortKey = "name" | "value";
 type SortDirection = "ascending" | "descending";
 
 /**
- * The same values as the map, as a table that can be searched, sorted and
- * paged. It is the way to read the figures with a keyboard or a screen
- * reader, and a keyboard user can pin an area from it. The server renders
- * the first 25 rows into the page's HTML.
+ * What choosing an area in the table does.
+ *
+ * - `pin`: on the map page, the area's name is a button that pins it on the
+ *   map (and unpins it).
+ * - `link`: on the table page, there is no map, so each row has a "View on
+ *   map" link to the map page with that area pinned. Rows for the areas in
+ *   `selected` (from `?areas=` in the address) are highlighted.
+ */
+export type RowAction =
+  | { kind: "pin"; pinned: SelectedArea | null; onPin: (area: SelectedArea) => void }
+  | { kind: "link"; mapPath: string; selected: readonly string[] };
+
+/** A map pin. It is decoration: the button it is in has its own name. */
+function PinIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4 shrink-0"
+    >
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" fill={filled ? "var(--surface)" : "none"} />
+    </svg>
+  );
+}
+
+/** The "View on map" link of a row on the table page: the map page with this area pinned. */
+function ViewOnMapLink({ mapPath, area }: { mapPath: string; area: { code: string; name: string } }) {
+  return (
+    <Link
+      href={`${mapPath}?areas=${area.code}`}
+      aria-label={`View ${area.name} on the map`}
+      className="group inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-md px-2 text-brand underline underline-offset-4 hover:bg-brand/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+    >
+      <PinIcon filled={false} />
+      View on map
+    </Link>
+  );
+}
+
+/**
+ * The values of a dataset as a table that can be searched, sorted and paged.
+ * It is the way to read the figures with a keyboard or a screen reader. The
+ * server renders the first 25 rows into the page's HTML.
  *
  * From top to bottom: the search box and page size, the result count with
- * the page controls, the table, then the page controls again.
+ * the page controls, a line saying what choosing an area does (on the map
+ * page), the table, then the page controls again.
  */
 export function ValuesTable({
   dataset: config,
   values: dataset,
   areaCount,
-  pinned,
-  onPin,
+  action,
 }: {
   /** The dataset's registry entry: its title and column heading. */
   dataset: DatasetDef;
   /** The values to show. */
   values: MapDataset;
-  /** How many areas the map draws for this dataset, once known. */
+  /** How many areas the map draws for this dataset, once known (`null` where there is no map). */
   areaCount: number | null;
-  /** The pinned area, if any. */
-  pinned: SelectedArea | null;
-  /** Called with an area to pin it (or unpin it, if it is already pinned). */
-  onPin: (area: SelectedArea) => void;
+  /** What choosing an area does. */
+  action: RowAction;
 }) {
   const ids = useId();
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
@@ -136,6 +181,11 @@ export function ValuesTable({
         <PageControls label="Table pages (top)" page={page} pageCount={pageCount} onPage={setRequestedPage} />
       </div>
 
+      {action.kind === "pin" ? (
+        <p className="mb-2 text-sm text-muted" data-testid="table-instruction">
+          Select an area to pin it on the map.
+        </p>
+      ) : null}
       {anyProvisional ? (
         <p className="mb-2 text-sm text-muted">Provisional figures may still change.</p>
       ) : null}
@@ -173,37 +223,68 @@ export function ValuesTable({
                   </button>
                 </th>
               ))}
+              {action.kind === "link" ? (
+                <th scope="col" className="hidden px-3 font-medium sm:table-cell">
+                  Map
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
             {rows.map((area) => {
-              const isPinned = pinned?.code === area.code;
+              const highlighted =
+                action.kind === "pin"
+                  ? action.pinned?.code === area.code
+                  : action.selected.includes(area.code);
               return (
                 <tr
                   key={area.code}
-                  className={`border-b border-line last:border-b-0 ${isPinned ? "bg-brand/15" : ""}`}
+                  data-selected={highlighted}
+                  className={`border-b border-line last:border-b-0 ${highlighted ? "bg-brand/15" : ""}`}
                 >
                   <th scope="row" className="p-0 font-normal">
-                    <div className="flex items-center gap-2 pr-3">
-                      <button
-                        type="button"
-                        aria-pressed={isPinned}
-                        aria-label={
-                          isPinned
-                            ? `Unpin ${area.name} from the map`
-                            : `Pin ${area.name} on the map`
-                        }
-                        onClick={() => onPin({ code: area.code, name: area.name })}
-                        className="min-h-9 cursor-pointer px-3 py-2 text-left hover:underline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
-                      >
-                        {area.name}
-                      </button>
-                      {isPinned ? (
-                        <span className="rounded border border-brand bg-surface px-1.5 py-0.5 text-xs font-medium">
-                          Pinned
-                        </span>
-                      ) : null}
-                    </div>
+                    {action.kind === "pin" ? (
+                      <div className="flex items-center gap-2 pr-3">
+                        <button
+                          type="button"
+                          aria-pressed={highlighted}
+                          aria-label={
+                            highlighted
+                              ? `Unpin ${area.name} from the map`
+                              : `Pin ${area.name} on the map`
+                          }
+                          onClick={() => action.onPin({ code: area.code, name: area.name })}
+                          className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-brand/10 hover:text-brand focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                        >
+                          <span
+                            className={`inline-flex ${highlighted ? "text-brand" : "text-muted group-hover:text-brand"}`}
+                          >
+                            <PinIcon filled={highlighted} />
+                          </span>
+                          {area.name}
+                        </button>
+                        {highlighted ? (
+                          <span className="rounded border border-brand bg-surface px-1.5 py-0.5 text-xs font-medium">
+                            Pinned
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {area.name}
+                          {highlighted ? (
+                            <span className="rounded border border-brand bg-surface px-1.5 py-0.5 text-xs font-medium">
+                              Selected
+                            </span>
+                          ) : null}
+                        </div>
+                        {/* On a narrow screen there is no Map column: the link goes under the name. */}
+                        <div className="-ml-2 sm:hidden">
+                          <ViewOnMapLink mapPath={action.mapPath} area={area} />
+                        </div>
+                      </div>
+                    )}
                   </th>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {area.provisional ? (
@@ -213,6 +294,11 @@ export function ValuesTable({
                     ) : null}
                     {formatNumber(area.value)}
                   </td>
+                  {action.kind === "link" ? (
+                    <td className="hidden px-3 py-0 sm:table-cell">
+                      <ViewOnMapLink mapPath={action.mapPath} area={area} />
+                    </td>
+                  ) : null}
                 </tr>
               );
             })}
