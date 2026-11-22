@@ -14,6 +14,7 @@ import type {
   StyleSpecification,
   TransformStyleFunction,
 } from "maplibre-gl";
+import type { LngLatBounds } from "@/lib/datasets/types";
 import { decorateExternalAnchor } from "@/lib/external-link";
 import type { Scale } from "@/lib/map/scale";
 import type { MapDataset } from "@/lib/map/types";
@@ -40,6 +41,10 @@ type Props = {
   datasetId: string;
   /** The static boundary file for the dataset's areas. */
   boundaryUrl: string;
+  /** Where the map opens, from the dataset's registry entry. Read once, when the map is created. */
+  bounds: LngLatBounds;
+  /** The farthest the map can be moved, from the registry. Read once. */
+  maxBounds: LngLatBounds;
   dataset: MapDataset | null;
   scale: Scale | null;
   /** The area to outline, if any. */
@@ -91,14 +96,10 @@ const HIGHLIGHT = { under: "#ffffff", over: "#0a1016" };
 /** The place label layers in OpenFreeMap's styles (`place_*` in dark, `label_*` in positron). */
 const PLACE_LABEL = /^(place|label)_/;
 
-/** England, with some room around it. */
-const ENGLAND_BOUNDS: [[number, number], [number, number]] = [
-  [-6.2, 49.8],
-  [2.1, 55.9],
-];
-const MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-10, 48],
-  [5, 59],
+/** MapLibre wants mutable tuples; the registry's are read-only. */
+const toMapLibreBounds = (bounds: LngLatBounds): [[number, number], [number, number]] => [
+  [bounds[0][0], bounds[0][1]],
+  [bounds[1][0], bounds[1][1]],
 ];
 
 const SOURCE_ID = "areas";
@@ -393,6 +394,8 @@ function applyBaseStyle(map: MapLibreMap, state: MapState, theme: Theme) {
 export function ChoroplethMap({
   datasetId,
   boundaryUrl,
+  bounds,
+  maxBounds,
   dataset,
   scale,
   highlightCode,
@@ -430,7 +433,10 @@ export function ChoroplethMap({
     onFullscreenButton,
     onHighlightRect,
   });
+  // The map is created once, so it reads the bounds from a ref, like the callbacks.
+  const viewRef = useRef({ bounds, maxBounds });
   useEffect(() => {
+    viewRef.current = { bounds, maxBounds };
     themeRef.current = theme;
     callbacksRef.current = {
       onHover,
@@ -463,8 +469,8 @@ export function ChoroplethMap({
         // The style is set below, so that it goes through transformStyle.
         const instance = new maplibre.Map({
           container: containerRef.current,
-          bounds: ENGLAND_BOUNDS,
-          maxBounds: MAX_BOUNDS,
+          bounds: toMapLibreBounds(viewRef.current.bounds),
+          maxBounds: toMapLibreBounds(viewRef.current.maxBounds),
           // Keep the credit visible, not collapsed behind a button.
           attributionControl: { compact: false },
           // One finger scrolls the page and two move the map.

@@ -68,7 +68,7 @@ Run these from the repository root:
   `pnpm exec playwright install chromium` once first, or set
   `CHROMIUM_PATH` to use a Chromium you already have. The map page tests
   need the test database (see [End-to-end test database](#end-to-end-test-database)).
-  Locally it runs three tests at a time (`workers` in `playwright.config.ts`),
+  Locally it runs two tests at a time (`workers` in `playwright.config.ts`),
   because the map tests wait for WebGL to draw and time out at random when
   the machine is overloaded; CI uses Playwright's default. The fixture
   dates come from the day they are loaded, so run `pnpm test:e2e:db` again
@@ -347,7 +347,10 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
 
 - **The dataset registry** (`src/lib/datasets/registry.ts`) lists the
   diseases and the datasets that the map can show: each dataset's id, label,
-  metric, unit, column heading, period rules, boundary file, colour scale
+  metric, unit, column heading, period rules, boundary file, the map's
+  opening box and the box it can be moved within (`map.bounds` and
+  `map.maxBounds`, as `[[west, south], [east, north]]`; the second must
+  contain the first, which `e2e/registry.spec.ts` checks), colour scale
   and sources. The dataset pages, the lists, the table, the legend and the
   credits all read from it, so adding a dataset is mostly adding an entry to
   `DATASETS`

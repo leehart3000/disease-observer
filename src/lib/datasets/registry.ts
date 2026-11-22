@@ -8,7 +8,7 @@
  * Erasable TypeScript only, with relative imports that end in `.ts`, so the
  * ETL can import this file too.
  */
-import type { DatasetDef, DiseaseDef, PeriodChoice } from "./types.ts";
+import type { DatasetDef, DiseaseDef, LngLatBounds, PeriodChoice } from "./types.ts";
 
 export const DISEASES = [
   {
@@ -34,6 +34,18 @@ export const DISEASES = [
     chart: { since: "2023-01-01" },
   },
 ] as const satisfies readonly DiseaseDef[];
+
+/** England, with some room around it. */
+const ENGLAND_BOUNDS = [
+  [-6.2, 49.8],
+  [2.1, 55.9],
+] as const satisfies LngLatBounds;
+
+/** The farthest an England map can be moved. */
+const ENGLAND_MAX_BOUNDS = [
+  [-10, 48],
+  [5, 59],
+] as const satisfies LngLatBounds;
 
 export const DATASETS = [
   {
@@ -64,6 +76,8 @@ export const DATASETS = [
     map: {
       areaLevel: "lower_tier_local_authority",
       boundaryUrl: "/boundaries/lad-dec-2022.json",
+      bounds: ENGLAND_BOUNDS,
+      maxBounds: ENGLAND_MAX_BOUNDS,
       areaNoun: "local authorities",
       areaNounOne: "local authority",
     },
@@ -100,6 +114,8 @@ export const DATASETS = [
     map: {
       areaLevel: "region",
       boundaryUrl: "/boundaries/rgn-dec-2022.json",
+      bounds: ENGLAND_BOUNDS,
+      maxBounds: ENGLAND_MAX_BOUNDS,
       areaNoun: "regions",
       areaNounOne: "region",
     },

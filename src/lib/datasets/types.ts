@@ -9,7 +9,7 @@
 export type PeriodChoice = "latest" | "12w" | "ytd";
 
 /** The kinds of area a dataset can be mapped at. */
-export type AreaLevel = "nation" | "region" | "lower_tier_local_authority";
+export type AreaLevel = "nation" | "region" | "lower_tier_local_authority" | "country";
 
 /** How the colours of the map are chosen from the values. */
 export type ScaleConfig = {
@@ -23,6 +23,12 @@ export type ScaleConfig = {
   /** True if a value of zero gets a class of its own (for counts). */
   zeroClass: boolean;
 };
+
+/**
+ * A box on the map as `[[west, south], [east, north]]`, in degrees of
+ * longitude and latitude.
+ */
+export type LngLatBounds = readonly [readonly [number, number], readonly [number, number]];
 
 /** The ways a dataset can be looked at, each with a page of its own. */
 export type View = "map" | "chart" | "table";
@@ -89,6 +95,10 @@ export type DatasetDef = {
     areaLevel: AreaLevel;
     /** The static boundary file for these areas. */
     boundaryUrl: string;
+    /** The part of the world the map opens on: the dataset's places, with some room around them. */
+    bounds: LngLatBounds;
+    /** The farthest the map can be moved: it stops the visitor getting lost far from the data. Contains `bounds`. */
+    maxBounds: LngLatBounds;
     /** What the areas are called, in the plural. */
     areaNoun: string;
     /** What one area is called, such as "local authority". */

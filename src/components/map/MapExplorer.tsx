@@ -202,6 +202,8 @@ export function MapExplorer({
             <ChoroplethMap
               datasetId={datasetId}
               boundaryUrl={dataset.map.boundaryUrl}
+              bounds={dataset.map.bounds}
+              maxBounds={dataset.map.maxBounds}
               dataset={values}
               scale={scale}
               highlightCode={shown?.code ?? null}
