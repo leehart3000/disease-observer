@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DiseaseChart } from "@/components/DiseaseChart";
 import { DiseaseHeadline } from "@/components/Headline";
-import { strongLink, textLink } from "@/components/link-styles";
+import { strongLink } from "@/components/link-styles";
 import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
 import {
   DISEASES,
@@ -12,7 +13,9 @@ import {
   getDisease,
   sourceSlugsForDisease,
 } from "@/lib/datasets/registry";
+import { diseaseHref } from "@/lib/datasets/routes";
 import { mapHref } from "@/lib/datasets/url";
+import { canonicalFor } from "@/lib/seo";
 
 /** Every disease in the registry is built ahead of time. */
 export function generateStaticParams() {
@@ -24,7 +27,11 @@ export async function generateMetadata({
 }: PageProps<"/diseases/[slug]">): Promise<Metadata> {
   const disease = getDisease((await params).slug);
   if (!disease) return {};
-  return { title: disease.name, description: disease.summary };
+  return {
+    title: disease.name,
+    description: disease.summary,
+    alternates: canonicalFor(diseaseHref(disease.slug)),
+  };
 }
 
 /**
@@ -38,11 +45,12 @@ export default async function DiseasePage({ params }: PageProps<"/diseases/[slug
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
-      <p>
-        <Link href="/diseases" className={`${textLink} text-sm text-muted`}>
-          All diseases
-        </Link>
-      </p>
+      <Breadcrumbs
+        items={[
+          { label: "Diseases", href: "/diseases" },
+          { label: disease.name, href: diseaseHref(disease.slug) },
+        ]}
+      />
       <h1 className="mt-4 text-3xl font-medium tracking-tight sm:text-4xl">{disease.name}</h1>
       <div className="mt-3 grid max-w-2xl gap-3">
         <p className="text-lg text-muted">{disease.summary}</p>

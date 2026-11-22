@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { coverageSentence } from "@/lib/datasets/registry";
+import { canonicalFor } from "@/lib/seo";
 import { MapSection } from "./MapSection";
 
 export const metadata: Metadata = {
   title: "Map",
   description: `Maps of infectious disease cases, area by area. ${coverageSentence()}`,
   // /map?d=… are views of the same page.
-  alternates: { canonical: "/map" },
+  alternates: canonicalFor("/map"),
 };
 
 /**

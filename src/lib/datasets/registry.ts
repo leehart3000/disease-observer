@@ -39,6 +39,9 @@ export const DATASETS = [
   {
     id: "covid-19-rate",
     diseaseSlug: "covid-19",
+    slug: "rate-by-local-authority",
+    name: "Rate by local authority",
+    views: [],
     label: "COVID-19 rate by local authority",
     description:
       "The rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people.",
@@ -66,6 +69,9 @@ export const DATASETS = [
   {
     id: "measles-cases",
     diseaseSlug: "measles",
+    slug: "cases-by-region",
+    name: "Cases by region",
+    views: [],
     label: "Measles cases by region",
     description:
       "The number of confirmed cases in each UKHSA region in the latest complete week, by the week that symptoms began.",
@@ -110,6 +116,13 @@ export function getDataset(id: string): DatasetDef | undefined {
 /** Finds a disease by slug, or `undefined` if there is none. */
 export function getDisease(slug: string): DiseaseDef | undefined {
   return diseaseList.find((disease) => disease.slug === slug);
+}
+
+/** Finds a disease's dataset by its URL slug, or `undefined` if there is none. */
+export function getDatasetBySlug(diseaseSlug: string, slug: string): DatasetDef | undefined {
+  return datasetList.find(
+    (dataset) => dataset.diseaseSlug === diseaseSlug && dataset.slug === slug,
+  );
 }
 
 /** The datasets of one disease, in registry order. */

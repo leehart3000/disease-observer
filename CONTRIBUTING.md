@@ -214,7 +214,25 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   registry) and the sources.
 - `src/proxy.ts` runs only for `/diseases/<slug>` (its matcher), and marks
   a known disease with an `x-disease-checked` header so the tests can see
-  where it ran.
+  where it ran. The checks themselves are in `src/lib/routing.ts`.
+- A trail of two or more steps is shown as a breadcrumb (`Breadcrumbs.tsx`:
+  a `nav` named "Breadcrumb" with an ordered list, the current page last
+  and marked `aria-current="page"`, plus the same trail as `BreadcrumbList`
+  JSON-LD). Today that means the disease pages (Diseases > COVID-19). Pages
+  with a single step, such as Diseases, About and Sources, have none, and
+  there is no "Home" step because the wordmark is the home link.
+- Page addresses are built in one place, `src/lib/datasets/routes.ts`, from
+  the registry: each dataset has a `slug` and a short `name` (for example
+  `rate-by-local-authority` and "Rate by local authority") for the dataset
+  pages that are coming, and a `views` list of the views that have a page
+  (empty for now). `sitePaths()` lists every page for `/sitemap.xml`
+  (`src/app/sitemap.ts`), so a new disease is in the sitemap without more
+  work. `/robots.txt` (`src/app/robots.ts`) allows everything except `/api/`
+  and names the sitemap.
+- Every page has a canonical link to its own address with no query string
+  (`canonicalFor` in `src/lib/seo.ts`; `SITE_URL` is the one place that
+  knows the site's address). States such as `?d=…` are views of the same
+  page, not separate pages to index.
 - `/sources` and the sources on each disease page list only the sources
   that a registry dataset uses (`sourceSlugs`), read from the `sources`
   table, plus the base map credit in `src/lib/credits.ts`. If the table

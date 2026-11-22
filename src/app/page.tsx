@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import { DiseaseCard, MapCard } from "@/components/DiseaseCard";
 import { DISEASES, coverageSentence } from "@/lib/datasets/registry";
+import { canonicalFor } from "@/lib/seo";
+
+export const metadata: Metadata = { alternates: canonicalFor("/") };
 
 /** The home page: one card for each disease in the registry, and one for the map. */
 export default function Home() {

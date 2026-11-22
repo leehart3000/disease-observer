@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { DiseaseCard } from "@/components/DiseaseCard";
 import { DISEASES } from "@/lib/datasets/registry";
+import { canonicalFor } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Diseases",
   description: "The infectious diseases covered by Disease Observer.",
+  alternates: canonicalFor("/diseases"),
 };
 
 /** The diseases the site covers, one card for each disease in the registry. */

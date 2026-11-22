@@ -24,11 +24,27 @@ export type ScaleConfig = {
   zeroClass: boolean;
 };
 
+/** The ways a dataset can be looked at, each with a page of its own. */
+export type View = "map" | "chart" | "table";
+
 /** One thing that can be shown on the map. */
 export type DatasetDef = {
   /** Stable, URL-safe identifier. It is the `d` in `/map?d=covid-19-rate`. */
   id: string;
   diseaseSlug: string;
+  /**
+   * The dataset's part of its pages' URLs, such as `rate-by-local-authority`
+   * in `/diseases/covid-19/rate-by-local-authority`. Unique within a disease.
+   */
+  slug: string;
+  /** The short name for breadcrumbs and headings, such as "Rate by local authority". */
+  name: string;
+  /**
+   * The views that have a page for this dataset. Empty until the dataset
+   * pages are built; a view is added here when its page exists, and the
+   * tabs and the sitemap follow.
+   */
+  views: readonly View[];
   /** The text in the dataset picker. Unique, so it is clear when closed. */
   label: string;
   /** One sentence on what the map shows, for the disease page. British English. */

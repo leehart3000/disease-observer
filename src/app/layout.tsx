@@ -2,12 +2,13 @@ import type { Metadata, Viewport } from "next";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { themeInitScript } from "@/components/theme";
+import { SITE_URL } from "@/lib/seo";
 import { plexMono, plexSans } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
   // The base for relative URLs in metadata, such as canonical links.
-  metadataBase: new URL("https://disease.observer"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Disease Observer",
     template: "%s | Disease Observer",

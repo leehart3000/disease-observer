@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { strongLink } from "@/components/link-styles";
 import { coverageSentence } from "@/lib/datasets/registry";
+import { canonicalFor } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "About",
   description:
     "What Disease Observer is, where its figures come from, and what they can and cannot tell you.",
+  alternates: canonicalFor("/about"),
 };
 
 /** What the site is, where its figures come from, and what they cannot tell you. */

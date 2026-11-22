@@ -3,11 +3,13 @@ import { Suspense } from "react";
 import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
 import { BASE_MAP_CREDIT } from "@/lib/credits";
 import { usedSourceSlugs } from "@/lib/datasets/registry";
+import { canonicalFor } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Sources and licences",
   description:
     "Where Disease Observer's data comes from, and the licences that apply.",
+  alternates: canonicalFor("/sources"),
 };
 
 /**
