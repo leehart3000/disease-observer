@@ -7,7 +7,7 @@ import { ENGLAND_CODE, loadAreaIndex, loadAreaSeries } from "@/lib/data/areas";
 import { loadDiseaseSeries } from "@/lib/data/series";
 import { loadSources } from "@/lib/data/sources";
 import type { DatasetDef, DiseaseDef } from "@/lib/datasets/types";
-import { parseAreaCodes, parseChartRange, type SearchParams } from "@/lib/datasets/url";
+import { parseAreaCodes, type SearchParams } from "@/lib/datasets/url";
 import { composeSeries, MAX_COMPARED_AREAS } from "@/lib/series-compose";
 
 /**
@@ -56,7 +56,6 @@ async function AreaComparison({
         options={index.data}
         diseaseName={disease.name}
         sinceLabel={`Since ${disease.chart.since.slice(0, 4)}`}
-        initialRange={parseChartRange(params)}
         noun={dataset.map.areaNounOne}
         nounPlural={dataset.map.areaNoun}
       />
@@ -65,9 +64,10 @@ async function AreaComparison({
 }
 
 /**
- * The chart page's data-driven part. It reads the range and the chosen areas
- * from the URL (both checked) and waits for a real request before it touches
- * the database. If the data can't be loaded, the rest of the page still shows.
+ * The chart page's data-driven part. It reads the chosen areas from the URL
+ * (checked) and waits for a real request before it touches the database. The
+ * range only changes how the chart is drawn, so the chart reads it from the
+ * address itself. If the data can't be loaded, the rest of the page still shows.
  *
  * - `all-areas` (few areas): the disease's series, England and every region.
  * - `pick-areas` (many areas): England and up to three chosen areas.
@@ -89,7 +89,7 @@ export async function ChartSection({
       {dataset.chart.mode === "pick-areas" ? (
         <AreaComparison disease={disease} dataset={dataset} params={params} />
       ) : (
-        <AllAreasChart disease={disease} params={params} />
+        <AllAreasChart disease={disease} />
       )}
       <ChartSources dataset={dataset} />
     </>
@@ -97,7 +97,7 @@ export async function ChartSection({
 }
 
 /** The chart of a dataset with few areas: the disease's series, England and every region. */
-async function AllAreasChart({ disease, params }: { disease: DiseaseDef; params: SearchParams }) {
+async function AllAreasChart({ disease }: { disease: DiseaseDef }) {
   // The disease's series is its headline dataset's, which is this dataset.
   const series = await loadDiseaseSeries(disease.slug);
   if (series.status !== "ok") return <DataUnavailable reason={series.status} />;
@@ -106,7 +106,6 @@ async function AllAreasChart({ disease, params }: { disease: DiseaseDef; params:
       series={series.data}
       diseaseName={disease.name}
       sinceLabel={`Since ${disease.chart.since.slice(0, 4)}`}
-      initialRange={parseChartRange(params)}
       rangeInUrl
     />
   );

@@ -22,7 +22,6 @@ export function AreaChart({
   options,
   diseaseName,
   sinceLabel,
-  initialRange,
   noun,
   nounPlural,
 }: {
@@ -30,12 +29,11 @@ export function AreaChart({
   options: readonly AreaOption[];
   diseaseName: string;
   sinceLabel: string;
-  initialRange: ChartRange;
   noun: string;
   nounPlural: string;
 }) {
   const dataset = getDataset(series.datasetId);
-  const [range, chooseRange] = useChartRange(initialRange, true);
+  const [range, chooseRange] = useChartRange(true);
   if (!dataset) return null;
 
   const chosen = series.lines.slice(1);
@@ -60,7 +58,6 @@ export function AreaChart({
 
       <AreaPicker
         options={options}
-        selected={chosen.map((line) => line.code)}
         limit={MAX_COMPARED_AREAS}
         noun={noun}
         nounPlural={nounPlural}

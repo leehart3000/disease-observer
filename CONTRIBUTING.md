@@ -230,18 +230,31 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   lists every map, grouped by disease, and replaces "Map" in the header.
 - **The chart view** (`…/chart`) exists for a dataset that lists `chart` in
   its `views`. The time range is in the address as `?range=all` (left out for
-  the last 12 months, rewritten without a page load, and read again on a
-  reload); any other `range` is ignored. What else it shows depends on the
-  dataset's `chart.mode`:
+  the last 12 months); any other `range` is ignored. **The address is the only
+  place the chart's state is kept.** The range (`useChartRange`) and the chosen
+  areas (`AreaPicker`) are read from it with `useSearchParams` and nowhere else,
+  and a choice rewrites it with `router.replace` (no history entry). The change
+  shows at once through `useOptimistic`, which lasts only until the router has
+  finished, so what is shown can't drift from the address, for example when
+  Next.js restores a page that was visited before. Writes are built from
+  `window.location.search`, which is always current, so the rest of the query
+  is kept. What else the page shows depends on the dataset's `chart.mode`:
   - `all-areas` (few areas, such as measles by region): the disease page's
     chart (England and every region, tick up to three to highlight). Its
     series is the disease's headline dataset, so an `all-areas` dataset must
     be its disease's headline.
   - `pick-areas` (many areas, the COVID-19 local authorities): England is
     always drawn, and the visitor chooses up to three areas with `AreaPicker`
-    (a search box listing at most eight matches, a chip with "Remove" for each
-    choice, and "Clear"). The areas are in the address as `?areas=` and the
-    picker changes it with a client navigation, so the server loads the new
+    (a chip with "Remove" for each choice, "Clear", and a labelled search box
+    above a scrolling list of buttons, 18 rem high at most). The list shows
+    every area under its UKHSA region's heading (`h3`; regions and names
+    alphabetical, areas with no known region last) while the box is empty, and
+    only the matches, under the same headings, as you type. One live line
+    announces the count ("306 local authorities in 9 regions", "6 matches in 4
+    regions"), and the box is described by it. Chosen areas leave the list. Enter
+    in the box adds the first name that starts with the text, else the first in
+    the list. At the limit the box and list are replaced by a message. The
+    areas are in the address as `?areas=`, so the server loads the new
     areas' data. Each area keeps its place's colour (`--chart-1` to
     `--chart-3`, by the order chosen). Three is the most because only three
     colours pass the palette checks together (`MAX_COMPARED_AREAS` in
@@ -362,7 +375,10 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   views keep the period, and the chart does not (it shows every week).
 - **The pinned area is in the address** as `?areas=E06000001`. Pinning or
   unpinning rewrites it with `history.replaceState` (no page load, no
-  history entry), and a pinned area in the address is pinned on load. Codes
+  history entry). The pin is read from the address with `useSearchParams` and
+  nowhere else (with an optimistic value so it shows at once), so a pinned
+  area in the address is pinned on load and a page that Next.js restores
+  without `?areas=` has no pin. Codes
   that are not shaped like an area code, or are not in the dataset, are
   ignored. The page's canonical link has no query string.
 - MapLibre is only loaded in the browser, and only on this page.

@@ -19,26 +19,23 @@ const MAX_HIGHLIGHTED = 3;
  * last 12 months or the whole series.
  *
  * @param sinceLabel - The text of the "whole series" range, such as "Since 2023".
- * @param initialRange - The range to start on. Defaults to the last 12 months.
- * @param rangeInUrl - True to keep the range in the address as `?range=all`
- *   (left out for the last 12 months), rewritten without a page load.
+ * @param rangeInUrl - True to keep the range only in the address, as
+ *   `?range=all` (left out for the last 12 months). See `useChartRange`.
  */
 export function LineChart({
   series,
   diseaseName,
   sinceLabel,
-  initialRange = "12m",
   rangeInUrl = false,
 }: {
   series: DiseaseSeries;
   diseaseName: string;
   sinceLabel: string;
-  initialRange?: ChartRange;
   rangeInUrl?: boolean;
 }) {
   const dataset = getDataset(series.datasetId);
   const [picked, setPicked] = useState<Highlight[]>([]);
-  const [range, chooseRange] = useChartRange(initialRange, rangeInUrl);
+  const [range, chooseRange] = useChartRange(rangeInUrl);
 
   const [england, ...regions] = series.lines;
   if (!dataset || !england) return null;

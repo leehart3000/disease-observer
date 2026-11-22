@@ -19,7 +19,12 @@ export type SeriesLine = {
 };
 
 /** An area that can be chosen for a chart: its code and its name. */
-export type AreaOption = { code: string; name: string };
+export type AreaOption = {
+  code: string;
+  name: string;
+  /** The name of the region that contains the area, or `null` if it is not known. */
+  region: string | null;
+};
 
 /**
  * One area's weekly values, as the area's own database rows give them.

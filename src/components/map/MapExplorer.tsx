@@ -1,8 +1,18 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  useCallback,
+  useMemo,
+  useOptimistic,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import { ValuesTable } from "@/components/ValuesTable";
 import { getDataset } from "@/lib/datasets/registry";
+import { parseAreaCodes } from "@/lib/datasets/url";
 import { buildScale } from "@/lib/map/scale";
 import type { MapDataset, SourceCredit } from "@/lib/map/types";
 import { AreaReadout } from "./AreaReadout";
@@ -72,7 +82,6 @@ export function MapExplorer({
   datasetId,
   values,
   sources,
-  initialPinned,
 }: {
   /** The registry id of the dataset to show. */
   datasetId: string;
@@ -80,14 +89,25 @@ export function MapExplorer({
   values: MapDataset;
   /** All the credits from the `sources` table, or `null` if they could not be loaded. */
   sources: SourceCredit[] | null;
-  /** The area pinned by `?areas=` in the page's address, if it is one of the dataset's areas. */
-  initialPinned: SelectedArea | null;
 }) {
   const dataset = getDataset(datasetId);
   if (!dataset) throw new Error(`Unknown dataset ${datasetId}`);
 
   const [hovered, setHovered] = useState<SelectedArea | null>(null);
-  const [pinned, setPinned] = useState<SelectedArea | null>(initialPinned);
+  // The pinned area is read from the address (`?areas=`) and from nowhere
+  // else, so it can't drift from it, for example when Next.js restores a page
+  // that was visited before. Pinning rewrites the address; the pin shows at
+  // once (an optimistic value that lasts only until the address has caught up).
+  const params = useSearchParams();
+  const fromAddress = useMemo<SelectedArea | null>(() => {
+    const codes = parseAreaCodes(params.get("areas") ?? undefined, 10);
+    const found = codes
+      .map((code) => values.values.find((area) => area.code === code))
+      .find((area) => area !== undefined);
+    return found ? { code: found.code, name: found.name } : null;
+  }, [params, values]);
+  const [pinned, setPinned] = useOptimistic(fromAddress);
+  const [, startPinTransition] = useTransition();
   const [areaCounts, setAreaCounts] = useState<Record<string, number>>({});
   const frameRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -128,10 +148,15 @@ export function MapExplorer({
   }, []);
 
   /** Sets the pin and writes it to the address (`?areas=CODE`), so the view can be shared. */
-  const changePin = useCallback((next: SelectedArea | null) => {
-    setPinned(next);
-    writePinToAddress(next);
-  }, []);
+  const changePin = useCallback(
+    (next: SelectedArea | null) => {
+      startPinTransition(() => {
+        setPinned(next);
+        writePinToAddress(next);
+      });
+    },
+    [setPinned],
+  );
 
   /** Pins an area, or unpins it if it is already pinned. `null` unpins. */
   const togglePin = useCallback(

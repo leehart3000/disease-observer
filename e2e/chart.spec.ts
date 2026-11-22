@@ -559,14 +559,19 @@ test.describe("the chart page of a dataset with many areas", () => {
     await expect(finder(page)).toBeVisible();
   });
 
-  test("the picker works with a keyboard, and shows at most eight matches", async ({ page }) => {
+  test("the picker works with a keyboard", async ({ page }) => {
     await openCovidChart(page);
 
-    await finder(page).fill("o");
-    await expect(page.getByRole("status").filter({ hasText: /^Showing 8 of \d+ matches/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Add / })).toHaveCount(8);
+    // Enter adds the first name that starts with the text, not just the first in the list:
+    // "to" is Torbay (South West), though Luton (East of England) is listed first.
+    await finder(page).fill("to");
+    await expect(page.getByRole("button", { name: "Add Luton" })).toBeVisible();
+    await finder(page).press("Enter");
+    await expect(chips(page)).toHaveText([/^Torbay/]);
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=E06000027`);
+    await page.getByRole("button", { name: "Clear" }).click();
+    await expect(page).toHaveURL(COVID_CHART);
 
-    // Enter adds the first match; the names starting with the text come first.
     await finder(page).fill("dar");
     await finder(page).press("Enter");
     await expect(chips(page)).toHaveText([/^Darlington/]);
@@ -658,5 +663,299 @@ test.describe("the chart page of a dataset with many areas", () => {
       return root.scrollWidth - root.clientWidth;
     });
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
+
+/** The area codes in the address, in order. */
+const areasInAddress = (page: Page) =>
+  (new URL(page.url()).searchParams.get("areas") ?? "").split(",").filter(Boolean);
+
+/** The chart's draw lines: England and one for each area in the address. */
+async function expectPageMatchesAddress(page: Page) {
+  const codes = areasInAddress(page);
+  await expect(chips(page)).toHaveCount(codes.length);
+  await expect(chartPaths(page)).toHaveCount(1 + codes.length);
+}
+
+/** Opens the chart again through the dataset page: the breadcrumb, then the Chart card. */
+async function leaveAndReturn(page: Page) {
+  await page
+    .getByRole("navigation", { name: "Breadcrumb" })
+    .getByRole("link", { name: "Rate by local authority" })
+    .click();
+  await expect(page).toHaveURL(COVID);
+  await page.getByRole("article").getByRole("link", { name: "Chart" }).click();
+  await expect(page).toHaveURL(COVID_CHART);
+  await expect(page.getByTestId("line-chart")).toBeVisible();
+}
+
+test.describe("the chosen areas always match the address", () => {
+  test("coming back to the chart by the breadcrumb does not bring back the old areas", async ({
+    page,
+  }) => {
+    await openCovidChart(page);
+    for (const [typed, name] of [
+      ["hartle", "Hartlepool"],
+      ["middles", "Middlesbrough"],
+    ]) {
+      await finder(page).fill(typed);
+      await page.getByRole("button", { name: `Add ${name}` }).click();
+      await expect(chips(page).filter({ hasText: name })).toHaveCount(1);
+    }
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL},${MIDDLESBROUGH}`);
+
+    await leaveAndReturn(page);
+    // The address has no areas, so the page has none: no chips, and only England's line.
+    expect(areasInAddress(page)).toEqual([]);
+    await expectPageMatchesAddress(page);
+    await expect(chosen(page)).toHaveCount(0);
+    await expect(readout(page)).not.toContainText("Hartlepool");
+    await expect(finder(page)).toBeVisible();
+  });
+
+  test("going back to the chart restores the areas in its address, and only those", async ({
+    page,
+  }) => {
+    await openCovidChart(page, `?areas=${HARTLEPOOL},${MIDDLESBROUGH}`);
+    await expectPageMatchesAddress(page);
+
+    await leaveAndReturn(page);
+    await expectPageMatchesAddress(page);
+    await expect(chosen(page)).toHaveCount(0);
+
+    // Back to the dataset page, then back to the chart as it was.
+    await page.goBack();
+    await expect(page).toHaveURL(COVID);
+    await page.goBack();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL},${MIDDLESBROUGH}`);
+    await expectPageMatchesAddress(page);
+    await expect(chips(page)).toHaveText([/^Hartlepool/, /^Middlesbrough/]);
+  });
+
+  test("every step of choosing, removing and clearing leaves the page matching the address", async ({
+    page,
+  }) => {
+    await openCovidChart(page);
+    await expectPageMatchesAddress(page);
+
+    await finder(page).fill("hartle");
+    await page.getByRole("button", { name: "Add Hartlepool" }).click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL}`);
+    await expectPageMatchesAddress(page);
+
+    await finder(page).fill("redcar");
+    await page.getByRole("button", { name: "Add Redcar and Cleveland" }).click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL},${REDCAR}`);
+    await expectPageMatchesAddress(page);
+
+    await page.getByRole("button", { name: "Remove Hartlepool" }).click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${REDCAR}`);
+    await expectPageMatchesAddress(page);
+
+    await page.getByRole("button", { name: "Clear" }).click();
+    await expect(page).toHaveURL(COVID_CHART);
+    await expectPageMatchesAddress(page);
+  });
+
+  test("a changed address is followed by the picker without a page load", async ({ page }) => {
+    await openCovidChart(page, `?areas=${HARTLEPOOL}`);
+    await expect(chips(page)).toHaveText([/^Hartlepool/]);
+
+    // A link to the same page with other areas, as a shared link would be.
+    await page.evaluate((to) => {
+      history.pushState(null, "", to);
+      window.dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
+    }, `${COVID_CHART}?areas=${MIDDLESBROUGH}`);
+    await expect(chips(page)).toHaveText([/^Middlesbrough/]);
+  });
+
+  test("the range is not brought back either", async ({ page }) => {
+    await openCovidChart(page, `?range=all`);
+    await expect(rangeGroup(page).getByRole("radio", { name: "Since 2023" })).toBeChecked();
+
+    await leaveAndReturn(page);
+    await expect(rangeGroup(page).getByRole("radio", { name: "Last 12 months" })).toBeChecked();
+    await expect(slider(page)).toHaveAttribute("aria-valuemax", String(LAST_IN_YEAR));
+  });
+
+  test("the map's pin is not brought back either", async ({ page }) => {
+    await page.goto(`${COVID}/map`);
+    await page.getByLabel("Search table by area name").fill("Hartlepool");
+    await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
+    await expect(page).toHaveURL(`${COVID}/map?areas=${HARTLEPOOL}`);
+    await expect(page.getByTestId("area-readout")).toContainText("Hartlepool");
+
+    await page
+      .getByRole("navigation", { name: "Breadcrumb" })
+      .getByRole("link", { name: "Rate by local authority" })
+      .click();
+    await expect(page).toHaveURL(COVID);
+    await page.getByRole("article").getByRole("link", { name: "Map" }).click();
+    await expect(page).toHaveURL(`${COVID}/map`);
+    // No pin in the address, so none on the page.
+    await expect(page.getByTestId("area-readout")).toHaveAttribute("data-empty", "true");
+    await expect(page.getByRole("button", { name: "Unpin Hartlepool from the map" })).toHaveCount(0);
+  });
+});
+
+/** The local authorities by region, as the fixtures have them (30, in 7 regions). */
+const REGION_HEADINGS = [
+  "East Midlands",
+  "East of England",
+  "North East",
+  "North West",
+  "South West",
+  "West Midlands",
+  "Yorkshire and Humber",
+];
+const browser = (page: Page) => page.getByRole("group", { name: "Local authorities by region", exact: true });
+const regionGroup2 = (page: Page, region: string) => browser(page).getByRole("group", { name: region, exact: true });
+const headings = (page: Page) => browser(page).getByRole("heading", { level: 3 });
+
+test.describe("the browsable list of areas", () => {
+  test("shows every area under its region, regions and names in alphabetical order", async ({
+    page,
+  }) => {
+    await openCovidChart(page);
+
+    await expect(page.getByText("30 local authorities in 7 regions.")).toBeVisible();
+    await expect(headings(page)).toHaveText(REGION_HEADINGS);
+    await expect(browser(page).getByRole("button")).toHaveCount(30);
+    // Within a region, by name.
+    await expect(regionGroup2(page, "North East").getByRole("button")).toHaveText([
+      "Add Darlington",
+      "Add Hartlepool",
+      "Add Middlesbrough",
+      "Add Redcar and Cleveland",
+      "Add Stockton-on-Tees",
+    ]);
+    await expect(regionGroup2(page, "East of England").getByRole("button")).toHaveText([
+      "Add Luton",
+      "Add Peterborough",
+    ]);
+    // The region headings are real headings, below the picker's own.
+    await expect(
+      page.getByRole("heading", { level: 2, name: /^Compare with England/ }),
+    ).toBeVisible();
+  });
+
+  test("is a scrolling panel of limited height", async ({ page }) => {
+    await openCovidChart(page);
+
+    const panel = browser(page);
+    const box = (await panel.boundingBox())!;
+    expect(box.height).toBeLessThanOrEqual(300);
+    const { scrollHeight, clientHeight } = await panel.evaluate((element) => ({
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+    }));
+    expect(scrollHeight).toBeGreaterThan(clientHeight);
+
+    // The last area is reached by scrolling, and can be chosen from there.
+    const last = browser(page).getByRole("button", { name: "Add York" });
+    await last.scrollIntoViewIfNeeded();
+    await last.click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=E06000014`);
+    await expect(chips(page)).toHaveText([/^York/]);
+  });
+
+  test("typing filters the list and keeps the region headings of the matches", async ({ page }) => {
+    await openCovidChart(page);
+
+    await finder(page).fill("ton");
+    await expect(page.getByText("6 matches in 4 regions.")).toBeVisible();
+    await expect(headings(page)).toHaveText([
+      "East of England",
+      "North East",
+      "North West",
+      "Yorkshire and Humber",
+    ]);
+    await expect(regionGroup2(page, "North East").getByRole("button")).toHaveText([
+      "Add Darlington",
+      "Add Stockton-on-Tees",
+    ]);
+
+    // One match: one heading, and the count says so.
+    await finder(page).fill("stoke");
+    await expect(page.getByText("1 match.")).toBeVisible();
+    await expect(headings(page)).toHaveText(["West Midlands"]);
+
+    // None: no list, and the count says so.
+    await finder(page).fill("zzz");
+    await expect(page.getByText("No local authorities match.")).toBeVisible();
+    await expect(browser(page)).toHaveCount(0);
+
+    // Clearing the box brings back the whole list.
+    await finder(page).fill("");
+    await expect(headings(page)).toHaveText(REGION_HEADINGS);
+  });
+
+  test("an area that is chosen leaves the list, and comes back when it is removed", async ({
+    page,
+  }) => {
+    await openCovidChart(page);
+    await browser(page).getByRole("button", { name: "Add Hartlepool" }).click();
+    await expect(chips(page)).toHaveText([/^Hartlepool/]);
+
+    await expect(page.getByText("29 local authorities in 7 regions.")).toBeVisible();
+    await expect(browser(page).getByRole("button", { name: "Add Hartlepool" })).toHaveCount(0);
+    await expect(regionGroup2(page, "North East").getByRole("button")).toHaveCount(4);
+
+    await page.getByRole("button", { name: "Remove Hartlepool" }).click();
+    await expect(browser(page).getByRole("button", { name: "Add Hartlepool" })).toBeVisible();
+    await expect(page.getByText("30 local authorities in 7 regions.")).toBeVisible();
+  });
+
+  test("the limit of three still applies: at three the search and the list go", async ({ page }) => {
+    await openCovidChart(page);
+    for (const name of ["Darlington", "Halton", "Luton"]) {
+      await browser(page).getByRole("button", { name: `Add ${name}` }).click();
+      await expect(chips(page).filter({ hasText: name })).toHaveCount(1);
+    }
+    await expect(chips(page)).toHaveCount(3);
+    await expect(browser(page)).toHaveCount(0);
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page.getByText("3 local authorities are chosen, the most the chart can show.")).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove Halton" }).click();
+    await expect(browser(page)).toBeVisible();
+    await expect(page.getByText("28 local authorities in 7 regions.")).toBeVisible();
+  });
+
+  test("works with a keyboard and a screen reader: labelled, announced, tabbable", async ({
+    page,
+  }) => {
+    await openCovidChart(page);
+
+    // The count is one live region, and the search box is described by it.
+    const count = page.getByRole("status");
+    await expect(count).toHaveCount(1);
+    await expect(count).toHaveText("30 local authorities in 7 regions.");
+    await expect(finder(page)).toHaveAccessibleDescription("30 local authorities in 7 regions.");
+    await finder(page).fill("ton");
+    await expect(count).toHaveText("6 matches in 4 regions.");
+
+    // Tab from the box goes to the first name; the buttons are named "Add …".
+    await finder(page).fill("");
+    await finder(page).press("Tab");
+    await expect(browser(page).getByRole("button").first()).toBeFocused();
+    await expect(browser(page).getByRole("button").first()).toHaveAccessibleName("Add Derby");
+  });
+
+  test("does not make the page scroll sideways, or as tall as the whole list", async ({ page }) => {
+    await openCovidChart(page);
+    const overflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      return root.scrollWidth - root.clientWidth;
+    });
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    // The page ends where its content ends: nothing in the scrolling list (such as the
+    // visually hidden text in each button) may stretch the document past the footer.
+    const extra = await page.evaluate(() => {
+      const footer = document.querySelector("footer")!.getBoundingClientRect();
+      return document.documentElement.scrollHeight - (footer.bottom + window.scrollY);
+    });
+    expect(extra).toBeLessThanOrEqual(2);
   });
 });

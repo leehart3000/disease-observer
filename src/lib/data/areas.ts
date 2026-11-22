@@ -31,11 +31,12 @@ export const ENGLAND_CODE = "E92000001";
  */
 export async function queryAreaIndex(dataset: DatasetDef): Promise<AreaOption[]> {
   const result = await getDb().execute<AreaOption>(sql`
-    select distinct a.code, a.name
+    select distinct a.code, a.name, r.name as region
     from observations o
     join diseases d on d.id = o.disease_id
     join sources s on s.id = o.source_id
     join areas a on a.id = o.area_id
+    left join areas r on r.id = a.parent_id
     where d.slug = ${dataset.diseaseSlug}
       and s.slug = ${dataset.sourceSlugs[0]}
       and o.metric = ${dataset.metric}
@@ -45,7 +46,8 @@ export async function queryAreaIndex(dataset: DatasetDef): Promise<AreaOption[]>
       and a.level = ${dataset.map.areaLevel}
     order by a.name`);
   if (result.rows.length === 0) throw new NoDataError(`areas of ${dataset.id}`);
-  return result.rows.map(({ code, name }) => ({ code, name }));
+  // `region` is missing in an entry cached before it was added.
+  return result.rows.map(({ code, name, region }) => ({ code, name, region: region ?? null }));
 }
 
 type PointRow = {

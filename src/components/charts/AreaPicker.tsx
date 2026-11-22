@@ -1,56 +1,75 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useId, useMemo, useOptimistic, useState, useTransition } from "react";
+import { parseAreaCodes } from "@/lib/datasets/url";
 import type { AreaOption } from "@/lib/series-types";
 import { slotColour } from "./LineChartPlot";
 
-/** The most names shown at once in the list of matches. */
-const MAX_MATCHES = 8;
+/** The heading for areas whose region is not known. */
+const NO_REGION = "Region not known";
+
+type Group = { region: string; areas: AreaOption[] };
+
+/** Matches names in the order the list shows them: by name within a region. */
+const byName = (a: AreaOption, b: AreaOption) => a.name.localeCompare(b.name, "en-GB");
 
 /**
- * The matches for what was typed: names that start with it first, then names
- * that contain it, ignoring case and any areas already chosen. `total` is
- * how many there are before the list is cut to `MAX_MATCHES`.
+ * The areas whose name contains what was typed (ignoring case), leaving out
+ * the ones already chosen. An empty text matches every area.
  */
 function findMatches(options: readonly AreaOption[], text: string, chosen: ReadonlySet<string>) {
   const needle = text.trim().toLowerCase();
-  if (needle === "") return { shown: [], total: 0 };
-  const starts: AreaOption[] = [];
-  const contains: AreaOption[] = [];
-  for (const option of options) {
-    if (chosen.has(option.code)) continue;
-    const name = option.name.toLowerCase();
-    if (name.startsWith(needle)) starts.push(option);
-    else if (name.includes(needle)) contains.push(option);
+  return options.filter(
+    (option) => !chosen.has(option.code) && option.name.toLowerCase().includes(needle),
+  );
+}
+
+/**
+ * Groups areas under their region, regions by name (with the areas whose
+ * region is not known last) and areas by name within each.
+ */
+function groupByRegion(areas: readonly AreaOption[]): Group[] {
+  const groups = new Map<string, AreaOption[]>();
+  for (const area of areas) {
+    const region = area.region ?? NO_REGION;
+    groups.set(region, [...(groups.get(region) ?? []), area]);
   }
-  const all = [...starts, ...contains];
-  return { shown: all.slice(0, MAX_MATCHES), total: all.length };
+  return [...groups.entries()]
+    .sort(([a], [b]) =>
+      a === NO_REGION ? 1 : b === NO_REGION ? -1 : a.localeCompare(b, "en-GB"),
+    )
+    .map(([region, list]) => ({ region, areas: [...list].sort(byName) }));
 }
 
 /**
  * Chooses the areas to compare on a chart, up to `limit` (one colour each).
  *
- * A labelled search box lists up to eight matching names as buttons, which
- * are in the normal tab order, so a keyboard reaches them (Enter in the box
- * adds the first). Each chosen area is a chip with a "Remove" button, and
- * "Clear" removes them all. The choice is in the address as `?areas=`: it is
- * changed with a client navigation, so the server loads the chart's data for
- * the new areas (the chips update straight away; the chart follows).
+ * The chosen areas are read from the address (`?areas=`) and from nowhere
+ * else, so what is shown can't drift from it, for example when Next.js
+ * restores a page that was visited before. Adding, removing and clearing
+ * rewrite the address through the router, and the server then loads the
+ * chart's data for the new areas. The chips change at once (an optimistic
+ * value that lasts only until the router has finished).
  *
- * @param options - Every area that can be chosen, by name.
- * @param selected - The areas chosen to start with, in the order of their colours.
- * @param noun - What the areas are called, singular and plural, such as "local authority".
+ * Below a labelled search box is a scrolling list of buttons: every area,
+ * under its region's heading, when the box is empty, and only the matches
+ * (under the same headings) as you type. A line announces the count. The
+ * buttons are in the normal tab order, and Enter in the box adds the first
+ * name that starts with the text (or the first in the list). Each chosen
+ * area is a chip with a "Remove" button, and "Clear" removes them all. At
+ * the limit, the search and the list are replaced by a message.
+ *
+ * @param options - Every area that can be chosen.
+ * @param noun - What one area is called, such as "local authority".
  */
 export function AreaPicker({
   options,
-  selected: initial,
   limit,
   noun,
   nounPlural,
 }: {
   options: readonly AreaOption[];
-  selected: readonly string[];
   limit: number;
   noun: string;
   nounPlural: string;
@@ -58,23 +77,38 @@ export function AreaPicker({
   const ids = useId();
   const router = useRouter();
   const pathname = usePathname();
-  const [pending, startTransition] = useTransition();
-  const [selected, setSelected] = useState<string[]>([...initial]);
+  const params = useSearchParams();
+  const [, startTransition] = useTransition();
   const [text, setText] = useState("");
 
-  const byCode = new Map(options.map((option) => [option.code, option]));
+  const byCode = useMemo(() => new Map(options.map((option) => [option.code, option])), [options]);
+  // The same rule as the server's: codes that are not areas are dropped, and only the first few count.
+  const fromUrl = useMemo(
+    () =>
+      parseAreaCodes(params.get("areas") ?? undefined, 10)
+        .filter((code) => byCode.has(code))
+        .slice(0, limit),
+    [params, byCode, limit],
+  );
+  const [selected, setSelected] = useOptimistic(fromUrl);
+
   const full = selected.length >= limit;
-  const { shown, total } = findMatches(options, text, new Set(selected));
+  const matches = useMemo(
+    () => findMatches(options, text, new Set(selected)),
+    [options, text, selected],
+  );
+  const groups = useMemo(() => groupByRegion(matches), [matches]);
+  const typed = text.trim() !== "";
 
   function choose(codes: string[]) {
-    setSelected(codes);
-    // Read from the address bar, not `useSearchParams()`: the range is
-    // written with `history.replaceState`, which that hook may not have seen.
+    // Built from the address bar, which is always current, so nothing else in
+    // the query (such as the range) is lost.
     const query = new URLSearchParams(window.location.search);
     if (codes.length > 0) query.set("areas", codes.join(","));
     else query.delete("areas");
     const queryText = query.toString().replaceAll("%2C", ",");
     startTransition(() => {
+      setSelected(codes);
       router.replace(queryText ? `${pathname}?${queryText}` : pathname, { scroll: false });
     });
   }
@@ -85,7 +119,23 @@ export function AreaPicker({
     setText("");
   }
 
-  const matchesId = `${ids}-matches`;
+  /** What Enter adds: the first name that starts with the text, else the first in the list. */
+  function firstChoice(): AreaOption | undefined {
+    const needle = text.trim().toLowerCase();
+    return matches.find((option) => option.name.toLowerCase().startsWith(needle)) ?? groups[0]?.areas[0];
+  }
+
+  const countId = `${ids}-count`;
+  const regionCount = groups.length;
+  const countText =
+    matches.length === 0
+      ? `No ${nounPlural} match.`
+      : typed
+        ? matches.length === 1
+          ? "1 match."
+          : `${matches.length} matches in ${regionCount} ${regionCount === 1 ? "region" : "regions"}.`
+        : `${matches.length} ${nounPlural} in ${regionCount} ${regionCount === 1 ? "region" : "regions"}.`;
+
   return (
     <section aria-labelledby={`${ids}-heading`} className="mt-4">
       <h2 id={`${ids}-heading`} className="mb-2 text-sm font-medium text-muted">
@@ -146,46 +196,54 @@ export function AreaPicker({
             value={text}
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && shown[0]) {
+              const first = firstChoice();
+              if (event.key === "Enter" && typed && first) {
                 event.preventDefault();
-                add(shown[0].code);
+                add(first.code);
               }
             }}
-            aria-describedby={matchesId}
+            aria-describedby={countId}
             className="min-h-11 rounded-md border border-line bg-surface px-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           />
-          <div id={matchesId}>
-            {text.trim() === "" ? null : (
-              <>
-                <p role="status" className="text-sm text-muted">
-                  {total === 0
-                    ? `No ${nounPlural} match.`
-                    : total > shown.length
-                      ? `Showing ${shown.length} of ${total} matches. Type more to narrow the list.`
-                      : `${total} ${total === 1 ? "match" : "matches"}.`}
-                </p>
-                <ul className="mt-1 grid">
-                  {shown.map((option) => (
-                    <li key={option.code}>
-                      <button
-                        type="button"
-                        onClick={() => add(option.code)}
-                        className="flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 text-left hover:bg-brand/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
-                      >
-                        <span className="sr-only">Add </span>
-                        {option.name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
+          <p id={countId} role="status" className="text-sm text-muted">
+            {countText}
+          </p>
+          {matches.length > 0 ? (
+            <div
+              role="group"
+              aria-label={`${nounPlural[0].toUpperCase()}${nounPlural.slice(1)} by region`}
+              // `relative` keeps the buttons' hidden "Add " text (absolutely positioned) inside the
+              // panel: without it, each one sits outside the scroller and makes the page as tall as the list.
+              className="relative max-h-72 overflow-y-auto rounded-md border border-line bg-surface"
+            >
+              {groups.map((group, index) => (
+                <div key={group.region} role="group" aria-labelledby={`${ids}-region-${index}`}>
+                  <h3
+                    id={`${ids}-region-${index}`}
+                    className="sticky top-0 border-b border-line bg-paper px-3 py-1.5 text-xs font-medium tracking-wide text-muted uppercase"
+                  >
+                    {group.region}
+                  </h3>
+                  <ul>
+                    {group.areas.map((option) => (
+                      <li key={option.code}>
+                        <button
+                          type="button"
+                          onClick={() => add(option.code)}
+                          className="flex min-h-11 w-full cursor-pointer items-center px-3 text-left hover:bg-brand/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                        >
+                          <span className="sr-only">Add </span>
+                          {option.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
-      <p role="status" className="sr-only">
-        {pending ? "Updating the chart…" : ""}
-      </p>
     </section>
   );
 }

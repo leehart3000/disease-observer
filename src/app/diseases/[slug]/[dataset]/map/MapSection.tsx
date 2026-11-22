@@ -8,14 +8,14 @@ import { parseMapSelection, type SearchParams } from "@/lib/datasets/url";
 import type { DatasetDef } from "@/lib/datasets/types";
 
 /**
- * The map page's data-driven part. It reads the period and the pinned area
- * from the URL, and waits for a real request before it touches the
- * database, so nothing is queried while the site is built. The values
- * themselves come from a cache that refreshes about once a day.
+ * The map page's data-driven part. It reads the period from the URL, and
+ * waits for a real request before it touches the database, so nothing is
+ * queried while the site is built. The values themselves come from a cache
+ * that refreshes about once a day.
  *
- * A pinned area in the URL (`?areas=E06000001`) is only used if it is one of
- * the dataset's areas; anything else is ignored. If the values can't be
- * loaded, the rest of the page (the heading and breadcrumb) still shows.
+ * The pinned area (`?areas=E06000001`) is read from the address by the map
+ * itself, and only used if it is one of the dataset's areas. If the values
+ * can't be loaded, the rest of the page (the heading and breadcrumb) still shows.
  */
 export async function MapSection({
   dataset,
@@ -24,7 +24,7 @@ export async function MapSection({
   dataset: DatasetDef;
   searchParams: Promise<SearchParams>;
 }) {
-  const { period, areas } = parseMapSelection(dataset, await searchParams);
+  const { period } = parseMapSelection(dataset, await searchParams);
   await connection();
   const [values, sources] = await Promise.all([loadMapValues(dataset, period), loadSources()]);
 
@@ -39,9 +39,6 @@ export async function MapSection({
     );
   }
 
-  const pinnedArea = areas
-    .map((code) => values.data.values.find((area) => area.code === code))
-    .find((area) => area !== undefined);
   return (
     <div className="grid gap-4">
       {picker}
@@ -49,7 +46,6 @@ export async function MapSection({
         datasetId={dataset.id}
         values={values.data}
         sources={sources.status === "ok" ? sources.data : null}
-        initialPinned={pinnedArea ? { code: pinnedArea.code, name: pinnedArea.name } : null}
       />
     </div>
   );
