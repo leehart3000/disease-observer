@@ -238,7 +238,7 @@ test("an unknown or malformed disease, dataset or view address is a 404, not an 
     "/diseases/covid-19/not-a-dataset",
     "/diseases/covid-19/cases-by-region",
     "/diseases/covid-19/%E0%A4%A",
-    "/diseases/covid-19/rate-by-local-authority/chart",
+    "/diseases/covid-19/rate-by-local-authority/graph",
     "/diseases/covid-19/rate-by-local-authority/bogus",
     "/diseases/covid-19/rate-by-local-authority/map/extra",
   ]) {

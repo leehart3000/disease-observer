@@ -31,6 +31,19 @@ export function viewHref(dataset: Pick<DatasetDef, "diseaseSlug" | "slug">, view
   return `${datasetHref(dataset)}/${view}`;
 }
 
+/**
+ * The chart page of a dataset with the area `code` chosen on it
+ * (`…/chart?areas=E06000001`), or `null` if the dataset's chart does not
+ * compare areas (or has no chart page), so there is nothing to link to.
+ */
+export function chartAreaHref(
+  dataset: Pick<DatasetDef, "diseaseSlug" | "slug" | "views" | "chart">,
+  code: string,
+): string | null {
+  if (dataset.chart.mode !== "pick-areas" || !dataset.views.includes("chart")) return null;
+  return `${viewHref(dataset, "chart")}?areas=${code}`;
+}
+
 /** The views a dataset has a page for, each with its address, in the order of its `views`. */
 export function viewTabs(
   dataset: Pick<DatasetDef, "diseaseSlug" | "slug" | "views">,

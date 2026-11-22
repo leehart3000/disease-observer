@@ -33,11 +33,11 @@ test("the table page has a breadcrumb, the table and the sources", async ({ page
 
   await expect(table(page).locator("caption")).toContainText("COVID-19 cases per 100,000 people");
   await expect(table(page).locator("caption")).toContainText(/7 days to \d+ \w+ \d{4}/);
-  // The Map column is left out on a phone, where the link goes under the area's name.
+  // The Map and Chart columns are left out on a phone, where the links go under the area's name.
   await expect(table(page).getByRole("columnheader")).toHaveText(
     isPhone()
       ? [/^Area/, /^Cases per 100,000 \(7 days\)/]
-      : [/^Area/, /^Cases per 100,000 \(7 days\)/, "Map"],
+      : [/^Area/, /^Cases per 100,000 \(7 days\)/, "Map", "Chart"],
   );
   await expect(rows(page)).toHaveCount(25);
   await expect(page.getByText("Showing 1 to 25 of 30")).toBeVisible();
@@ -183,7 +183,7 @@ test.describe("the views of a dataset", () => {
   test("the table and map pages link to each other, marking the current one", async ({ page }) => {
     await page.goto(`${COVID}/table`);
     const nav = views(page);
-    await expect(nav.getByRole("link")).toHaveText(["Map", "Table"]);
+    await expect(nav.getByRole("link")).toHaveText(["Map", "Chart", "Table"]);
     await expect(nav.getByRole("link", { name: "Table" })).toHaveAttribute("aria-current", "page");
     await expect(nav.getByRole("link", { name: "Map" })).not.toHaveAttribute("aria-current", "page");
     await expect(nav.getByRole("link", { name: "Map" })).toHaveAttribute("href", `${COVID}/map`);

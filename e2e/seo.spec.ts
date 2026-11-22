@@ -45,8 +45,7 @@ test.describe("address helpers", () => {
     expect(paths).toContain("/diseases/covid-19/rate-by-local-authority/map");
     expect(paths).toContain("/diseases/covid-19/rate-by-local-authority/table");
     expect(paths).toContain("/diseases/measles/cases-by-region/chart");
-    // The local authority chart is not built yet.
-    expect(paths).not.toContain("/diseases/covid-19/rate-by-local-authority/chart");
+    expect(paths).toContain("/diseases/covid-19/rate-by-local-authority/chart");
     // The old address redirects, so it is not a page to list.
     expect(paths).not.toContain("/map");
   });
@@ -65,8 +64,8 @@ test.describe("address helpers", () => {
     expect(decide("/diseases/covid-19/not-a-dataset")).toEqual(notFound);
     // A dataset of another disease.
     expect(decide("/diseases/covid-19/cases-by-region")).toEqual(notFound);
-    // A view that is not built yet, and one that does not exist.
-    expect(decide("/diseases/covid-19/rate-by-local-authority/chart")).toEqual(notFound);
+    expect(decide("/diseases/covid-19/rate-by-local-authority/chart")).toEqual(carryOn);
+    // A view that does not exist.
     expect(decide("/diseases/covid-19/rate-by-local-authority/data.csv")).toEqual(notFound);
     expect(decide("/diseases/covid-19/rate-by-local-authority/bogus")).toEqual(notFound);
     expect(decide("/diseases/covid-19/rate-by-local-authority/map/extra")).toEqual(notFound);

@@ -6,6 +6,7 @@ import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { DiseaseChart } from "@/components/DiseaseChart";
 import { DiseaseHeadline } from "@/components/Headline";
 import { strongLink, textLink } from "@/components/link-styles";
+import { PageFallback } from "@/components/PageFallback";
 import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
 import {
   DISEASES,
@@ -38,7 +39,18 @@ export async function generateMetadata({
  * sources. The text and links come from the registry, so they show even if
  * the database is down. An unknown slug is a 404.
  */
-export default async function DiseasePage({ params }: PageProps<"/diseases/[slug]">) {
+export default function DiseasePage(props: PageProps<"/diseases/[slug]">) {
+  // `params` is read inside the boundary, so the route's shared App Shell
+  // holds nothing that belongs to one address (a direct visit still gets the
+  // whole page, because every disease is built ahead of time).
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <DiseaseContent {...props} />
+    </Suspense>
+  );
+}
+
+async function DiseaseContent({ params }: PageProps<"/diseases/[slug]">) {
   const disease = getDisease((await params).slug);
   if (!disease) notFound();
 

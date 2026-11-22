@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { PageFallback } from "@/components/PageFallback";
 import { ViewTabs } from "@/components/ViewTabs";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
 import { datasetHref, diseaseHref, viewHref, viewTabs } from "@/lib/datasets/routes";
@@ -34,7 +35,18 @@ export async function generateMetadata({
  * A dataset's map page: the breadcrumb and heading are static; the map and
  * table stream in. The period and a pinned area are in the URL.
  */
-export default async function MapViewPage({
+export default function MapViewPage(props: PageProps<"/diseases/[slug]/[dataset]/map">) {
+  // `params` is read inside the boundary, so the route's shared App Shell
+  // holds nothing that belongs to one address (a direct visit still gets the
+  // whole page, because every dataset's address is built ahead of time).
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <MapViewContent {...props} />
+    </Suspense>
+  );
+}
+
+async function MapViewContent({
   params,
   searchParams,
 }: PageProps<"/diseases/[slug]/[dataset]/map">) {

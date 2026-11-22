@@ -2,20 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { PageFallback } from "@/components/PageFallback";
 import { ViewTabs } from "@/components/ViewTabs";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
 import { datasetHref, diseaseHref, viewHref, viewTabs } from "@/lib/datasets/routes";
 import { canonicalFor } from "@/lib/seo";
 import { ChartSection } from "./ChartSection";
 
-/** Whether a dataset has a chart page: it lists the view, and its chart shows every area. */
-function hasChartPage(dataset: { views: readonly string[]; chart: { mode: string } }): boolean {
-  return dataset.views.includes("chart") && dataset.chart.mode === "all-areas";
-}
-
 /** Every dataset with a chart page is built ahead of time. */
 export function generateStaticParams() {
-  return DATASETS.filter(hasChartPage).map((dataset) => ({
+  return DATASETS.filter((dataset) => dataset.views.includes("chart")).map((dataset) => ({
     slug: dataset.diseaseSlug,
     dataset: dataset.slug,
   }));
@@ -30,24 +26,37 @@ export async function generateMetadata({
   return {
     title: `${dataset.label}: chart`,
     description: dataset.description,
-    // `?range=` is a state of this page, not a separate page.
+    // `?range=` and `?areas=` are states of this page, not separate pages.
     alternates: canonicalFor(viewHref(dataset, "chart")),
   };
 }
 
 /**
- * A dataset's chart page, for a dataset with few areas: England and every
- * region over time, with the time range in the address. The breadcrumb,
- * heading and view links are static; the chart streams in.
+ * A dataset's chart page. A dataset with few areas shows England and every
+ * region; one with many areas shows England and up to three areas that the
+ * visitor chooses. The range and the chosen areas are in the address.
+ *
+ * The page reads `params` inside the `Suspense` boundary, so the route's
+ * shared App Shell has no content that belongs to one address. The
+ * breadcrumb, heading and view links are still in the static HTML of a
+ * direct visit, because every dataset's address is built ahead of time.
  */
-export default async function ChartViewPage({
+export default function ChartViewPage(props: PageProps<"/diseases/[slug]/[dataset]/chart">) {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <ChartViewContent {...props} />
+    </Suspense>
+  );
+}
+
+async function ChartViewContent({
   params,
   searchParams,
 }: PageProps<"/diseases/[slug]/[dataset]/chart">) {
   const { slug, dataset: datasetSlug } = await params;
   const disease = getDisease(slug);
   const dataset = getDatasetBySlug(slug, datasetSlug);
-  if (!disease || !dataset || !hasChartPage(dataset)) notFound();
+  if (!disease || !dataset || !dataset.views.includes("chart")) notFound();
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">

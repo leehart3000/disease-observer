@@ -81,8 +81,8 @@ export type DatasetDef = {
   /**
    * How the chart page of this dataset works. `all-areas` draws England and
    * every region, for a dataset with few areas. `pick-areas` is for a dataset
-   * with many areas, where the visitor chooses which to compare; its chart
-   * page is not built yet, so it is not in `views`.
+   * with many areas, where England is always drawn and the visitor chooses up
+   * to three areas to compare with it.
    */
   chart: { mode: "all-areas" | "pick-areas" };
   map: {
@@ -91,6 +91,8 @@ export type DatasetDef = {
     boundaryUrl: string;
     /** What the areas are called, in the plural. */
     areaNoun: string;
+    /** What one area is called, such as "local authority". */
+    areaNounOne: string;
   };
   scale: ScaleConfig;
   /** The country or area the data covers, such as "England". Used in the coverage line. */

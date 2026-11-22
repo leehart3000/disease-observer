@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { fieldClass, PAGE_SIZES, PageControls, type PageSize } from "@/components/PageControls";
+import { chartAreaHref } from "@/lib/datasets/routes";
 import type { DatasetDef, PeriodChoice } from "@/lib/datasets/types";
 import { columnHeading, formatCoverage, formatNumber, formatPeriod } from "@/lib/format";
 import type { MapDataset } from "@/lib/map/types";
@@ -70,6 +71,32 @@ function ViewOnMapLink({
   );
 }
 
+/** The "Chart" link of a row on the table page: the chart page with this area chosen. */
+function ChartLink({ href, area }: { href: string; area: { name: string } }) {
+  return (
+    <Link
+      href={href}
+      aria-label={`Chart ${area.name}`}
+      className="inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-md px-2 text-brand underline underline-offset-4 hover:bg-brand/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="size-4 shrink-0"
+      >
+        <path d="m3 17 6-6 4 4 8-8" />
+      </svg>
+      Chart
+    </Link>
+  );
+}
+
 /**
  * The values of a dataset as a table that can be searched, sorted and paged.
  * It is the way to read the figures with a keyboard or a screen reader. The
@@ -95,6 +122,8 @@ export function ValuesTable({
   action: RowAction;
 }) {
   const ids = useId();
+  // A dataset whose chart compares areas has a "Chart" link in each row.
+  const hasChartLinks = chartAreaHref(config, "") !== null;
   const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({
     key: "value",
     direction: "descending",
@@ -240,6 +269,11 @@ export function ValuesTable({
                   Map
                 </th>
               ) : null}
+              {action.kind === "link" && hasChartLinks ? (
+                <th scope="col" className="hidden px-3 font-medium sm:table-cell">
+                  Chart
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -292,8 +326,11 @@ export function ValuesTable({
                           ) : null}
                         </div>
                         {/* On a narrow screen there is no Map column: the link goes under the name. */}
-                        <div className="-ml-2 sm:hidden">
+                        <div className="-ml-2 flex flex-wrap sm:hidden">
                           <ViewOnMapLink mapPath={action.mapPath} period={dataset.period} area={area} />
+                          {chartAreaHref(config, area.code) ? (
+                            <ChartLink href={chartAreaHref(config, area.code)!} area={area} />
+                          ) : null}
                         </div>
                       </div>
                     )}
@@ -314,6 +351,11 @@ export function ValuesTable({
                   {action.kind === "link" ? (
                     <td className="hidden px-3 py-0 sm:table-cell">
                       <ViewOnMapLink mapPath={action.mapPath} period={dataset.period} area={area} />
+                    </td>
+                  ) : null}
+                  {action.kind === "link" && hasChartLinks ? (
+                    <td className="hidden px-3 py-0 sm:table-cell">
+                      <ChartLink href={chartAreaHref(config, area.code)!} area={area} />
                     </td>
                   ) : null}
                 </tr>

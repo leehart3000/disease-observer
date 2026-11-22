@@ -39,13 +39,14 @@ test("a dataset page describes the dataset and links to its views", async ({ pag
   await expect(page.getByRole("heading", { level: 2, name: "How to read it" })).toBeVisible();
   await expect(page.getByText("for every 100,000 people who live in the local authority")).toBeVisible();
 
-  // One card for each view that has a page: the map and the table so far.
+  // One card for each view that has a page.
   await expect(page.getByRole("heading", { level: 2, name: "Ways to look at it" })).toBeVisible();
   const cards = page.getByRole("article");
-  await expect(cards).toHaveCount(2);
-  await expect(cards.getByRole("link")).toHaveText(["Map", "Table"]);
+  await expect(cards).toHaveCount(3);
+  await expect(cards.getByRole("link")).toHaveText(["Map", "Chart", "Table"]);
   await expect(cards.getByRole("link").nth(0)).toHaveAttribute("href", `${COVID}/map`);
-  await expect(cards.getByRole("link").nth(1)).toHaveAttribute("href", `${COVID}/table`);
+  await expect(cards.getByRole("link").nth(1)).toHaveAttribute("href", `${COVID}/chart`);
+  await expect(cards.getByRole("link").nth(2)).toHaveAttribute("href", `${COVID}/table`);
 
   // Only this dataset's sources.
   await expect(page.getByRole("link", { name: "UKHSA data dashboard" })).toBeVisible();
@@ -74,10 +75,10 @@ test("the dataset and map pages have the dataset in their titles and a breadcrum
   await expect(page).toHaveTitle("Measles cases by region | Disease Observer");
 });
 
-test("an unknown dataset or a view that is not built shows the not-found page with a 404", async ({
+test("an unknown dataset or a view that does not exist shows the not-found page with a 404", async ({
   page,
 }) => {
-  for (const path of [`${COVID.replace("rate-by-local-authority", "nope")}`, `${COVID}/chart`]) {
+  for (const path of [`${COVID.replace("rate-by-local-authority", "nope")}`, `${COVID}/graph`]) {
     const response = await page.goto(path);
     expect(response?.status(), path).toBe(404);
     await expect(page.getByText("This page could not be found.")).toBeVisible();

@@ -65,11 +65,14 @@ export function LineChartPlot({
   diseaseName,
   highlights,
   range,
+  scope = "England and UKHSA regions",
 }: {
   series: DiseaseSeries;
   diseaseName: string;
   highlights: readonly Highlight[];
   range: ChartRange;
+  /** Which areas the chart shows, for its accessible name. */
+  scope?: string;
 }) {
   const dataset = getDataset(series.datasetId);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -146,7 +149,7 @@ export function LineChartPlot({
 
   const latestValue = england.values[last];
   const summary =
-    `${diseaseName}, ${dataset.columnHeading.latest.toLowerCase()}, weekly, England and UKHSA regions, ` +
+    `${diseaseName}, ${dataset.columnHeading.latest.toLowerCase()}, weekly, ${scope}, ` +
     `${monthAndYear(series.periods[from].end)} to ${monthAndYear(series.periods[last].end)}.` +
     (latestValue === null ? "" : ` Latest ${formatValue(dataset, latestValue)} for England.`);
 

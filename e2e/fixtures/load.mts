@@ -22,6 +22,9 @@ import {
   ENGLAND_WEEKS,
   englandRows,
   fixtureDates,
+  isMissingLaWeek,
+  LA_WITH_HISTORY,
+  laCovidRate,
   regionCovidRate,
   isMissingMeaslesWeek,
   MEASLES_LATEST_CASES,
@@ -167,6 +170,24 @@ async function main() {
           value: 5,
           provisional: false,
         });
+      });
+
+      // Three local authorities also have a weekly history, for the chart.
+      // The latest week and the one before are the rows above.
+      LA_WITH_HISTORY.forEach((code, index) => {
+        for (let back = 2; back < ENGLAND_WEEKS; back++) {
+          if (isMissingLaWeek(index, back)) continue;
+          rows.push({
+            ...base,
+            diseaseId: covid.id,
+            areaId: idOf(code),
+            metric: "rate_per_100k",
+            periodStart: addDays(dates.covidLatest.start, -7 * back),
+            periodEnd: addDays(dates.covidLatest.end, -7 * back),
+            value: laCovidRate(index, back),
+            provisional: false,
+          });
+        }
       });
 
       REGIONS.forEach((code, index) => {

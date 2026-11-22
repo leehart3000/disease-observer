@@ -62,6 +62,30 @@ export function regionCovidRate(regionIndex: number, weeksBack: number): number 
   return Math.round((englandCovidRate(weeksBack) + (regionIndex - 4) * 0.5) * 10) / 10;
 }
 
+/**
+ * The local authorities (the first three of the loader's list: Hartlepool,
+ * Middlesbrough, Redcar and Cleveland) that have a weekly COVID-19 history,
+ * for the chart. The others have only the latest week and the one before.
+ */
+export const LA_WITH_HISTORY = ["E06000001", "E06000002", "E06000003"];
+
+/**
+ * A history local authority's COVID-19 rate `weeksBack` weeks before the
+ * latest, for the one at `index` of `LA_WITH_HISTORY`: the latest week and the
+ * week before are the map's values (20, 55.5 and 91, then 5); older weeks are
+ * England's rate times 2, 3 or 4, so they sit above England's.
+ */
+export function laCovidRate(index: number, weeksBack: number): number {
+  if (weeksBack === 0) return 20 + index * 35.5;
+  if (weeksBack === 1) return 5;
+  return Math.round(englandCovidRate(weeksBack) * (index + 2) * 10) / 10;
+}
+
+/** Middlesbrough (index 1 of `LA_WITH_HISTORY`) has no row for the week 5 weeks before the latest. */
+export function isMissingLaWeek(index: number, weeksBack: number): boolean {
+  return index === 1 && weeksBack === 5;
+}
+
 /** A region's measles cases in an older week. The latest week's values are in `MEASLES_LATEST_CASES`. */
 export function regionMeaslesCases(regionIndex: number, weeksBack: number): number {
   return (regionIndex + weeksBack) % 4;

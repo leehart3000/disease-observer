@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { PageFallback } from "@/components/PageFallback";
 import { ViewTabs } from "@/components/ViewTabs";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
 import { datasetHref, diseaseHref, viewHref, viewTabs } from "@/lib/datasets/routes";
@@ -35,7 +36,18 @@ export async function generateMetadata({
  * sorted and paged, with no map. The breadcrumb, heading and view links are
  * static; the table streams in.
  */
-export default async function TableViewPage({
+export default function TableViewPage(props: PageProps<"/diseases/[slug]/[dataset]/table">) {
+  // `params` is read inside the boundary, so the route's shared App Shell
+  // holds nothing that belongs to one address (a direct visit still gets the
+  // whole page, because every dataset's address is built ahead of time).
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <TableViewContent {...props} />
+    </Suspense>
+  );
+}
+
+async function TableViewContent({
   params,
   searchParams,
 }: PageProps<"/diseases/[slug]/[dataset]/table">) {

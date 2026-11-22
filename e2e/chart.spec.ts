@@ -6,6 +6,7 @@ import {
   englandMeaslesCases,
   fixtureDates,
   LAST_YEAR_WEEKS,
+  laCovidRate,
   regionCovidRate,
 } from "./fixtures/dates.mts";
 
@@ -393,8 +394,269 @@ test.describe("the chart page of a dataset", () => {
     );
   });
 
-  test("the local authority dataset has no chart page yet", async ({ page }) => {
-    await page.goto("/diseases/covid-19/rate-by-local-authority");
-    await expect(page.getByRole("link", { name: /^Chart/ })).toHaveCount(0);
+  test("a dataset with few areas has no area picker", async ({ page }) => {
+    await page.goto(MEASLES_CHART);
+    await expect(page.getByTestId("line-chart")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Compare with England/ })).toHaveCount(0);
+    await expect(page.getByLabel(/^Find a/)).toHaveCount(0);
+  });
+});
+
+const COVID = "/diseases/covid-19/rate-by-local-authority";
+const COVID_CHART = `${COVID}/chart`;
+const HARTLEPOOL = "E06000001";
+const MIDDLESBROUGH = "E06000002";
+const REDCAR = "E06000003";
+
+const finder = (page: Page) => page.getByLabel("Find a local authority");
+const chosen = (page: Page) => page.getByRole("list", { name: "Chosen local authorities" });
+const chips = (page: Page) => chosen(page).getByRole("listitem").filter({ hasText: "Remove" });
+
+/** Waits for the chart and the picker to be ready (the page is hydrated). */
+async function openCovidChart(page: Page, query = "") {
+  await page.goto(`${COVID_CHART}${query}`);
+  await expect(page.getByTestId("line-chart")).toBeVisible();
+  await expect(finder(page).or(page.getByText("are chosen, the most the chart can show"))).toBeVisible();
+}
+
+test.describe("the chart page of a dataset with many areas", () => {
+  test("draws England on its own, with the picker and the view links", async ({ page }) => {
+    await openCovidChart(page);
+
+    await expect(page).toHaveTitle("COVID-19 rate by local authority: chart | Disease Observer");
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem")).toHaveText([
+      "Diseases›",
+      "COVID-19›",
+      "Rate by local authority›",
+      "Chart",
+    ]);
+    const views = page.getByRole("navigation", { name: "Views of Rate by local authority" });
+    await expect(views.getByRole("link")).toHaveText(["Map", "Chart", "Table"]);
+    await expect(views.getByRole("link", { name: "Chart" })).toHaveAttribute("aria-current", "page");
+
+    await expect(page.getByRole("heading", { level: 2, name: "Compare with England: choose up to 3 local authorities." })).toBeVisible();
+    // England is always drawn, and nothing else is: no grey lines for the other areas.
+    await expect(chartPaths(page)).toHaveCount(1);
+    await expect(chartPaths(page).first()).toHaveAttribute("stroke", "var(--ink)");
+    await expect(chosen(page)).toHaveCount(0);
+    await expect(readout(page)).toHaveText(
+      `7 days to ${covidWeek(0)} (provisional): England 12.6 per 100,000`,
+    );
+    await expect(slider(page)).toHaveAccessibleName(/^COVID-19, .*, weekly, England, /);
+    await expect(page.getByRole("region", { name: "Sources" })).toContainText("UKHSA data dashboard");
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/rate-by-local-authority\/chart$/);
+  });
+
+  test("areas in the address are drawn on top of England, each in its own colour", async ({ page }) => {
+    await openCovidChart(page, `?areas=${HARTLEPOOL},${MIDDLESBROUGH}`);
+
+    await expect(chips(page)).toHaveText([/^Hartlepool/, /^Middlesbrough/]);
+    await expect(chartPaths(page)).toHaveCount(3);
+    const strokes = await chartPaths(page).evaluateAll((paths) =>
+      paths.map((path) => path.getAttribute("stroke")),
+    );
+    expect(strokes).toEqual(["var(--ink)", "var(--chart-1)", "var(--chart-2)"]);
+    await expect(readout(page)).toHaveText(
+      `7 days to ${covidWeek(0)} (provisional): England 12.6 per 100,000, Hartlepool 20 per 100,000, Middlesbrough 55.5 per 100,000`,
+    );
+    await expect(slider(page)).toHaveAccessibleName(/weekly, England and Hartlepool, Middlesbrough, /);
+    // The data table has a column for each.
+    await page.locator("details").getByText("View data table").click();
+    await expect(page.locator("details").getByRole("columnheader")).toHaveText([
+      "Period",
+      "England",
+      "Hartlepool",
+      "Middlesbrough",
+    ]);
+  });
+
+  test("the y axis follows the highest area chosen", async ({ page }) => {
+    await openCovidChart(page);
+    const labels = () =>
+      page
+        .getByTestId("line-chart")
+        .locator("svg text")
+        .allTextContents()
+        .then((texts) => Math.max(...texts.filter((text) => /^\d+$/.test(text)).map(Number)));
+    // England's highest in the last 12 months is under 13: the axis stops at 15 or less.
+    expect(await labels()).toBeLessThanOrEqual(20);
+
+    await openCovidChart(page, `?areas=${REDCAR}`);
+    // Redcar and Cleveland's latest rate is 91.
+    await expect.poll(labels).toBeGreaterThanOrEqual(91);
+  });
+
+  test("unknown, repeated and extra codes in the address are dropped", async ({ page }) => {
+    // A repeat, a code that is not an area, one that is not shaped like one, England (not a
+    // local authority), then three more than the limit allows.
+    await openCovidChart(
+      page,
+      `?areas=${HARTLEPOOL},${HARTLEPOOL},E99999999,nope,E92000001,${MIDDLESBROUGH},${REDCAR},E06000004`,
+    );
+    await expect(chips(page)).toHaveText([/^Hartlepool/, /^Middlesbrough/, /^Redcar and Cleveland/]);
+    await expect(chartPaths(page)).toHaveCount(4);
+    // The limit is reached: no search box, and a message.
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page.getByText("3 local authorities are chosen, the most the chart can show.")).toBeVisible();
+  });
+
+  test("the picker adds, removes and clears areas, and keeps them in the address", async ({
+    page,
+  }) => {
+    await openCovidChart(page);
+
+    await finder(page).fill("middles");
+    await expect(page.getByRole("status").filter({ hasText: "1 match." })).toBeVisible();
+    await page.getByRole("button", { name: "Add Middlesbrough" }).click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${MIDDLESBROUGH}`);
+    await expect(chips(page)).toHaveText([/^Middlesbrough/]);
+    await expect(readout(page)).toContainText("Middlesbrough 55.5 per 100,000");
+    await expect(chartPaths(page)).toHaveCount(2);
+    // The search box is empty again, and Middlesbrough is no longer offered.
+    await expect(finder(page)).toHaveValue("");
+    await finder(page).fill("middles");
+    await expect(page.getByRole("status").filter({ hasText: "No local authorities match." })).toBeVisible();
+
+    await finder(page).fill("hartle");
+    await page.getByRole("button", { name: "Add Hartlepool" }).click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${MIDDLESBROUGH},${HARTLEPOOL}`);
+    await expect(chips(page)).toHaveText([/^Middlesbrough/, /^Hartlepool/]);
+    await expect(chartPaths(page)).toHaveCount(3);
+
+    // Removing the first moves the other into the first colour.
+    await page.getByRole("button", { name: "Remove Middlesbrough" }).click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL}`);
+    await expect(chips(page)).toHaveText([/^Hartlepool/]);
+    await expect(chartPaths(page)).toHaveCount(2);
+    await expect(
+      page.getByTestId("line-chart").locator('svg path[stroke="var(--chart-1)"]'),
+    ).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Clear" }).click();
+    await expect(page).toHaveURL(COVID_CHART);
+    await expect(chosen(page)).toHaveCount(0);
+    await expect(chartPaths(page)).toHaveCount(1);
+  });
+
+  test("a fourth area is refused: at three the search box is replaced by a message", async ({
+    page,
+  }) => {
+    await openCovidChart(page);
+    for (const [typed, name] of [
+      ["hartle", "Hartlepool"],
+      ["middles", "Middlesbrough"],
+      ["redcar", "Redcar and Cleveland"],
+    ]) {
+      await finder(page).fill(typed);
+      await page.getByRole("button", { name: `Add ${name}` }).click();
+      await expect(chips(page).filter({ hasText: name })).toHaveCount(1);
+    }
+    await expect(chips(page)).toHaveCount(3);
+    await expect(finder(page)).toHaveCount(0);
+    await expect(page.getByText("Remove one to choose another.")).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove Hartlepool" }).click();
+    await expect(finder(page)).toBeVisible();
+  });
+
+  test("the picker works with a keyboard, and shows at most eight matches", async ({ page }) => {
+    await openCovidChart(page);
+
+    await finder(page).fill("o");
+    await expect(page.getByRole("status").filter({ hasText: /^Showing 8 of \d+ matches/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Add / })).toHaveCount(8);
+
+    // Enter adds the first match; the names starting with the text come first.
+    await finder(page).fill("dar");
+    await finder(page).press("Enter");
+    await expect(chips(page)).toHaveText([/^Darlington/]);
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=E06000005`);
+
+    // Tab from the box reaches the matches, and Enter on one adds it.
+    await finder(page).fill("h");
+    await finder(page).press("Tab");
+    await expect(page.getByRole("button", { name: /^Add / }).first()).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(chips(page)).toHaveCount(2);
+  });
+
+  test("the range and the areas are both kept in the address", async ({ page }) => {
+    await openCovidChart(page, `?areas=${HARTLEPOOL}`);
+    await chooseRange(page, "Since 2023");
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL}&range=all`);
+
+    await finder(page).fill("middles");
+    await page.getByRole("button", { name: "Add Middlesbrough" }).click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL},${MIDDLESBROUGH}&range=all`);
+    await expect(rangeGroup(page).getByRole("radio", { name: "Since 2023" })).toBeChecked();
+    await expect(slider(page)).toHaveAttribute("aria-valuemax", String(LAST));
+
+    await page.reload();
+    await expect(rangeGroup(page).getByRole("radio", { name: "Since 2023" })).toBeChecked();
+    await expect(chips(page)).toHaveCount(2);
+  });
+
+  test("a week an area has no figure for is shown as no figure", async ({ page }) => {
+    await openCovidChart(page, `?areas=${MIDDLESBROUGH}&range=all`);
+    // End, then back 5 weeks (Page Down is 4, the arrow is 1).
+    await slider(page).focus();
+    await page.keyboard.press("End");
+    await page.keyboard.press("PageDown");
+    await page.keyboard.press("ArrowLeft");
+    await expect(readout(page)).toHaveText(
+      `7 days to ${covidWeek(5)}: England ${englandCovidRate(5)} per 100,000, Middlesbrough no figure`,
+    );
+    // The week before has a value: 3 times England's.
+    await page.keyboard.press("ArrowLeft");
+    await expect(readout(page)).toContainText(
+      `Middlesbrough ${laCovidRate(1, 6)} per 100,000`,
+    );
+  });
+
+  test("the links to the other views keep the areas, and the map and table link here", async ({
+    page,
+  }) => {
+    await openCovidChart(page, `?areas=${HARTLEPOOL}`);
+    const views = page.getByRole("navigation", { name: "Views of Rate by local authority" });
+    await expect(views.getByRole("link", { name: "Map" })).toHaveAttribute("href", `${COVID}/map?areas=${HARTLEPOOL}`);
+    await expect(views.getByRole("link", { name: "Table" })).toHaveAttribute(
+      "href",
+      `${COVID}/table?areas=${HARTLEPOOL}`,
+    );
+
+    // The map's readout (the area is pinned from the address).
+    await page.goto(`${COVID}/map?areas=${HARTLEPOOL}`);
+    const link = page.getByTestId("area-readout").getByRole("link", { name: /^Chart this area/ });
+    await expect(link).toHaveAttribute("href", `${COVID_CHART}?areas=${HARTLEPOOL}`);
+    await expect(link).toHaveAccessibleName("Chart this area: Hartlepool");
+    await link.click();
+    await expect(page).toHaveURL(`${COVID_CHART}?areas=${HARTLEPOOL}`);
+    await expect(chips(page)).toHaveText([/^Hartlepool/]);
+
+    // A table row.
+    await page.goto(`${COVID}/table`);
+    await page.getByLabel("Search table by area name").fill("Hartlepool");
+    await expect(page.getByRole("link", { name: "Chart Hartlepool" })).toHaveAttribute(
+      "href",
+      `${COVID_CHART}?areas=${HARTLEPOOL}`,
+    );
+  });
+
+  test("the measles map and table have no chart links for an area", async ({ page }) => {
+    await page.goto("/diseases/measles/cases-by-region/table");
+    await expect(page.getByRole("table")).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Chart / })).toHaveCount(0);
+  });
+
+  test("the chart does not make the page scroll sideways, with three areas and the table open", async ({
+    page,
+  }) => {
+    await openCovidChart(page, `?areas=${HARTLEPOOL},${MIDDLESBROUGH},${REDCAR}`);
+    await page.locator("details").getByText("View data table").click();
+    const overflow = await page.evaluate(() => {
+      const root = document.documentElement;
+      return root.scrollWidth - root.clientWidth;
+    });
+    expect(overflow).toBeLessThanOrEqual(0);
   });
 });

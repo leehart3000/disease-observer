@@ -14,8 +14,24 @@ export type SeriesPeriod = {
 export type SeriesLine = {
   code: string;
   name: string;
-  level: "nation" | "region";
+  level: "nation" | "region" | "lower_tier_local_authority";
   values: Array<number | null>;
+};
+
+/** An area that can be chosen for a chart: its code and its name. */
+export type AreaOption = { code: string; name: string };
+
+/**
+ * One area's weekly values, as the area's own database rows give them.
+ * Weeks the area has no row for are simply not here. `composeSeries` lines
+ * these up with England's weeks.
+ */
+export type AreaSeries = {
+  code: string;
+  name: string;
+  level: SeriesLine["level"];
+  /** Oldest first, one point a week, ending no later than England's latest week. */
+  points: Array<{ start: string; end: string; value: number; provisional: boolean }>;
 };
 
 /** England and the UKHSA regions over time, one point a week. */

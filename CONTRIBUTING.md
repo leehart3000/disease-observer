@@ -164,8 +164,9 @@ The map page tests need data, so they use a separate database called
   the server and login in `.env.local`), runs the migrations, the seed and
   the boundary loader, and loads a small set of fixture observations (30
   local authorities for COVID-19, enough for a second page of the table, and
-  the 9 regions for measles, plus 30 weeks of England values for both,
-  with dates worked out from today). `pnpm test:e2e` then points the site at that
+  the 9 regions for measles, plus 70 weeks of England values for both, and
+  a weekly history for three local authorities for the chart, one with a
+  missing week; dates are worked out from today). `pnpm test:e2e` then points the site at that
   database. Because of this, it starts its own server, so stop `pnpm dev`
   first.
 - The fixture loader (`e2e/fixtures/load.mts`) deletes every observation
@@ -227,15 +228,46 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   disease page's links and the sitemap follow).
   The disease page lists its datasets, with a link to each view. `/maps`
   lists every map, grouped by disease, and replaces "Map" in the header.
-- **The chart view** (`…/chart`) exists for a dataset whose `chart.mode` is
-  `all-areas` (few areas, such as measles by region) and that lists `chart`
-  in its `views`. It is the disease page's chart (England and every region,
-  tick up to three to highlight), with the time range in the address as
-  `?range=all` (left out for the last 12 months, rewritten without a page
-  load, and read again on a reload). Any other `range` is ignored. A dataset
-  with `chart.mode` of `pick-areas` (the local authorities) has no chart page
-  yet, so it does not list `chart`. The page's series is the disease's
-  headline dataset, so an `all-areas` dataset must be its disease's headline.
+- **The chart view** (`…/chart`) exists for a dataset that lists `chart` in
+  its `views`. The time range is in the address as `?range=all` (left out for
+  the last 12 months, rewritten without a page load, and read again on a
+  reload); any other `range` is ignored. What else it shows depends on the
+  dataset's `chart.mode`:
+  - `all-areas` (few areas, such as measles by region): the disease page's
+    chart (England and every region, tick up to three to highlight). Its
+    series is the disease's headline dataset, so an `all-areas` dataset must
+    be its disease's headline.
+  - `pick-areas` (many areas, the COVID-19 local authorities): England is
+    always drawn, and the visitor chooses up to three areas with `AreaPicker`
+    (a search box listing at most eight matches, a chip with "Remove" for each
+    choice, and "Clear"). The areas are in the address as `?areas=` and the
+    picker changes it with a client navigation, so the server loads the new
+    areas' data. Each area keeps its place's colour (`--chart-1` to
+    `--chart-3`, by the order chosen). Three is the most because only three
+    colours pass the palette checks together (`MAX_COMPARED_AREAS` in
+    `src/lib/series-compose.ts`). The codes are checked against the dataset's
+    area index (`loadAreaIndex`) before anything is loaded: unknown, repeated
+    and malformed codes are dropped, and only the first three valid ones are
+    used. The index lists only the areas that have rows (eleven local
+    authorities have none in the feed). The map's readout and each row of the
+    table page have a "Chart this area" link (`chartAreaHref` in `routes.ts`).
+  - The series for one area is `loadAreaSeries` (`src/lib/data/areas.ts`),
+    cached with one entry for each area, never for each combination, so the
+    cache holds about 330 small entries however the areas are mixed. England's
+    weeks are the chart's weeks, and a week an area has no row for is "no
+    figure". `LineChart` (the regions' controls) and `AreaChart` (the picker)
+    both draw with `LineChartPlot`.
+- **Pages read `params` inside `Suspense`.** The disease, dataset, map, table
+  and chart pages are a plain function that wraps an async one in
+  `<Suspense fallback={<PageFallback />}>`, so the route's shared App Shell
+  (what a link prefetches) holds nothing that belongs to one address. Every
+  address is still built ahead of time (`generateStaticParams`), so a direct
+  visit gets the whole page, with its heading and breadcrumb, in the HTML.
+  Without this, `next dev` warns "`params` or `searchParams` accessed outside
+  of `<Suspense>`". Unknown addresses are still a real 404 from `src/proxy.ts`.
+- **Server code cannot import values from a `"use client"` file** (it gets a
+  reference, not the value). Share constants through a file with no
+  directive, such as `src/lib/series-compose.ts`.
 - **Moving between views.** The map and table pages show a strip of links to
   the dataset's views (`ViewTabs.tsx`, from the `views` list; nothing is
   shown for fewer than two). They are page links with `aria-current="page"`,

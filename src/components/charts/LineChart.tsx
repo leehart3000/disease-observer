@@ -5,6 +5,7 @@ import { getDataset } from "@/lib/datasets/registry";
 import type { DiseaseSeries } from "@/lib/series-types";
 import { SegmentedChoice } from "@/components/SegmentedChoice";
 import { LineChartPlot, slotColour, type ChartRange, type Highlight } from "./LineChartPlot";
+import { useChartRange } from "./useChartRange";
 
 /** The most regions that can be highlighted at once. Each has its own colour. */
 const MAX_HIGHLIGHTED = 3;
@@ -37,19 +38,10 @@ export function LineChart({
 }) {
   const dataset = getDataset(series.datasetId);
   const [picked, setPicked] = useState<Highlight[]>([]);
-  const [range, setRange] = useState<ChartRange>(initialRange);
+  const [range, chooseRange] = useChartRange(initialRange, rangeInUrl);
 
   const [england, ...regions] = series.lines;
   if (!dataset || !england) return null;
-
-  function chooseRange(next: ChartRange) {
-    setRange(next);
-    if (!rangeInUrl) return;
-    const url = new URL(window.location.href);
-    if (next === "all") url.searchParams.set("range", "all");
-    else url.searchParams.delete("range");
-    window.history.replaceState(window.history.state, "", url);
-  }
 
   function togglePicked(code: string) {
     setPicked((old) => {

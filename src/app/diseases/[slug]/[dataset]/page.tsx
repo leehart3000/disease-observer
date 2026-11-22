@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { PageFallback } from "@/components/PageFallback";
 import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
 import { ViewCards } from "@/components/ViewCards";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
@@ -31,7 +32,18 @@ export async function generateMetadata({
  * has (as cards), and its sources. The text comes from the registry, so it
  * shows even if the database is down. An unknown disease or dataset is a 404.
  */
-export default async function DatasetPage({ params }: PageProps<"/diseases/[slug]/[dataset]">) {
+export default function DatasetPage(props: PageProps<"/diseases/[slug]/[dataset]">) {
+  // `params` is read inside the boundary, so the route's shared App Shell
+  // holds nothing that belongs to one address (a direct visit still gets the
+  // whole page, because every dataset is built ahead of time).
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <DatasetContent {...props} />
+    </Suspense>
+  );
+}
+
+async function DatasetContent({ params }: PageProps<"/diseases/[slug]/[dataset]">) {
   const { slug, dataset: datasetSlug } = await params;
   const disease = getDisease(slug);
   const dataset = getDatasetBySlug(slug, datasetSlug);
