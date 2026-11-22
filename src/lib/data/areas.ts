@@ -19,9 +19,6 @@ import type { DatasetDef } from "@/lib/datasets/types";
 import type { AreaOption, AreaSeries } from "@/lib/series-types";
 import { loadWithFallback, NoDataError, type LoadResult } from "./load";
 
-/** The ONS code for England. */
-export const ENGLAND_CODE = "E92000001";
-
 /**
  * The areas that have values for a dataset, at the level its map uses,
  * by name. An area with no rows (eleven local authorities have none in the
@@ -42,7 +39,7 @@ export async function queryAreaIndex(dataset: DatasetDef): Promise<AreaOption[]>
       and o.metric = ${dataset.metric}
       and o.stratum = 'all'
       and o.period_type = ${dataset.periodType}
-      and a.code_scheme = 'ons'
+      and a.code_scheme = ${dataset.map.areaScheme}
       and a.level = ${dataset.map.areaLevel}
     order by a.name`);
   if (result.rows.length === 0) throw new NoDataError(`areas of ${dataset.id}`);
@@ -61,17 +58,22 @@ type PointRow = {
 
 /**
  * One area's weekly values from the chart's start date (the disease's
- * `chart.since`) to England's latest period. Only periods that end a whole
- * number of weeks before England's latest are kept, so the daily COVID-19
- * rate rows become one point a week, on the same weeks as England's. Not
- * cached.
+ * `chart.since`) to the latest period of the dataset's whole place (England).
+ * Only periods that end a whole number of weeks before the place's latest are
+ * kept, so the daily COVID-19 rate rows become one point a week, on the same
+ * weeks as the place's. Not cached.
  *
- * @throws {NoDataError} If England or the area has no values.
+ * `code` is either the place's own code (`dataset.place.code`) or the code of
+ * one of the dataset's areas.
+ *
+ * @throws {NoDataError} If the place or the area has no values.
  */
 export async function queryAreaSeries(dataset: DatasetDef, code: string): Promise<AreaSeries> {
   // The chart starts on the disease's `chart.since`.
   const since = getDisease(dataset.diseaseSlug)?.chart.since;
   if (!since) throw new Error(`Unknown disease ${dataset.diseaseSlug}`);
+  // The place and its areas can use different code schemes.
+  const scheme = code === dataset.place.code ? dataset.place.scheme : dataset.map.areaScheme;
   const ended = dataset.completePeriodsOnly ? sql`and o.period_end < current_date` : sql``;
   const result = await getDb().execute<PointRow>(sql`
     with latest as (
@@ -85,8 +87,8 @@ export async function queryAreaSeries(dataset: DatasetDef, code: string): Promis
         and o.metric = ${dataset.metric}
         and o.stratum = 'all'
         and o.period_type = ${dataset.periodType}
-        and a.code_scheme = 'ons'
-        and a.code = ${ENGLAND_CODE}
+        and a.code_scheme = ${dataset.place.scheme}
+        and a.code = ${dataset.place.code}
         ${ended}
       order by o.period_start desc
       limit 1
@@ -105,7 +107,7 @@ export async function queryAreaSeries(dataset: DatasetDef, code: string): Promis
       and o.metric = ${dataset.metric}
       and o.stratum = 'all'
       and o.period_type = ${dataset.periodType}
-      and a.code_scheme = 'ons'
+      and a.code_scheme = ${scheme}
       and a.code = ${code}
     order by o.period_end`);
   if (result.rows.length === 0) throw new NoDataError(`series of ${code} for ${dataset.id}`);
@@ -155,7 +157,7 @@ export function loadAreaIndex(dataset: DatasetDef): Promise<LoadResult<AreaOptio
 
 /**
  * Loads one area's weekly series without ever throwing. `code` must be
- * England's or one that is in the dataset's area index.
+ * the dataset's place's or one that is in the dataset's area index.
  */
 export function loadAreaSeries(dataset: DatasetDef, code: string): Promise<LoadResult<AreaSeries>> {
   return loadWithFallback(

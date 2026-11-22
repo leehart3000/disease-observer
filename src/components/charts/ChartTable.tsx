@@ -8,8 +8,8 @@ import type { DiseaseSeries } from "@/lib/series-types";
 
 /**
  * The chart's numbers as a table, for anyone who can't or would rather not
- * use the chart: one row a week, newest first, with England and each region
- * across. It covers the same weeks as the chart (from `from` to the latest)
+ * use the chart: one row a week, newest first, with the whole place (England)
+ * and each area across. It covers the same weeks as the chart (from `from` to the latest)
  * and is paged like the map's table: 25 rows by default, then 50, 100 or all.
  *
  * It is a disclosure: the summary has a chevron that turns when it is open.

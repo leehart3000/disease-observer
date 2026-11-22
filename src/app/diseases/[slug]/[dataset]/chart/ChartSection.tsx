@@ -3,7 +3,7 @@ import { AreaChart } from "@/components/charts/AreaChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { DataUnavailable } from "@/components/map/DataUnavailable";
 import { Sources } from "@/components/map/Sources";
-import { ENGLAND_CODE, loadAreaIndex, loadAreaSeries } from "@/lib/data/areas";
+import { loadAreaIndex, loadAreaSeries } from "@/lib/data/areas";
 import { loadDiseaseSeries } from "@/lib/data/series";
 import { loadSources } from "@/lib/data/sources";
 import type { DatasetDef, DiseaseDef } from "@/lib/datasets/types";
@@ -11,8 +11,8 @@ import { parseAreaCodes, type SearchParams } from "@/lib/datasets/url";
 import { composeSeries, MAX_COMPARED_AREAS } from "@/lib/series-compose";
 
 /**
- * The chart for a dataset whose chart compares areas (`pick-areas`): England,
- * and the areas in `?areas=`.
+ * The chart for a dataset whose chart compares areas (`pick-areas`): the
+ * dataset's whole place (England), and the areas in `?areas=`.
  *
  * The codes in the address are checked against the dataset's area index
  * before any series is loaded, so a code that is not an area costs nothing
@@ -29,12 +29,12 @@ async function AreaComparison({
   dataset: DatasetDef;
   params: SearchParams;
 }) {
-  const [index, england] = await Promise.all([
+  const [index, whole] = await Promise.all([
     loadAreaIndex(dataset),
-    loadAreaSeries(dataset, ENGLAND_CODE),
+    loadAreaSeries(dataset, dataset.place.code),
   ]);
   if (index.status !== "ok") return <DataUnavailable reason={index.status} />;
-  if (england.status !== "ok") return <DataUnavailable reason={england.status} />;
+  if (whole.status !== "ok") return <DataUnavailable reason={whole.status} />;
 
   const known = new Set(index.data.map((area) => area.code));
   const wanted = parseAreaCodes(params.areas, 10)
@@ -52,7 +52,7 @@ async function AreaComparison({
         </p>
       ) : null}
       <AreaChart
-        series={composeSeries(disease.slug, dataset.id, england.data, chosen)}
+        series={composeSeries(disease.slug, dataset.id, whole.data, chosen)}
         options={index.data}
         diseaseName={disease.name}
         sinceLabel={`Since ${disease.chart.since.slice(0, 4)}`}
@@ -69,8 +69,8 @@ async function AreaComparison({
  * range only changes how the chart is drawn, so the chart reads it from the
  * address itself. If the data can't be loaded, the rest of the page still shows.
  *
- * - `all-areas` (few areas): the disease's series, England and every region.
- * - `pick-areas` (many areas): England and up to three chosen areas.
+ * - `all-areas` (few areas): the disease's series, the whole place and every area.
+ * - `pick-areas` (many areas): the whole place and up to three chosen areas.
  */
 export async function ChartSection({
   disease,
@@ -96,7 +96,7 @@ export async function ChartSection({
   );
 }
 
-/** The chart of a dataset with few areas: the disease's series, England and every region. */
+/** The chart of a dataset with few areas: the disease's series, the whole place and every area. */
 async function AllAreasChart({ disease }: { disease: DiseaseDef }) {
   // The disease's series is its headline dataset's, which is this dataset.
   const series = await loadDiseaseSeries(disease.slug);

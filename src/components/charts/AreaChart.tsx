@@ -9,11 +9,12 @@ import { LineChartPlot, type ChartRange } from "./LineChartPlot";
 import { useChartRange } from "./useChartRange";
 
 /**
- * The chart of a dataset with many areas: England, always, and up to three
- * areas chosen with an `AreaPicker`, each on top in its own colour. The
- * controls are the time range and the picker; `LineChartPlot` draws it.
+ * The chart of a dataset with many areas: the dataset's whole place (England),
+ * always, and up to three areas chosen with an `AreaPicker`, each on top in its
+ * own colour. The controls are the time range and the picker; `LineChartPlot`
+ * draws it.
  *
- * @param series - England first, then the chosen areas in the order of their colours.
+ * @param series - The whole place first, then the chosen areas in the order of their colours.
  * @param options - Every area that can be chosen.
  * @param sinceLabel - The text of the "whole series" range, such as "Since 2023".
  */
@@ -41,8 +42,9 @@ export function AreaChart({
     { value: "12m", label: "Last 12 months" },
     { value: "all", label: sinceLabel },
   ];
+  const place = dataset.place.name;
   const scope =
-    chosen.length === 0 ? "England" : `England and ${chosen.map((line) => line.name).join(", ")}`;
+    chosen.length === 0 ? place : `${place} and ${chosen.map((line) => line.name).join(", ")}`;
 
   return (
     <figure data-testid="line-chart">
@@ -58,6 +60,7 @@ export function AreaChart({
 
       <AreaPicker
         options={options}
+        placeName={place}
         limit={MAX_COMPARED_AREAS}
         noun={noun}
         nounPlural={nounPlural}

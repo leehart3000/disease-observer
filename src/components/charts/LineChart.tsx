@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getDataset } from "@/lib/datasets/registry";
+import { getDataset, getDisease } from "@/lib/datasets/registry";
 import type { DiseaseSeries } from "@/lib/series-types";
 import { SegmentedChoice } from "@/components/SegmentedChoice";
 import { LineChartPlot, slotColour, type ChartRange, type Highlight } from "./LineChartPlot";
@@ -11,12 +11,13 @@ import { useChartRange } from "./useChartRange";
 const MAX_HIGHLIGHTED = 3;
 
 /**
- * England and the UKHSA regions over time, as a hand-built SVG line chart.
+ * A dataset's whole place (England) and the areas of its disease's chart (the
+ * UKHSA regions) over time, as a hand-built SVG line chart.
  *
- * This is the controls (the range and the region checkboxes) around
- * `LineChartPlot`, which does the drawing. Ticking a region highlights it
- * on top of England (up to three, each in its own colour). The range is the
- * last 12 months or the whole series.
+ * This is the controls (the range and the area checkboxes) around
+ * `LineChartPlot`, which does the drawing. Ticking an area highlights it
+ * on top of the whole place (up to three, each in its own colour). The range
+ * is the last 12 months or the whole series.
  *
  * @param sinceLabel - The text of the "whole series" range, such as "Since 2023".
  * @param rangeInUrl - True to keep the range only in the address, as
@@ -34,11 +35,13 @@ export function LineChart({
   rangeInUrl?: boolean;
 }) {
   const dataset = getDataset(series.datasetId);
+  const chartConfig = getDisease(series.diseaseSlug)?.chart;
   const [picked, setPicked] = useState<Highlight[]>([]);
   const [range, chooseRange] = useChartRange(rangeInUrl);
 
-  const [england, ...regions] = series.lines;
-  if (!dataset || !england) return null;
+  // The whole place first (England), then its areas (the regions).
+  const [whole, ...regions] = series.lines;
+  if (!dataset || !chartConfig || !whole) return null;
 
   function togglePicked(code: string) {
     setPicked((old) => {
@@ -70,12 +73,12 @@ export function LineChart({
 
       <fieldset className="mt-4">
         <legend className="mb-2 text-sm font-medium text-muted">
-          Pick up to three regions to highlight.
+          Pick up to three {chartConfig.areaNoun} to highlight.
         </legend>
         <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm sm:flex sm:flex-wrap sm:gap-x-5">
           <li className="flex min-h-11 items-center gap-3">
             <span aria-hidden="true" className="inline-block h-[3px] w-5 shrink-0 rounded-full bg-ink" />
-            England
+            {dataset.place.name}
           </li>
           {regions.map((line) => {
             const pick = picked.find((entry) => entry.code === line.code);
@@ -112,12 +115,18 @@ export function LineChart({
         </ul>
         {full && (
           <p className="mt-1 text-sm text-muted">
-            Three regions are highlighted, the most the chart can show. Untick one to pick another.
+            Three {chartConfig.areaNoun} are highlighted, the most the chart can show. Untick one to pick another.
           </p>
         )}
       </fieldset>
 
-      <LineChartPlot series={series} diseaseName={diseaseName} highlights={picked} range={range} />
+      <LineChartPlot
+        series={series}
+        diseaseName={diseaseName}
+        highlights={picked}
+        range={range}
+        scope={`${dataset.place.name} and ${chartConfig.areasLabel}`}
+      />
     </figure>
   );
 }

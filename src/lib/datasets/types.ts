@@ -30,6 +30,23 @@ export type ScaleConfig = {
  */
 export type LngLatBounds = readonly [readonly [number, number], readonly [number, number]];
 
+/**
+ * A place that a dataset covers as a whole, with the row in the `areas` table
+ * that holds its figures. Its code scheme can differ from the scheme of the
+ * dataset's own areas: the United States is `USA` in `iso3166-1-alpha3`, and
+ * its states are `US-AL` and so on in `iso3166-2`.
+ */
+export type Place = {
+  /** What it is called, such as "England". */
+  name: string;
+  /** Its part of an address, such as `england`. */
+  slug: string;
+  /** Its code in the `areas` table, such as `E92000001`. */
+  code: string;
+  /** The code scheme of `code`, such as `ons`. */
+  scheme: string;
+};
+
 /** The ways a dataset can be looked at, each with a page of its own. */
 export type View = "map" | "chart" | "table";
 
@@ -99,14 +116,21 @@ export type DatasetDef = {
     bounds: LngLatBounds;
     /** The farthest the map can be moved: it stops the visitor getting lost far from the data. Contains `bounds`. */
     maxBounds: LngLatBounds;
+    /** The `code_scheme` of the codes of these areas in the `areas` table, such as `ons`. */
+    areaScheme: string;
     /** What the areas are called, in the plural. */
     areaNoun: string;
     /** What one area is called, such as "local authority". */
     areaNounOne: string;
   };
   scale: ScaleConfig;
-  /** The country or area the data covers, such as "England". Used in the coverage line. */
-  place: string;
+  /**
+   * The place the data covers as a whole, such as England. Its `name` is used
+   * in the coverage line and wherever the whole place is named (the charts,
+   * the headline). Its row in the `areas` table (`scheme` and `code`) holds the
+   * dataset's national figures, and is what every chart compares areas with.
+   */
+  place: Place;
   /** Who publishes the data, such as "UK Health Security Agency". Used in the coverage line. */
   publisher: string;
   /** The `sources` rows to credit: the data source first, then the boundaries. */
@@ -128,8 +152,12 @@ export type DiseaseDef = {
    */
   headline: { datasetId: string };
   /**
-   * The chart on the disease page shows the headline dataset's metric for
-   * England and the regions, one point a week, from this date (`YYYY-MM-DD`).
+   * The chart on the disease page shows the headline dataset's metric for its
+   * whole place (England) and the areas at `areaLevel` (the regions), one
+   * point a week, from `since` (`YYYY-MM-DD`). The areas are of the headline
+   * dataset's `map.areaScheme`. `areaNoun` is what they are called in the
+   * plural ("regions", in the chart's checkboxes) and `areasLabel` names them
+   * for people using a screen reader ("UKHSA regions").
    */
-  chart: { since: string };
+  chart: { since: string; areaLevel: AreaLevel; areaNoun: string; areasLabel: string };
 };

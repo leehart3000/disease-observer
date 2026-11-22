@@ -61,15 +61,19 @@ function groupByRegion(areas: readonly AreaOption[]): Group[] {
  * the limit, the search and the list are replaced by a message.
  *
  * @param options - Every area that can be chosen.
+ * @param placeName - The whole place the chosen areas are compared with (England).
  * @param noun - What one area is called, such as "local authority".
  */
 export function AreaPicker({
   options,
+  placeName,
   limit,
   noun,
   nounPlural,
 }: {
   options: readonly AreaOption[];
+  /** The whole place the areas are compared with, such as "England". */
+  placeName: string;
   limit: number;
   noun: string;
   nounPlural: string;
@@ -139,7 +143,7 @@ export function AreaPicker({
   return (
     <section aria-labelledby={`${ids}-heading`} className="mt-4">
       <h2 id={`${ids}-heading`} className="mb-2 text-sm font-medium text-muted">
-        Compare with England: choose up to {limit} {nounPlural}.
+        Compare with {placeName}: choose up to {limit} {nounPlural}.
       </h2>
 
       {selected.length > 0 ? (

@@ -20,7 +20,7 @@ function HeadlineFigure({ headline, id }: { headline: HeadlineData; id: string }
   const weeks = headline.points.length;
   return (
     <div id={id} className="mt-4" data-testid="headline">
-      <p className="text-sm text-muted">{dataset.place}</p>
+      <p className="text-sm text-muted">{dataset.place.name}</p>
       <p className="flex flex-wrap items-center gap-x-2">
         <span className="text-2xl font-medium tracking-tight">
           {formatValue(dataset, headline.value)}

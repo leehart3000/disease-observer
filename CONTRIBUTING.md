@@ -359,7 +359,16 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   contain the first, which `e2e/registry.spec.ts` checks), colour scale
   and sources. The dataset pages, the lists, the table, the legend and the
   credits all read from it, so adding a dataset is mostly adding an entry to
-  `DATASETS`
+  `DATASETS`. **Nothing outside the registry assumes England.** A dataset
+  names the place it covers as a whole in `place` (`name`, `slug`, and the
+  `code` and code `scheme` of the row of the `areas` table that holds its
+  national figures; England is `E92000001` in the `ons` scheme), and the
+  scheme of its own areas in `map.areaScheme`. The two can differ (the United
+  States would be `USA` in `iso3166-1-alpha3` and its states `US-AL` in
+  `iso3166-2`). The headlines, the series, the area index, the charts and the
+  wording of the charts ("Compare with England") all read these. A disease's
+  `chart` says which areas its overview chart draws with the place
+  (`areaLevel`, `areaNoun`, `areasLabel`)
   (and the disease to `DISEASES`, if it is new). A disease appears only when
   the site has data for it. The registry is erasable TypeScript with no `@/`
   imports, so scripts can import it too.

@@ -49,14 +49,14 @@ function monthAndYear(day: string): string {
 /**
  * The drawing part of a line chart: the readout, the plot (a keyboard
  * slider that can also be pointed at) and the table of the same weeks. It
- * draws England in the text colour, the highlighted lines on top in their
+ * draws the whole place (England) in the text colour, the highlighted lines on top in their
  * own colours, and every other line thin and muted. It has no controls: the
  * range and the highlights are chosen by whatever wraps it.
  *
  * The lines and axes are in the server-rendered HTML. After it loads, the
  * chart measures its box and draws itself at that size.
  *
- * @param series - England first, then the other areas.
+ * @param series - The whole place first, then the other areas.
  * @param highlights - The lines to draw on top (at most three, each with its own colour slot).
  * @param range - The weeks to show.
  */
@@ -65,14 +65,14 @@ export function LineChartPlot({
   diseaseName,
   highlights,
   range,
-  scope = "England and UKHSA regions",
+  scope,
 }: {
   series: DiseaseSeries;
   diseaseName: string;
   highlights: readonly Highlight[];
   range: ChartRange;
-  /** Which areas the chart shows, for its accessible name. */
-  scope?: string;
+  /** Which places the chart shows, for its accessible name, such as "England and UKHSA regions". */
+  scope: string;
 }) {
   const dataset = getDataset(series.datasetId);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -91,7 +91,7 @@ export function LineChartPlot({
     return () => observer.disconnect();
   }, []);
 
-  const [england, ...others] = series.lines;
+  const [whole, ...others] = series.lines;
   const last = series.periods.length - 1;
   // The first week on the chart. The y axis, the x axis and the table follow it.
   const from = useMemo(
@@ -121,7 +121,7 @@ export function LineChartPlot({
     };
   }, [series, size, from]);
 
-  if (!dataset || !england) return null;
+  if (!dataset || !whole) return null;
 
   const pathOf = (values: Array<number | null>) =>
     linePath(
@@ -136,10 +136,10 @@ export function LineChartPlot({
   });
   const highlightedCodes = new Set(highlighted.map(({ line }) => line.code));
 
-  /** The sentence for one week: its period, England's value and the highlighted lines'. */
+  /** The sentence for one week: its period, the whole place's value and the highlighted lines'. */
   function describe(index: number): string {
     const period = series.periods[index];
-    const parts = [england, ...highlighted.map(({ line }) => line)].map((line) => {
+    const parts = [whole, ...highlighted.map(({ line }) => line)].map((line) => {
       const value = line.values[index];
       return `${line.name} ${value === null ? "no figure" : formatValue(dataset!, value)}`;
     });
@@ -147,11 +147,11 @@ export function LineChartPlot({
     return `${formatPeriod(dataset!, period.start, period.end)}${provisional}: ${parts.join(", ")}`;
   }
 
-  const latestValue = england.values[last];
+  const latestValue = whole.values[last];
   const summary =
     `${diseaseName}, ${dataset.columnHeading.latest.toLowerCase()}, weekly, ${scope}, ` +
     `${monthAndYear(series.periods[from].end)} to ${monthAndYear(series.periods[last].end)}.` +
-    (latestValue === null ? "" : ` Latest ${formatValue(dataset, latestValue)} for England.`);
+    (latestValue === null ? "" : ` Latest ${formatValue(dataset, latestValue)} for ${dataset.place.name}.`);
 
   function moveTo(event: PointerEvent<HTMLDivElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -227,7 +227,7 @@ export function LineChartPlot({
             </text>
           ))}
 
-          {/* Drawn from the back to the front: muted lines, England, then the highlighted lines. */}
+          {/* Drawn from the back to the front: muted lines, the whole place, then the highlighted lines. */}
           {others
             .filter((line) => !highlightedCodes.has(line.code))
             .map((line) => (
@@ -242,7 +242,7 @@ export function LineChartPlot({
               />
             ))}
           <path
-            d={pathOf(england.values)}
+            d={pathOf(whole.values)}
             fill="none"
             stroke="var(--ink)"
             strokeWidth={3}
@@ -271,7 +271,7 @@ export function LineChartPlot({
             strokeDasharray="3 3"
           />
           {[
-            { line: england, colour: "var(--ink)" },
+            { line: whole, colour: "var(--ink)" },
             ...highlighted.map(({ line, slot }) => ({ line, colour: slotColour(slot) })),
           ].map(({ line, colour }) => {
             const value = line.values[active];

@@ -9,8 +9,8 @@ function blurb(dataset: DatasetDef, view: View): string {
       return `A map of the ${dataset.map.areaNoun}, with a key, and the same figures in a table underneath.`;
     case "chart":
       return dataset.chart.mode === "pick-areas"
-        ? `How the figures have changed over time, week by week. Compare England with up to three ${dataset.map.areaNoun}.`
-        : `How the figures have changed over time, week by week, for England and every ${dataset.map.areaNounOne}.`;
+        ? `How the figures have changed over time, week by week. Compare ${dataset.place.name} with up to three ${dataset.map.areaNoun}.`
+        : `How the figures have changed over time, week by week, for ${dataset.place.name} and every ${dataset.map.areaNounOne}.`;
     case "table":
       return `Every figure in a table that you can search, sort and page through.`;
   }

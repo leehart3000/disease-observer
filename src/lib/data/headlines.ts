@@ -1,6 +1,7 @@
 /**
- * The headline figure of each disease: the latest value for England, and
- * the last 26 weekly values for a sparkline. Server-side only.
+ * The headline figure of each disease: the latest value for the headline
+ * dataset's whole place (England), and the last 26 weekly values for a
+ * sparkline. Server-side only.
  *
  * Nothing here may run at build time, because the build has no database:
  * callers wait for a real request first (`connection()`).
@@ -13,9 +14,6 @@ import { getDb } from "@/db";
 import { DISEASES, getDataset } from "@/lib/datasets/registry";
 import type { DatasetDef } from "@/lib/datasets/types";
 import { loadWithFallback, NoDataError, type LoadResult } from "./load";
-
-/** The ONS code for England. */
-const ENGLAND_CODE = "E92000001";
 
 /** How many weekly values the sparkline holds, counting the latest. */
 export const SPARKLINE_WEEKS = 26;
@@ -44,13 +42,14 @@ type Row = {
 };
 
 /**
- * Reads one disease's England figure. The latest period is the one with the
+ * Reads one disease's figure for its dataset's whole place (such as England).
+ * The latest period is the one with the
  * latest start (and, if the dataset asks for it, that has already ended).
  * The history is every row whose period ends a whole number of weeks before
  * the latest one, so overlapping daily rows (the COVID-19 rate is one row a
  * day, each covering 7 days) become non-overlapping weeks.
  *
- * @returns `null` if England has no values for the disease.
+ * @returns `null` if the place has no values for the disease.
  */
 async function queryHeadline(dataset: DatasetDef): Promise<Headline | null> {
   const ended = dataset.completePeriodsOnly ? sql`and o.period_end < current_date` : sql``;
@@ -66,8 +65,8 @@ async function queryHeadline(dataset: DatasetDef): Promise<Headline | null> {
         and o.metric = ${dataset.metric}
         and o.stratum = 'all'
         and o.period_type = ${dataset.periodType}
-        and a.code_scheme = 'ons'
-        and a.code = ${ENGLAND_CODE}
+        and a.code_scheme = ${dataset.place.scheme}
+        and a.code = ${dataset.place.code}
         ${ended}
     ), latest as (
       select period_end from matching order by period_start desc limit 1
@@ -96,7 +95,7 @@ async function queryHeadline(dataset: DatasetDef): Promise<Headline | null> {
 }
 
 /**
- * The headline of every disease that has one and has England data. Not
+ * The headline of every disease that has one and has data for its place. Not
  * cached.
  *
  * @throws {NoDataError} If no disease has any, so an empty result is not

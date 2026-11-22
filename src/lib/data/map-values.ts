@@ -85,7 +85,7 @@ export async function queryMapValues(
       select a.code, a.name, w.value, w.provisional, w.period_start, w.period_end
       from windowed w
       join areas a on a.id = w.area_id
-      where a.code_scheme = 'ons' and a.level = ${dataset.map.areaLevel}
+      where a.code_scheme = ${dataset.map.areaScheme} and a.level = ${dataset.map.areaLevel}
     ), weeks as (
       select count(distinct period_start)::int as expected from in_window
     )

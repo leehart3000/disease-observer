@@ -32,9 +32,9 @@ export async function generateMetadata({
 }
 
 /**
- * A dataset's chart page. A dataset with few areas shows England and every
- * region; one with many areas shows England and up to three areas that the
- * visitor chooses. The range and the chosen areas are in the address.
+ * A dataset's chart page. A dataset with few areas shows its whole place
+ * (England) and every area; one with many areas shows the place and up to
+ * three areas that the visitor chooses. The range and the chosen areas are in the address.
  *
  * The page reads `params` inside the `Suspense` boundary, so the route's
  * shared App Shell has no content that belongs to one address. The

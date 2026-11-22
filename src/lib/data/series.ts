@@ -1,6 +1,7 @@
 /**
- * A disease's weekly series for the chart: England and the nine UKHSA
- * regions, one point a week. Server-side only.
+ * A disease's weekly series for the chart: its headline dataset's whole place
+ * (England) and the areas at the disease's `chart.areaLevel` (the nine UKHSA
+ * regions), one point a week. Server-side only.
  *
  * Nothing here may run at build time, because the build has no database:
  * callers wait for a real request first (`connection()`).
@@ -13,13 +14,10 @@ import { getDataset, getDisease } from "@/lib/datasets/registry";
 import type { DiseaseSeries, SeriesLine, SeriesPeriod } from "@/lib/series-types";
 import { loadWithFallback, NoDataError, type LoadResult } from "./load";
 
-/** The ONS code for England. */
-const ENGLAND_CODE = "E92000001";
-
 type Row = {
   code: string;
   name: string;
-  level: "nation" | "region";
+  level: SeriesLine["level"];
   value: number;
   provisional: boolean;
   period_start: string;
@@ -27,13 +25,13 @@ type Row = {
 };
 
 /**
- * Reads England and the regions for a disease's headline dataset, from the
- * chart's start date to England's latest period. Only periods that end a
- * whole number of weeks before England's latest are kept, so the daily
+ * Reads the whole place and the areas for a disease's headline dataset, from
+ * the chart's start date to the place's latest period. Only periods that end
+ * a whole number of weeks before the place's latest are kept, so the daily
  * COVID-19 rate rows become one point a week (see `queryHeadlines`). Not
  * cached.
  *
- * @throws {NoDataError} If England has no values, so an empty result is not
+ * @throws {NoDataError} If the place has no values, so an empty result is not
  *   cached for a day.
  * @throws On any database error, so a failure is never cached.
  */
@@ -41,6 +39,7 @@ export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
   const disease = getDisease(slug);
   const dataset = disease && getDataset(disease.headline.datasetId);
   if (!disease || !dataset) throw new Error(`Unknown disease ${slug}`);
+  const { place } = dataset;
 
   const ended = dataset.completePeriodsOnly ? sql`and o.period_end < current_date` : sql``;
   const result = await getDb().execute<Row>(sql`
@@ -55,8 +54,8 @@ export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
         and o.metric = ${dataset.metric}
         and o.stratum = 'all'
         and o.period_type = ${dataset.periodType}
-        and a.code_scheme = 'ons'
-        and a.code = ${ENGLAND_CODE}
+        and a.code_scheme = ${place.scheme}
+        and a.code = ${place.code}
         ${ended}
       order by o.period_start desc
       limit 1
@@ -75,13 +74,13 @@ export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
       and o.metric = ${dataset.metric}
       and o.stratum = 'all'
       and o.period_type = ${dataset.periodType}
-      and a.code_scheme = 'ons'
-      and a.level in ('nation', 'region')
+      and ((a.code_scheme = ${place.scheme} and a.code = ${place.code})
+        or (a.code_scheme = ${dataset.map.areaScheme} and a.level = ${disease.chart.areaLevel}))
     order by o.period_end, a.name`);
 
-  const england = result.rows.filter((row) => row.code === ENGLAND_CODE);
-  if (england.length === 0) throw new NoDataError(`series for ${slug}`);
-  const periods: SeriesPeriod[] = england.map((row) => ({
+  const whole = result.rows.filter((row) => row.code === place.code);
+  if (whole.length === 0) throw new NoDataError(`series for ${slug}`);
+  const periods: SeriesPeriod[] = whole.map((row) => ({
     start: row.period_start,
     end: row.period_end,
     provisional: row.provisional,
@@ -105,7 +104,7 @@ export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
     line.values[index] = Number(row.value);
   }
   const lines = [...byCode.values()].sort((a, b) =>
-    a.code === ENGLAND_CODE ? -1 : b.code === ENGLAND_CODE ? 1 : a.name.localeCompare(b.name, "en-GB"),
+    a.code === place.code ? -1 : b.code === place.code ? 1 : a.name.localeCompare(b.name, "en-GB"),
   );
   return { diseaseSlug: slug, datasetId: dataset.id, periods, lines };
 }

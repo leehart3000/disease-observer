@@ -6,7 +6,7 @@ export type SeriesPeriod = {
   start: string;
   /** Last day of the period, as `YYYY-MM-DD`. */
   end: string;
-  /** True while England's value for the period may still be revised. */
+  /** True while the whole place's value (England's) for the period may still be revised. */
   provisional: boolean;
 };
 
@@ -14,7 +14,7 @@ export type SeriesPeriod = {
 export type SeriesLine = {
   code: string;
   name: string;
-  level: "nation" | "region" | "lower_tier_local_authority";
+  level: "nation" | "region" | "lower_tier_local_authority" | "country";
   values: Array<number | null>;
 };
 
@@ -29,22 +29,22 @@ export type AreaOption = {
 /**
  * One area's weekly values, as the area's own database rows give them.
  * Weeks the area has no row for are simply not here. `composeSeries` lines
- * these up with England's weeks.
+ * these up with the weeks of the dataset's whole place (England).
  */
 export type AreaSeries = {
   code: string;
   name: string;
   level: SeriesLine["level"];
-  /** Oldest first, one point a week, ending no later than England's latest week. */
+  /** Oldest first, one point a week, ending no later than the whole place's latest week. */
   points: Array<{ start: string; end: string; value: number; provisional: boolean }>;
 };
 
-/** England and the UKHSA regions over time, one point a week. */
+/** A whole place (England) and some of its areas over time, one point a week. */
 export type DiseaseSeries = {
   diseaseSlug: string;
   datasetId: string;
   /** Oldest first. */
   periods: SeriesPeriod[];
-  /** England first, then the regions by name. */
+  /** The whole place first, then the areas. */
   lines: SeriesLine[];
 };

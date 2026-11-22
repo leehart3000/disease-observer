@@ -8,7 +8,7 @@
  * Erasable TypeScript only, with relative imports that end in `.ts`, so the
  * ETL can import this file too.
  */
-import type { DatasetDef, DiseaseDef, LngLatBounds, PeriodChoice } from "./types.ts";
+import type { DatasetDef, DiseaseDef, LngLatBounds, PeriodChoice, Place } from "./types.ts";
 
 export const DISEASES = [
   {
@@ -20,7 +20,12 @@ export const DISEASES = [
       "The map shows the rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people. Rates allow areas of different sizes to be compared.",
     ],
     headline: { datasetId: "covid-19-rate" },
-    chart: { since: "2023-01-01" },
+    chart: {
+      since: "2023-01-01",
+      areaLevel: "region",
+      areaNoun: "regions",
+      areasLabel: "UKHSA regions",
+    },
   },
   {
     slug: "measles",
@@ -31,9 +36,25 @@ export const DISEASES = [
       "The map shows the number of confirmed cases in each UKHSA region, by the week that symptoms began, for the latest complete week or added up over the last 12 weeks or the year so far. Recent weeks are provisional because cases are still being reported.",
     ],
     headline: { datasetId: "measles-cases" },
-    chart: { since: "2023-01-01" },
+    chart: {
+      since: "2023-01-01",
+      areaLevel: "region",
+      areaNoun: "regions",
+      areasLabel: "UKHSA regions",
+    },
   },
 ] as const satisfies readonly DiseaseDef[];
+
+/**
+ * England as a place: the row of the `areas` table that holds the national
+ * figures of the UKHSA datasets (an ONS code).
+ */
+const ENGLAND = {
+  name: "England",
+  slug: "england",
+  code: "E92000001",
+  scheme: "ons",
+} as const satisfies Place;
 
 /** England, with some room around it. */
 const ENGLAND_BOUNDS = [
@@ -78,11 +99,12 @@ export const DATASETS = [
       boundaryUrl: "/boundaries/lad-dec-2022.json",
       bounds: ENGLAND_BOUNDS,
       maxBounds: ENGLAND_MAX_BOUNDS,
+      areaScheme: "ons",
       areaNoun: "local authorities",
       areaNounOne: "local authority",
     },
     scale: { classes: 6, rounding: "2sf", zeroClass: false },
-    place: "England",
+    place: ENGLAND,
     publisher: "UK Health Security Agency",
     sourceSlugs: ["ukhsa", "ons-geography"],
   },
@@ -116,11 +138,12 @@ export const DATASETS = [
       boundaryUrl: "/boundaries/rgn-dec-2022.json",
       bounds: ENGLAND_BOUNDS,
       maxBounds: ENGLAND_MAX_BOUNDS,
+      areaScheme: "ons",
       areaNoun: "regions",
       areaNounOne: "region",
     },
     scale: { classes: 6, rounding: "integer", zeroClass: true },
-    place: "England",
+    place: ENGLAND,
     publisher: "UK Health Security Agency",
     sourceSlugs: ["ukhsa", "ons-geography"],
   },
@@ -191,9 +214,9 @@ function joinList(items: readonly string[]): string {
 export function coverageSentence(): string {
   const groups = new Map<string, { place: string; publisher: string; diseases: string[] }>();
   for (const dataset of datasetList) {
-    const key = `${dataset.place}|${dataset.publisher}`;
+    const key = `${dataset.place.slug}|${dataset.publisher}`;
     const group = groups.get(key) ?? {
-      place: dataset.place,
+      place: dataset.place.name,
       publisher: dataset.publisher,
       diseases: [],
     };

@@ -46,7 +46,7 @@ export function Card({
 }
 
 /**
- * A card for a disease in the registry, with its latest figure for England.
+ * A card for a disease in the registry, with its latest figure for its whole place.
  * The figure streams in; the rest of the card is static.
  */
 export function DiseaseCard({
