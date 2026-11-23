@@ -69,6 +69,14 @@ test.describe("address helpers", () => {
     expect(decide("/diseases/covid-19/rate-by-local-authority/data.csv")).toEqual(notFound);
     expect(decide("/diseases/covid-19/rate-by-local-authority/bogus")).toEqual(notFound);
     expect(decide("/diseases/covid-19/rate-by-local-authority/map/extra")).toEqual(notFound);
+    // The sharing pictures of a disease and of a dataset continue; those of anything unknown do not.
+    for (const image of ["opengraph-image", "twitter-image"]) {
+      expect(decide(`/diseases/covid-19/${image}`)).toEqual(carryOn);
+      expect(decide(`/diseases/covid-19/rate-by-local-authority/${image}`)).toEqual(carryOn);
+      expect(decide(`/diseases/nope/${image}`)).toEqual(notFound);
+      expect(decide(`/diseases/covid-19/nope/${image}`)).toEqual(notFound);
+      expect(decide(`/diseases/covid-19/rate-by-local-authority/map/${image}`)).toEqual(notFound);
+    }
     // Bad encoding is a 404, not an error.
     expect(decide("/diseases/%E0%A4%A")).toEqual(notFound);
     expect(decide("/diseases/covid-19%20")).toEqual(notFound);

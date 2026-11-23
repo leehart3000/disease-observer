@@ -106,7 +106,7 @@ test("a row links to the area on the map, and there is no pin button", async ({ 
   await expect(page.getByRole("button", { name: /^Pin / })).toHaveCount(0);
   await expect(page.getByText("Select an area to pin it on the map.")).toHaveCount(0);
 
-  const link = page.getByRole("link", { name: "View Hartlepool on the map" });
+  const link = page.getByRole("link", { name: "View on map: Hartlepool" });
   await page.getByLabel("Search table by area name").fill("Hartlepool");
   await expect(link).toHaveText("View on map");
   await expect(link).toHaveAttribute("href", `${COVID}/map?areas=E06000001`);
@@ -126,7 +126,7 @@ test("the table fits the screen: on a phone the link is under the name, with no 
 }) => {
   await page.goto(`${COVID}/table`);
   const first = rows(page).first();
-  const link = first.getByRole("link", { name: /^View .+ on the map$/ });
+  const link = first.getByRole("link", { name: /^View on map: .+/ });
   await expect(link).toBeVisible();
   expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 
@@ -173,7 +173,7 @@ test("the measles table has nine regions on one page", async ({ page }) => {
     isPhone() ? [/^Area/, /^Cases \(week\)/] : [/^Area/, /^Cases \(week\)/, "Map"],
   );
   await expect(table(page).locator("caption")).toContainText("Week of onset");
-  await expect(page.getByRole("link", { name: /^View .+ on the map$/ }).first()).toHaveAttribute(
+  await expect(page.getByRole("link", { name: /^View on map: .+/ }).first()).toHaveAttribute(
     "href",
     /^\/diseases\/measles\/cases-by-region\/map\?areas=E45/,
   );

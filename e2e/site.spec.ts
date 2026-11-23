@@ -127,7 +127,7 @@ test("the home page and the about page say what the site covers now, from the re
   page,
 }) => {
   const line =
-    "Currently covers COVID-19 and measles in England, from the UK Health Security Agency; influenza, RSV and COVID-19 in the United States, from the CDC National Healthcare Safety Network (NHSN).";
+    "Currently covers COVID-19 and measles in England, from the UK Health Security Agency. It also covers influenza, RSV and COVID-19 in the United States, from the CDC National Healthcare Safety Network (NHSN).";
   await page.goto("/");
   await expect(page.getByText(line)).toBeVisible();
   await expect(page.getByText("shown as soon as they are published")).toHaveCount(0);

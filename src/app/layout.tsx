@@ -14,6 +14,11 @@ export const metadata: Metadata = {
     template: "%s | Disease Observer",
   },
   description: "Maps and charts for infectious disease surveillance.",
+  // The site-wide parts of the social cards. Pages with their own text
+  // (`socialMetadata`) repeat them, and the picture comes from the
+  // `opengraph-image` and `twitter-image` files.
+  openGraph: { type: "website", siteName: "Disease Observer", locale: "en_GB" },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

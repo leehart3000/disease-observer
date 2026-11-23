@@ -21,6 +21,32 @@ export function canonicalFor(path: string): { canonical: string } {
   return { canonical: path };
 }
 
+/** The site's name, as it is in titles and on social cards. */
+export const SITE_NAME = "Disease Observer";
+
+/**
+ * The Open Graph and Twitter card text of a page. The picture comes from the
+ * `opengraph-image` and `twitter-image` files (see `src/lib/og-image.tsx`). A
+ * page that sets `openGraph` or `twitter` replaces the root layout's, so this
+ * has the site-wide parts (name, type, locale, card type) too.
+ *
+ * @param title - The page's whole title, as a person sees it ("Influenza | Disease Observer").
+ * @param path - The page's path, such as `/diseases/influenza`.
+ */
+export function socialMetadata(title: string, description: string, path: string) {
+  return {
+    openGraph: {
+      type: "website" as const,
+      siteName: SITE_NAME,
+      locale: "en_GB",
+      title,
+      description,
+      url: path,
+    },
+    twitter: { card: "summary_large_image" as const, title, description },
+  };
+}
+
 /** The absolute URL of a path on the site. */
 export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path}`;

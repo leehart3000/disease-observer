@@ -25,7 +25,8 @@ The first version covers:
 - Hand-built, accessible SVG for time-series charts (no charting library)
 - ETL: TypeScript scripts using Drizzle, Zod and Turf.js, run on GitHub
   Actions scheduled workflows
-- Testing: Vitest, React Testing Library and Playwright
+- Testing: Vitest, React Testing Library and Playwright, with axe-core
+  (`@axe-core/playwright`) for accessibility checks
 - Code quality: ESLint, Prettier and TypeDoc
 - Hosting: Vercel. CI: GitHub Actions.
 - Dependency updates: Dependabot (see `.github/dependabot.yml`).
@@ -380,6 +381,30 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   table, plus the base map credit in `src/lib/credits.ts`. If the table
   can't be read, they show "Sources unavailable".
 - `/about` is static text.
+- **The 404 page** (`src/app/not-found.tsx`) is the site's own page, with its
+  header and footer, saying the page could not be found and offering the home
+  page, the main sections and each disease (from the registry). An address
+  with no page answers with a real 404 (see `src/proxy.ts`) and this page.
+- **Sharing.** Every page has Open Graph and Twitter card text, and a picture
+  (`opengraph-image` and `twitter-image`, 1200 by 630 PNGs made with
+  `ImageResponse` in `src/lib/og-image.tsx`: the mark, the site name and the
+  page's title, in IBM Plex Sans on the site's colours). The home page, each
+  disease page and each dataset page (shared by its map, chart and table
+  pages) have their own picture; every other page shows the home page's. They
+  are made when the site is built from the registry, and read no database. The
+  text is `socialMetadata` in `src/lib/seo.ts` (a page that sets `openGraph` or
+  `twitter` replaces the root layout's, so it repeats the site-wide parts).
+  The proxy lets `…/opengraph-image` and `…/twitter-image` through for a
+  disease or dataset in the registry. If the home page's text changes, look at
+  the picture in `.next/server/app/opengraph-image.body` after a build.
+- **Accessibility checks.** `e2e/a11y.spec.ts` runs axe-core on every page in
+  `sitePaths()` and on the 404 page, in the light theme (and in the dark
+  theme for one page of each kind), at both sizes, and fails on any serious or
+  critical issue against WCAG 2.0, 2.1 and 2.2 A and AA. Each page is checked
+  once its data has loaded. axe cannot read the colours of text drawn on a map,
+  so it does not judge them. A link whose visible text is "View on map" is
+  named "View on map: Hartlepool", so that its name contains what is shown
+  (WCAG 2.5.3).
 
 ## The map page
 
@@ -474,6 +499,17 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   cache fails or is slow, the page queries the database directly, and if
   that fails too it shows "Data unavailable" and the rest of the page (the
   breadcrumb and heading) still works.
+- **The key and the buttons that move the map.** The key is over the map's
+  bottom-left corner on a wide screen, and under it on a phone. A dataset with
+  `map.legendBelow` (the US states, where it would cover California, Arizona
+  and Texas) has it under the map on a wide screen too, at most 24 rem wide. A
+  dataset with `map.views` (the US: Alaska and Hawaii, which the opening view
+  leaves out) has a row of buttons above the map, "Show Alaska", "Show
+  Hawaii" and "Show all states" (`MapViewButtons`), which move the map there
+  (`fitBounds`, or a jump with a reduced-motion preference). They are real
+  buttons outside the canvas, grouped as "Move the map", with a status line
+  that says where the map went. The canvas's `data-map-center` says where the
+  map is looking, for the tests.
 - The base map follows the theme toggle, switching between OpenFreeMap's
   positron (light) and dark styles without reloading the page. The style
   files are not edited: `transformStyle` (in `ChoroplethMap.tsx`) raises

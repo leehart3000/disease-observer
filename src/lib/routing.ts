@@ -59,7 +59,9 @@ function oldMapRedirect(searchParams: URLSearchParams): string {
  * - `/diseases/<disease>`, `/diseases/<disease>/<dataset>` and
  *   `/diseases/<disease>/<dataset>/<view>` continue only if each part is in
  *   the registry (and the view is one the dataset has a page for). Anything
- *   else is a 404.
+ *   else is a 404. The sharing pictures, `/diseases/<disease>/opengraph-image`
+ *   and `/diseases/<disease>/<dataset>/opengraph-image` (and `twitter-image`),
+ *   continue if the disease or dataset is in the registry.
  * - `/locations/<place>` continues only for a place that some dataset
  *   covers. Anything else is a 404.
  * - Everything else continues.
@@ -78,11 +80,20 @@ export function decideRoute(pathname: string, searchParams: URLSearchParams): Ro
   }
   if (!pathname.startsWith("/diseases/")) return { action: "continue" };
 
-  const [diseaseSlug, datasetSlug, view, ...extra] = pathname
-    .split("/")
-    .filter(Boolean)
-    .slice(1)
-    .map(safeDecode);
+  const parts = pathname.split("/").filter(Boolean).slice(1).map(safeDecode);
+
+  // The pictures for sharing a disease or a dataset (`opengraph-image` and
+  // `twitter-image`) come after the disease or dataset in the address.
+  const last = parts[parts.length - 1];
+  if ((last === "opengraph-image" || last === "twitter-image") && parts.length <= 3) {
+    const known =
+      parts.length === 2
+        ? getDisease(parts[0]) !== undefined
+        : parts.length === 3 && getDatasetBySlug(parts[0], parts[1]) !== undefined;
+    return known ? { action: "continue" } : { action: "not-found" };
+  }
+
+  const [diseaseSlug, datasetSlug, view, ...extra] = parts;
   if (extra.length > 0 || !diseaseSlug || !getDisease(diseaseSlug)) return { action: "not-found" };
   if (datasetSlug === undefined) return { action: "continue" };
 

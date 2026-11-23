@@ -139,7 +139,7 @@ test.describe("the state table", () => {
   test("each row links to the state on the map and in the chart", async ({ page }) => {
     await page.goto(`${INFLUENZA}/table`);
     await page.getByLabel("Search table by area name").fill("Washington");
-    await expect(page.getByRole("link", { name: "View Washington on the map" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "View on map: Washington" })).toHaveAttribute(
       "href",
       `${INFLUENZA}/map?areas=US-WA`,
     );
@@ -216,6 +216,105 @@ test.describe("the state map", () => {
     await page.getByRole("button", { name: "Pin Texas on the map" }).click();
     await expect(page).toHaveURL(`${INFLUENZA}/map?areas=US-TX`);
     await expect(page.getByTestId("area-readout")).toContainText("28 per 100,000");
+  });
+});
+
+/** Where the map is looking, from the canvas's `data-map-center` ("lng,lat" to one decimal place). */
+async function mapCentre(page: Page): Promise<{ lng: number; lat: number }> {
+  const text = (await page.getByTestId("map-canvas").getAttribute("data-map-center")) ?? "0,0";
+  const [lng, lat] = text.split(",").map(Number);
+  return { lng, lat };
+}
+
+test.describe("the buttons that move the US map", () => {
+  test("take it to Alaska and Hawaii and back, say where it went, and are keyboard buttons", async ({
+    page,
+  }) => {
+    await page.goto(`${INFLUENZA}/map`);
+    const canvas = page.getByTestId("map-canvas");
+    await expect(canvas).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
+
+    const group = page.getByRole("group", { name: "Move the map" });
+    await expect(group.getByRole("button")).toHaveText(["Show Alaska", "Show Hawaii", "Show all states"]);
+    // The map opens on the contiguous states.
+    await expect.poll(async () => (await mapCentre(page)).lng).toBeGreaterThan(-110);
+    const opening = await mapCentre(page);
+    // On a tall phone screen the map is held within its limits, which moves the centre north a little.
+    expect(opening.lat).toBeGreaterThan(30);
+    expect(opening.lat).toBeLessThan(50);
+
+    // A keyboard press does it, as a click does.
+    await group.getByRole("button", { name: "Show Alaska" }).focus();
+    await page.keyboard.press("Enter");
+    await expect(group.getByRole("status")).toHaveText("Showing Alaska.");
+    await expect.poll(async () => (await mapCentre(page)).lat, { timeout: 10_000 }).toBeGreaterThan(55);
+    expect((await mapCentre(page)).lng).toBeLessThan(-135);
+
+    await group.getByRole("button", { name: "Show Hawaii" }).click();
+    await expect(group.getByRole("status")).toHaveText("Showing Hawaii.");
+    await expect.poll(async () => (await mapCentre(page)).lat, { timeout: 10_000 }).toBeLessThan(25);
+    const hawaii = await mapCentre(page);
+    expect(hawaii.lng).toBeLessThan(-150);
+    expect(hawaii.lng).toBeGreaterThan(-165);
+
+    await group.getByRole("button", { name: "Show all states" }).click();
+    await expect(group.getByRole("status")).toHaveText("Showing all states.");
+    // The same view as the map opened on.
+    await expect
+      .poll(async () => Math.abs((await mapCentre(page)).lat - opening.lat), { timeout: 10_000 })
+      .toBeLessThan(1);
+    expect(Math.abs((await mapCentre(page)).lng - opening.lng)).toBeLessThan(1);
+  });
+
+  test("can be asked again after the map has been moved by hand", async ({ page }) => {
+    await page.goto(`${INFLUENZA}/map`);
+    await expect(page.getByTestId("map-canvas")).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
+    const group = page.getByRole("group", { name: "Move the map" });
+    const opening = await mapCentre(page);
+    await group.getByRole("button", { name: "Show Alaska" }).click();
+    await expect.poll(async () => (await mapCentre(page)).lat, { timeout: 10_000 }).toBeGreaterThan(55);
+    await group.getByRole("button", { name: "Show all states" }).click();
+    await expect
+      .poll(async () => Math.abs((await mapCentre(page)).lat - opening.lat), { timeout: 10_000 })
+      .toBeLessThan(1);
+    // Alaska again, the same request as before: it still goes.
+    await group.getByRole("button", { name: "Show Alaska" }).click();
+    await expect.poll(async () => (await mapCentre(page)).lat, { timeout: 10_000 }).toBeGreaterThan(55);
+  });
+
+  test("are on the US maps and no others", async ({ page }) => {
+    for (const path of [RSV, COVID_US]) {
+      await page.goto(`${path}/map`);
+      await expect(page.getByRole("button", { name: "Show Alaska" })).toBeVisible();
+    }
+    await page.goto("/diseases/covid-19/rate-by-local-authority/map");
+    await expect(page.getByTestId("map-canvas")).toBeVisible();
+    await expect(page.getByRole("group", { name: "Move the map" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Show / })).toHaveCount(0);
+  });
+});
+
+test.describe("the key on a US map", () => {
+  test("is under the map, not over its south-west, while England's is over the map as before", async ({ page }) => {
+    const box = async (selector: string) => (await page.locator(selector).first().boundingBox())!;
+    await page.goto(`${INFLUENZA}/map`);
+    await expect(page.getByTestId("map-canvas")).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
+    const mapUs = await box(".map-region");
+    const legendUs = await box(".map-legend");
+    // Under the map's bottom edge, on a phone and on a wide screen.
+    expect(legendUs.y).toBeGreaterThanOrEqual(mapUs.y + mapUs.height - 1);
+
+    await page.goto("/diseases/covid-19/rate-by-local-authority/map");
+    await expect(page.getByTestId("map-canvas")).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
+    const mapEngland = await box(".map-region");
+    const legendEngland = await box(".map-legend");
+    if (test.info().project.name === "desktop") {
+      // England's key is over the map's bottom-left corner on a wide screen.
+      expect(legendEngland.y).toBeLessThan(mapEngland.y + mapEngland.height);
+      expect(legendEngland.x).toBeLessThan(mapEngland.x + 40);
+    } else {
+      expect(legendEngland.y).toBeGreaterThanOrEqual(mapEngland.y + mapEngland.height - 1);
+    }
   });
 });
 
@@ -348,7 +447,7 @@ test.describe("the site around them", () => {
     await page.goto("/");
     await expect(
       page.getByText(
-        "Currently covers COVID-19 and measles in England, from the UK Health Security Agency; influenza, RSV and COVID-19 in the United States, from the CDC National Healthcare Safety Network (NHSN).",
+        "Currently covers COVID-19 and measles in England, from the UK Health Security Agency. It also covers influenza, RSV and COVID-19 in the United States, from the CDC National Healthcare Safety Network (NHSN).",
       ),
     ).toBeVisible();
 

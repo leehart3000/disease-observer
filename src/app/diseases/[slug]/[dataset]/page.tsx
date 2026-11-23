@@ -7,7 +7,7 @@ import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
 import { ViewCards } from "@/components/ViewCards";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
 import { datasetHref, diseaseHref } from "@/lib/datasets/routes";
-import { canonicalFor } from "@/lib/seo";
+import { canonicalFor, socialMetadata } from "@/lib/seo";
 
 /** Every dataset in the registry is built ahead of time. */
 export function generateStaticParams() {
@@ -24,6 +24,7 @@ export async function generateMetadata({
     title: dataset.label,
     description: dataset.description,
     alternates: canonicalFor(datasetHref(dataset)),
+    ...socialMetadata(`${dataset.label} | Disease Observer`, dataset.description, datasetHref(dataset)),
   };
 }
 

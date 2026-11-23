@@ -45,6 +45,12 @@ type Props = {
   bounds: LngLatBounds;
   /** The farthest the map can be moved, from the registry. Read once. */
   maxBounds: LngLatBounds;
+  /**
+   * A place to fly to (from a button above the map). A new `id` is a new
+   * request, even to the same bounds, so a visitor who has panned away can ask
+   * again. `null` until the first request.
+   */
+  viewTarget: { id: number; bounds: LngLatBounds; padding: number } | null;
   dataset: MapDataset | null;
   scale: Scale | null;
   /** The area to outline, if any. */
@@ -396,6 +402,7 @@ export function ChoroplethMap({
   boundaryUrl,
   bounds,
   maxBounds,
+  viewTarget,
   dataset,
   scale,
   highlightCode,
@@ -410,6 +417,7 @@ export function ChoroplethMap({
   const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<MapLibreMap | null>(null);
+  const [center, setCenter] = useState<string | undefined>(undefined);
   const [failure, setFailure] = useState<Error | null>(null);
   const [baseStyle, setBaseStyle] = useState<string | null>(null);
   /** The dataset that the map has finished drawing. */
@@ -589,6 +597,32 @@ export function ChoroplethMap({
     };
   }, [map, expanded]);
 
+  // Fly to a place that a button above the map asked for. With a reduced-motion
+  // preference the map jumps there instead.
+  useEffect(() => {
+    if (!map || !viewTarget) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    map.fitBounds(toMapLibreBounds(viewTarget.bounds), {
+      duration: reduceMotion ? 0 : 1200,
+      padding: viewTarget.padding,
+    });
+  }, [map, viewTarget]);
+
+  // Say where the map is looking (to one decimal place), once it stops moving,
+  // so tests and tools can tell without reading the canvas.
+  useEffect(() => {
+    if (!map) return;
+    const update = () => {
+      const { lng, lat } = map.getCenter();
+      setCenter(`${lng.toFixed(1)},${lat.toFixed(1)}`);
+    };
+    update();
+    map.on("moveend", update);
+    return () => {
+      map.off("moveend", update);
+    };
+  }, [map]);
+
   // Switch the base style when the theme changes.
   useEffect(() => {
     if (!map) return;
@@ -641,6 +675,7 @@ export function ChoroplethMap({
       data-dataset={datasetId}
       data-base-style={baseStyle ?? undefined}
       data-map-ready={ready ? "true" : "false"}
+      data-map-center={center}
       data-highlight={highlightCode ?? undefined}
     />
   );

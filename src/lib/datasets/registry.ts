@@ -85,15 +85,29 @@ const UNITED_STATES = {
   scheme: "iso3166-1-alpha3",
 } as const satisfies Place;
 
-/**
- * The contiguous United States, with room to the west and south of it, where
- * the key sits on a wide screen (over the Pacific and Mexico, not over
- * California and Texas). Alaska and Hawaii are within reach.
- */
+/** The contiguous United States, with some room around it. Alaska and Hawaii have buttons (`US_VIEWS`). */
 const US_BOUNDS = [
-  [-138, 18],
-  [-64, 52],
+  [-128, 22],
+  [-64, 51],
 ] as const satisfies LngLatBounds;
+
+/** Where the "Show Alaska" and "Show Hawaii" buttons take a US map. */
+const US_VIEWS = [
+  {
+    label: "Alaska",
+    bounds: [
+      [-171, 51],
+      [-129, 72],
+    ],
+  },
+  {
+    label: "Hawaii",
+    bounds: [
+      [-161, 18.5],
+      [-154, 22.5],
+    ],
+  },
+] as const satisfies NonNullable<DatasetDef["map"]["views"]>;
 
 /** The farthest a US map can be moved: far enough to reach Alaska and Hawaii. */
 const US_MAX_BOUNDS = [
@@ -130,6 +144,9 @@ const NHSN_DATASET = {
     boundaryUrl: "/boundaries/us-states-50m.json",
     bounds: US_BOUNDS,
     maxBounds: US_MAX_BOUNDS,
+    // The key under the map, so it does not cover California, Arizona and Texas.
+    legendBelow: true,
+    views: US_VIEWS,
     boundaryNotice: "natural-earth",
     areaScheme: "iso3166-2",
     areaNoun: "states",
@@ -349,7 +366,9 @@ export function diseaseInSentence(name: string): string {
  * A sentence on what the site covers now, built from the registry so that it
  * updates itself when a dataset is added. Datasets with the same place and
  * publisher are grouped, for example "Currently covers COVID-19 and measles
- * in England, from the UK Health Security Agency."
+ * in England, from the UK Health Security Agency. It also covers influenza,
+ * RSV and COVID-19 in the United States, from the CDC National Healthcare
+ * Safety Network (NHSN)."
  */
 export function coverageSentence(): string {
   const groups = new Map<string, { place: string; publisher: string; diseases: string[] }>();
@@ -368,7 +387,11 @@ export function coverageSentence(): string {
   const parts = [...groups.values()].map(
     ({ diseases, place, publisher }) => `${joinList(diseases)} in ${place}, from the ${publisher}`,
   );
-  return `Currently covers ${parts.join("; ")}.`;
+  // One sentence for each place and publisher: with several, a run of
+  // semicolons is hard to read.
+  return parts
+    .map((part, index) => (index === 0 ? `Currently covers ${part}.` : `It also covers ${part}.`))
+    .join(" ");
 }
 
 /** True if `period` is one of the choices that a dataset offers. */

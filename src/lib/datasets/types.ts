@@ -131,6 +131,17 @@ export type DatasetDef = {
     /** The farthest the map can be moved: it stops the visitor getting lost far from the data. Contains `bounds`. */
     maxBounds: LngLatBounds;
     /**
+     * True to put the key under the map on a wide screen, instead of over its
+     * bottom-left corner, for a map whose areas it would cover (the US states).
+     */
+    legendBelow?: boolean;
+    /**
+     * Places the map can fly to, each with a "Show <label>" button above the
+     * map, and a "Show all <areas>" button that returns to `bounds`. For areas
+     * that the opening view leaves out (Alaska and Hawaii).
+     */
+    views?: readonly { label: string; bounds: LngLatBounds }[];
+    /**
      * A notice shown under the map about where its boundaries come from.
      * `natural-earth` is for maps drawn from Natural Earth's country and
      * state boundaries (see `BoundaryNotice`).

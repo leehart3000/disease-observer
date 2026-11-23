@@ -12,11 +12,13 @@ import {
 } from "react";
 import { ValuesTable } from "@/components/ValuesTable";
 import { getDataset } from "@/lib/datasets/registry";
+import type { LngLatBounds } from "@/lib/datasets/types";
 import { parseAreaCodes } from "@/lib/datasets/url";
 import { buildScale } from "@/lib/map/scale";
 import type { MapDataset, SourceCredit } from "@/lib/map/types";
 import { AreaReadout } from "./AreaReadout";
 import { BoundaryNotice } from "./BoundaryNotice";
+import { MapViewButtons } from "./MapViewButtons";
 import { ChoroplethMap, type AreaRect, type SelectedArea } from "./ChoroplethMap";
 import { Legend } from "./Legend";
 import { MapErrorBoundary } from "./MapErrorBoundary";
@@ -95,6 +97,9 @@ export function MapExplorer({
   if (!dataset) throw new Error(`Unknown dataset ${datasetId}`);
 
   const [hovered, setHovered] = useState<SelectedArea | null>(null);
+  // Where the buttons above the map (see `MapViewButtons`) last asked it to go.
+  const [viewTarget, setViewTarget] = useState<{ id: number; bounds: LngLatBounds; padding: number } | null>(null);
+  const viewRequest = useRef(0);
   // The pinned area is read from the address (`?areas=`) and from nowhere
   // else, so it can't drift from it, for example when Next.js restores a page
   // that was visited before. Pinning rewrites the address; the pin shows at
@@ -190,6 +195,24 @@ export function MapExplorer({
         Skip to the table of values
       </a>
 
+      {dataset.map.views && dataset.map.views.length > 0 ? (
+        <div inert={behind}>
+          <MapViewButtons
+            views={dataset.map.views}
+            allLabel={`all ${dataset.map.areaNoun}`}
+            onChoose={(label) => {
+              const view = dataset.map.views?.find((entry) => entry.label === label);
+              // A place gets a little room round it; the opening view gets none, as it opened.
+              setViewTarget({
+                id: viewRequest.current++,
+                bounds: view ? view.bounds : dataset.map.bounds,
+                padding: view ? 12 : 0,
+              });
+            }}
+          />
+        </div>
+      ) : null}
+
       <div
         ref={frameRef}
         data-expanded={expand.expanded}
@@ -208,6 +231,7 @@ export function MapExplorer({
               boundaryUrl={dataset.map.boundaryUrl}
               bounds={dataset.map.bounds}
               maxBounds={dataset.map.maxBounds}
+              viewTarget={viewTarget}
               dataset={values}
               scale={scale}
               highlightCode={shown?.code ?? null}
@@ -240,7 +264,9 @@ export function MapExplorer({
               pinned={pinned !== null}
             />
           </div>
-          <div className="map-legend mt-3 lg:absolute lg:bottom-9 lg:left-3 lg:mt-0">
+          <div
+            className={`map-legend mt-3 ${dataset.map.legendBelow ? "lg:max-w-sm" : "lg:absolute lg:bottom-9 lg:left-3 lg:mt-0"}`}
+          >
             <Legend
               scale={scale}
               heading={dataset.title}

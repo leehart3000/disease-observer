@@ -15,7 +15,7 @@ import {
   sourceSlugsForDisease,
 } from "@/lib/datasets/registry";
 import { datasetHref, diseaseHref, VIEW_LABELS, viewHref } from "@/lib/datasets/routes";
-import { canonicalFor } from "@/lib/seo";
+import { canonicalFor, socialMetadata } from "@/lib/seo";
 
 /** Every disease in the registry is built ahead of time. */
 export function generateStaticParams() {
@@ -31,6 +31,7 @@ export async function generateMetadata({
     title: disease.name,
     description: disease.summary,
     alternates: canonicalFor(diseaseHref(disease.slug)),
+    ...socialMetadata(`${disease.name} | Disease Observer`, disease.summary, diseaseHref(disease.slug)),
   };
 }
 

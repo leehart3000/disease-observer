@@ -62,7 +62,8 @@ function ViewOnMapLink({
   return (
     <Link
       href={`${mapPath}?${query}`}
-      aria-label={`View ${area.name} on the map`}
+      // The visible words "View on map" start the name, so the two agree (WCAG 2.5.3).
+      aria-label={`View on map: ${area.name}`}
       className="group inline-flex min-h-11 items-center gap-2 whitespace-nowrap rounded-md px-2 text-brand underline underline-offset-4 hover:bg-brand/10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
     >
       <PinIcon filled={false} />

@@ -226,7 +226,7 @@ test("the links between views keep the period, and the chart will not", async ({
 
   // A row's link to the map carries the period and the area.
   await expect(
-    page.getByRole("link", { name: /^View .+ on the map$/ }).first(),
+    page.getByRole("link", { name: /^View on map: .+/ }).first(),
   ).toHaveAttribute("href", /\/map\?p=12w&areas=E45/);
 
   // Choosing on the map is carried to the table.
