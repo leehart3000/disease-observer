@@ -21,6 +21,7 @@ const PAGES = [
   { path: "/diseases/measles/cases-by-region/map", h1: "Measles cases by region" },
   { path: "/sources", h1: "Sources and licences" },
   { path: "/about", h1: "About" },
+  { path: "/privacy", h1: "Privacy" },
 ];
 
 for (const { path, h1 } of PAGES) {
@@ -87,7 +88,7 @@ test("the header links fit on a second row on a phone, with 44 px targets", asyn
   }
 });
 
-test("the footer links to the sources and about pages", async ({ page }) => {
+test("the footer links to the sources, about and privacy pages", async ({ page }) => {
   await page.goto("/");
   const footer = page.getByRole("navigation", { name: "Footer" });
 
@@ -95,7 +96,71 @@ test("the footer links to the sources and about pages", async ({ page }) => {
   await expect(page).toHaveURL("/sources");
   await page.getByRole("navigation", { name: "Footer" }).getByRole("link", { name: "About" }).click();
   await expect(page).toHaveURL("/about");
+  await page.getByRole("navigation", { name: "Footer" }).getByRole("link", { name: "Privacy" }).click();
+  await expect(page).toHaveURL("/privacy");
   await expect(page.getByText("© 2026 Disease Observer")).toBeVisible();
+});
+
+test("the privacy page says what is collected, with links to the two policies", async ({ page }) => {
+  await page.goto("/privacy");
+  await expect(page).toHaveTitle(/^Privacy/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/privacy$/);
+  const main = page.getByRole("main");
+  await expect(main).toContainText("no cookies");
+  await expect(main).toContainText("Cloudflare Web Analytics");
+  await expect(main).toContainText("stored only in your own browser");
+  await expect(main).toContainText("forwarded to the site owner");
+  await expect(main).toContainText("The site is run by Lee Hart.");
+  await expect(main.getByRole("link", { name: /Cloudflare’s privacy policy/ })).toHaveAttribute(
+    "href",
+    "https://www.cloudflare.com/privacypolicy/",
+  );
+  await expect(main.getByRole("link", { name: /Vercel’s privacy policy/ })).toHaveAttribute(
+    "href",
+    "https://vercel.com/legal/privacy-policy",
+  );
+  await expect(main.getByRole("link", { name: "privacy@disease.observer" })).toHaveAttribute(
+    "href",
+    "mailto:privacy@disease.observer",
+  );
+});
+
+test("no analytics script is loaded outside production", async ({ page }) => {
+  const requested: string[] = [];
+  page.on("request", (request) => requested.push(request.url()));
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  expect(requested.filter((url) => url.includes("cloudflareinsights"))).toEqual([]);
+  await expect(page.locator("script[data-cf-beacon]")).toHaveCount(0);
+});
+
+test("a disease page shows only the disease's own description under its heading", async ({
+  page,
+}) => {
+  for (const slug of ["covid-19", "measles", "influenza", "rsv"]) {
+    await page.goto(`/diseases/${slug}`);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(main).not.toContainText("The map shows");
+  }
+  // The dataset's description is in the Datasets section, not under the heading.
+  await page.goto("/diseases/rsv");
+  const heading = page.getByRole("heading", { level: 1 });
+  await expect(heading.locator("xpath=following-sibling::*[1]")).toContainText("Respiratory syncytial virus (RSV)");
+  await expect(heading.locator("xpath=following-sibling::*[1]")).not.toContainText("hospital admissions");
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Datasets" }).locator("xpath=..").getByText("hospital admissions of patients"),
+  ).toBeVisible();
+});
+
+test("a dataset page and its map page explain what the map shows", async ({ page }) => {
+  for (const path of [
+    "/diseases/influenza/hospital-admissions-by-state",
+    "/diseases/influenza/hospital-admissions-by-state/map",
+  ]) {
+    await page.goto(path);
+    await expect(page.getByTestId("map-explanation")).toContainText("The map shows");
+  }
 });
 
 test("the footer has the copyright on the left and the links on the right on a wide screen", async ({
@@ -126,14 +191,18 @@ test("the footer has the copyright on the left and the links on the right on a w
 test("the home page and the about page say what the site covers now, from the registry", async ({
   page,
 }) => {
-  const line =
-    "Currently covers COVID-19 and measles in England, from the UK Health Security Agency. It also covers influenza, RSV and COVID-19 in the United States, from the CDC National Healthcare Safety Network (NHSN).";
+  const items = [
+    "England: COVID-19 and measles, from the UK Health Security Agency",
+    "United States: influenza, RSV and COVID-19, from the CDC National Healthcare Safety Network (NHSN)",
+  ];
   await page.goto("/");
-  await expect(page.getByText(line)).toBeVisible();
+  await expect(page.getByTestId("coverage")).toContainText("Disease Observer currently covers:");
+  await expect(page.getByTestId("coverage").getByRole("listitem")).toHaveText(items);
+  await expect(page.getByText("Currently covers", { exact: true })).toHaveCount(0);
   await expect(page.getByText("shown as soon as they are published")).toHaveCount(0);
 
   await page.goto("/about");
-  await expect(page.getByText(line)).toBeVisible();
+  await expect(page.getByTestId("coverage").getByRole("listitem")).toHaveText(items);
   await expect(page.getByText("contact a doctor or your local health service")).toBeVisible();
   await expect(page.getByText("NHS 111")).toHaveCount(0);
 });

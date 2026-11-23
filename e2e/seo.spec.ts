@@ -34,7 +34,7 @@ test.describe("address helpers", () => {
     const paths = sitePaths();
     expect(new Set(paths).size).toBe(paths.length);
     expect(paths).toEqual(
-      expect.arrayContaining(["/", "/diseases", "/maps", "/sources", "/about"]),
+      expect.arrayContaining(["/", "/diseases", "/maps", "/sources", "/about", "/privacy"]),
     );
     for (const disease of DISEASES) expect(paths).toContain(`/diseases/${disease.slug}`);
     for (const dataset of DATASETS) {
@@ -132,6 +132,7 @@ test.describe("canonical links", () => {
     "/",
     "/diseases",
     "/about",
+    "/privacy",
     "/sources",
     "/maps",
     ...DISEASES.map((disease) => `/diseases/${disease.slug}`),

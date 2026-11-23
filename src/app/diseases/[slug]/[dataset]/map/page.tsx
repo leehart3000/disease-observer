@@ -57,7 +57,7 @@ async function MapViewContent({
   if (!disease || !dataset || !dataset.views.includes("map")) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-8 sm:px-6 sm:pt-5 sm:pb-12">
       <Breadcrumbs
         items={[
           { label: "Diseases", href: "/diseases" },
@@ -71,6 +71,9 @@ async function MapViewContent({
       <div className="mb-6">
         <ViewTabs datasetName={dataset.name} tabs={viewTabs(dataset)} current="map" />
       </div>
+      <p className="mb-4 max-w-2xl" data-testid="map-explanation">
+        {dataset.mapExplanation}
+      </p>
       <CaveatsLink dataset={dataset} />
       <Suspense
         fallback={

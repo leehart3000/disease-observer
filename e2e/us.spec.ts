@@ -235,7 +235,7 @@ test.describe("the buttons that move the US map", () => {
     await expect(canvas).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
 
     const group = page.getByRole("group", { name: "Move the map" });
-    await expect(group.getByRole("button")).toHaveText(["Show Alaska", "Show Hawaii", "Show all states"]);
+    await expect(group.getByRole("button")).toHaveText(["Show Alaska", "Show Hawaii", "Show contiguous states"]);
     // The map opens on the contiguous states.
     await expect.poll(async () => (await mapCentre(page)).lng).toBeGreaterThan(-110);
     const opening = await mapCentre(page);
@@ -257,8 +257,8 @@ test.describe("the buttons that move the US map", () => {
     expect(hawaii.lng).toBeLessThan(-150);
     expect(hawaii.lng).toBeGreaterThan(-165);
 
-    await group.getByRole("button", { name: "Show all states" }).click();
-    await expect(group.getByRole("status")).toHaveText("Showing all states.");
+    await group.getByRole("button", { name: "Show contiguous states" }).click();
+    await expect(group.getByRole("status")).toHaveText("Showing contiguous states.");
     // The same view as the map opened on.
     await expect
       .poll(async () => Math.abs((await mapCentre(page)).lat - opening.lat), { timeout: 10_000 })
@@ -273,7 +273,7 @@ test.describe("the buttons that move the US map", () => {
     const opening = await mapCentre(page);
     await group.getByRole("button", { name: "Show Alaska" }).click();
     await expect.poll(async () => (await mapCentre(page)).lat, { timeout: 10_000 }).toBeGreaterThan(55);
-    await group.getByRole("button", { name: "Show all states" }).click();
+    await group.getByRole("button", { name: "Show contiguous states" }).click();
     await expect
       .poll(async () => Math.abs((await mapCentre(page)).lat - opening.lat), { timeout: 10_000 })
       .toBeLessThan(1);
@@ -445,11 +445,10 @@ test.describe("the disease pages", () => {
 test.describe("the site around them", () => {
   test("the coverage line, the diseases list and the sources include the new data", async ({ page }) => {
     await page.goto("/");
-    await expect(
-      page.getByText(
-        "Currently covers COVID-19 and measles in England, from the UK Health Security Agency. It also covers influenza, RSV and COVID-19 in the United States, from the CDC National Healthcare Safety Network (NHSN).",
-      ),
-    ).toBeVisible();
+    await expect(page.getByTestId("coverage").getByRole("listitem")).toHaveText([
+      "England: COVID-19 and measles, from the UK Health Security Agency",
+      "United States: influenza, RSV and COVID-19, from the CDC National Healthcare Safety Network (NHSN)",
+    ]);
 
     await page.goto("/diseases");
     await expect(page.getByRole("article").getByRole("link")).toHaveText(["COVID-19", "Measles", "Influenza", "RSV"]);

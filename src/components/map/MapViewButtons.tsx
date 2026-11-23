@@ -4,13 +4,13 @@ import { useState } from "react";
 
 /**
  * Buttons that move a map to places its opening view leaves out, such as
- * "Show Alaska" and "Show Hawaii" on a US map, and "Show all states" to go
- * back. They are real buttons outside the map (so a keyboard and a screen
+ * "Show Alaska" and "Show Hawaii" on a US map, and "Show contiguous states"
+ * to go back. They are real buttons outside the map (so a keyboard and a screen
  * reader reach them without the map), and a status line says where the map
  * went, because the movement itself is only visual.
  *
  * @param views - The places, by label.
- * @param allLabel - What the button that returns to the opening view shows, such as "all states".
+ * @param allLabel - What the button that returns to the opening view shows, such as "contiguous states".
  * @param onChoose - Called with a place's label, or `null` for the opening view.
  */
 export function MapViewButtons({

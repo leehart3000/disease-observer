@@ -188,6 +188,43 @@ test("the table says that choosing an area pins it, and each name has a map pin"
   await expect(pinned.locator("svg")).toHaveAttribute("fill", "currentColor");
 });
 
+test("choosing anywhere on a row pins its area, and choosing the name pins it once", async ({
+  page,
+}) => {
+  await openMap(page);
+  const row = rows(page).filter({ hasText: "Hartlepool" }).first();
+  const unpin = page.getByRole("button", { name: "Unpin Hartlepool from the map" });
+  await row.scrollIntoViewIfNeeded();
+
+  // The row looks and acts clickable.
+  await expect(row).toHaveCSS("cursor", "pointer");
+
+  // A value cell pins the area.
+  await row.locator("td").first().click();
+  await expect(unpin).toBeVisible();
+  await expect(readout(page)).toContainText("Hartlepool");
+
+  // Choosing it again unpins.
+  await row.locator("td").first().click();
+  await expect(page.getByRole("button", { name: "Pin Hartlepool on the map" })).toBeVisible();
+
+  // The name button pins once: the row's own handler ignores clicks inside buttons.
+  await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
+  await expect(unpin).toBeVisible();
+  await page.getByRole("button", { name: "Unpin Hartlepool from the map" }).click();
+  await expect(page.getByRole("button", { name: "Pin Hartlepool on the map" })).toBeVisible();
+});
+
+test("the area name button fills the name cell, so every row lines up", async ({ page }) => {
+  await openMap(page);
+  const first = rows(page).first();
+  const cell = first.getByRole("rowheader");
+  const button = first.getByRole("button", { name: /^Pin / });
+  const cellBox = (await cell.boundingBox())!;
+  const buttonBox = (await button.boundingBox())!;
+  expect(cellBox.x + cellBox.width - (buttonBox.x + buttonBox.width)).toBeLessThanOrEqual(16);
+});
+
 test("each dataset has its own map page, with no dataset picker", async ({ page }) => {
   await openMap(page);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");

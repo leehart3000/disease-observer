@@ -199,7 +199,7 @@ export function MapExplorer({
         <div inert={behind}>
           <MapViewButtons
             views={dataset.map.views}
-            allLabel={`all ${dataset.map.areaNoun}`}
+            allLabel={dataset.map.openingView ?? `all ${dataset.map.areaNoun}`}
             onChoose={(label) => {
               const view = dataset.map.views?.find((entry) => entry.label === label);
               // A place gets a little room round it; the opening view gets none, as it opened.

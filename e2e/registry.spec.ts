@@ -124,3 +124,16 @@ test.describe("each dataset's map bounds", () => {
     }
   });
 });
+
+test.describe("text that belongs to one dataset", () => {
+  test("each dataset explains its map, and no disease description does", () => {
+    for (const dataset of DATASETS) {
+      expect(dataset.mapExplanation, dataset.id).toMatch(/^The map shows /);
+    }
+    for (const disease of DISEASES) {
+      for (const paragraph of disease.about) {
+        expect(paragraph, disease.slug).not.toContain("The map shows");
+      }
+    }
+  });
+});

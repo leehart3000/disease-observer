@@ -72,6 +72,18 @@ function ViewOnMapLink({
   );
 }
 
+/**
+ * True if a click on a row should not pin the row's area: it was on a link or a
+ * control inside the row (which does its own thing), or the visitor was
+ * selecting text (a click that ends a selection is not a request to pin).
+ */
+function isClickOnControlOrSelection(target: EventTarget): boolean {
+  if (target instanceof Element && target.closest("a, button, input, select, textarea, label, summary")) {
+    return true;
+  }
+  return (window.getSelection()?.toString() ?? "") !== "";
+}
+
 /** The "Chart" link of a row on the table page: the chart page with this area chosen. */
 function ChartLink({ href, area }: { href: string; area: { name: string } }) {
   return (
@@ -287,11 +299,21 @@ export function ValuesTable({
                 <tr
                   key={area.code}
                   data-selected={highlighted}
-                  className={`border-b border-line last:border-b-0 ${highlighted ? "bg-brand/15" : ""}`}
+                  // On the map page the whole row pins the area (a mouse and touch shortcut: the
+                  // name's button below is the way for a keyboard and a screen reader).
+                  onClick={
+                    action.kind === "pin"
+                      ? (event) => {
+                          if (isClickOnControlOrSelection(event.target)) return;
+                          action.onPin({ code: area.code, name: area.name });
+                        }
+                      : undefined
+                  }
+                  className={`border-b border-line last:border-b-0 ${highlighted ? "bg-brand/15" : ""} ${action.kind === "pin" ? "cursor-pointer hover:bg-brand/10" : ""}`}
                 >
                   <th scope="row" className="p-0 font-normal">
                     {action.kind === "pin" ? (
-                      <div className="flex items-center gap-2 pr-3">
+                      <div className="flex w-full items-center gap-2 pr-3">
                         <button
                           type="button"
                           aria-pressed={highlighted}
@@ -301,7 +323,7 @@ export function ValuesTable({
                               : `Pin ${area.name} on the map`
                           }
                           onClick={() => action.onPin({ code: area.code, name: area.name })}
-                          className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left hover:bg-brand/10 hover:text-brand focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                          className="group flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left hover:text-brand focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
                         >
                           <span
                             className={`inline-flex ${highlighted ? "text-brand" : "text-muted group-hover:text-brand"}`}

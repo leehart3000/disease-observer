@@ -20,8 +20,6 @@ export const DISEASES = [
     summary: "Reported COVID-19 case rates for every local authority in England.",
     about: [
       "COVID-19 is an infectious disease caused by the SARS-CoV-2 virus. It spreads mainly through the air and can cause illness ranging from a mild cough to serious breathing problems.",
-      "The map shows the rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people. Rates allow areas of different sizes to be compared.",
-      "The site also shows new hospital admissions for confirmed COVID-19 in the United States, by state and week.",
     ],
     headline: { datasetId: "covid-19-rate" },
     chart: { since: "2023-01-01", areas: ENGLAND_CHART_AREAS },
@@ -32,7 +30,6 @@ export const DISEASES = [
     summary: "Confirmed measles cases in England, by UKHSA region and week.",
     about: [
       "Measles is a highly infectious viral illness. Two doses of the MMR vaccine give lasting protection, and outbreaks can follow when vaccination rates fall.",
-      "The map shows the number of confirmed cases in each UKHSA region, by the week that symptoms began, for the latest complete week or added up over the last 12 weeks or the year so far. Recent weeks are provisional because cases are still being reported.",
     ],
     headline: { datasetId: "measles-cases" },
     chart: { since: "2023-01-01", areas: ENGLAND_CHART_AREAS },
@@ -43,7 +40,6 @@ export const DISEASES = [
     summary: "New hospital admissions for confirmed influenza in the United States, by state and week.",
     about: [
       "Influenza, or flu, is a contagious respiratory illness caused by influenza viruses. It spreads mainly through droplets and can cause mild or severe illness. It is a common cause of hospital admission in the winter months.",
-      "The map shows the number of new hospital admissions of patients with confirmed influenza in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     ],
     headline: { datasetId: "influenza-hospital-admissions" },
     chart: { since: "2023-01-01", areas: null },
@@ -55,7 +51,6 @@ export const DISEASES = [
       "New hospital admissions for confirmed respiratory syncytial virus (RSV) in the United States, by state and week.",
     about: [
       "Respiratory syncytial virus (RSV) is a common respiratory virus. It usually causes mild, cold-like illness, but it can be serious in babies, young children and older adults.",
-      "The map shows the number of new hospital admissions of patients with confirmed RSV in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     ],
     headline: { datasetId: "rsv-hospital-admissions" },
     chart: { since: "2023-01-01", areas: null },
@@ -147,6 +142,7 @@ const NHSN_DATASET = {
     // The key under the map, so it does not cover California, Arizona and Texas.
     legendBelow: true,
     views: US_VIEWS,
+    openingView: "contiguous states",
     boundaryNotice: "natural-earth",
     areaScheme: "iso3166-2",
     areaNoun: "states",
@@ -192,6 +188,8 @@ export const DATASETS = [
     howToRead:
       "Each value is the number of newly reported cases in the 7 days ending on the date shown, for every 100,000 people who live in the local authority. The most recent days are provisional, because cases are still being reported.",
     title: "COVID-19 cases per 100,000 people, by local authority",
+    mapExplanation:
+      "The map shows the rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people. Rates allow areas of different sizes to be compared.",
     // UKHSA documents this as the rate of reported new cases in the 7 days
     // ending on the date shown.
     metric: "rate_per_100k",
@@ -232,6 +230,8 @@ export const DATASETS = [
     howToRead:
       "Each value is the number of confirmed cases whose symptoms began in the period shown. Weeks run from Monday to Sunday, and only complete weeks are counted. You can show the latest week, the total for the last 12 weeks, or the total for the year to date (the weeks that start in the same year as the latest week). A total is provisional if any week in it is, because cases are still being reported. Where a region has no figure for a week, the total is of the weeks it has, and the page says how many.",
     title: "Measles cases, by UKHSA region",
+    mapExplanation:
+      "The map shows the number of confirmed cases in each UKHSA region, by the week that symptoms began, for the latest complete week or added up over the last 12 weeks or the year so far. Recent weeks are provisional because cases are still being reported.",
     metric: "cases",
     valueKind: "count",
     unit: { label: "cases", one: "case", many: "cases" },
@@ -270,6 +270,8 @@ export const DATASETS = [
     howToRead:
       "Each value is the number of new hospital admissions of patients with confirmed influenza in the week shown (Sunday to Saturday), for every 100,000 people who live in the state. The rate is as published: it is not calculated here. The latest week is provisional, because hospitals can still report late.",
     title: "Influenza hospital admissions per 100,000 people, by US state",
+    mapExplanation:
+      "The map shows the number of new hospital admissions of patients with confirmed influenza in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     caveats: NHSN_CAVEATS,
   },
   {
@@ -282,6 +284,8 @@ export const DATASETS = [
     howToRead:
       "Each value is the number of new hospital admissions of patients with confirmed RSV in the week shown (Sunday to Saturday), for every 100,000 people who live in the state. The rate is as published: it is not calculated here. The latest week is provisional, because hospitals can still report late.",
     title: "RSV hospital admissions per 100,000 people, by US state",
+    mapExplanation:
+      "The map shows the number of new hospital admissions of patients with confirmed RSV in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     caveats: [
       ...NHSN_CAVEATS,
       "RSV was reported voluntarily until 1 November 2024, so figures before then (the series starts in October 2023) cover only the hospitals that chose to report.",
@@ -297,6 +301,8 @@ export const DATASETS = [
     howToRead:
       "Each value is the number of new hospital admissions of patients with confirmed COVID-19 in the week shown (Sunday to Saturday), for every 100,000 people who live in the state. The rate is as published: it is not calculated here. The latest week is provisional, because hospitals can still report late.",
     title: "COVID-19 hospital admissions per 100,000 people, by US state",
+    mapExplanation:
+      "The map shows the number of new hospital admissions of patients with confirmed COVID-19 in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     caveats: NHSN_CAVEATS,
   },
 ] as const satisfies readonly DatasetDef[];
@@ -362,20 +368,29 @@ export function diseaseInSentence(name: string): string {
   return /[A-Z]/.test(name.slice(1)) ? name : name.toLowerCase();
 }
 
+/** What the site covers in one place, from one publisher, for the list on the home and About pages. */
+export type CoverageItem = {
+  /** The place, such as "England". */
+  place: string;
+  /** Its diseases, ready for a sentence: "COVID-19 and measles". */
+  diseases: string;
+  /** Who publishes the data, such as "UK Health Security Agency". */
+  publisher: string;
+};
+
 /**
- * A sentence on what the site covers now, built from the registry so that it
- * updates itself when a dataset is added. Datasets with the same place and
- * publisher are grouped, for example "Currently covers COVID-19 and measles
- * in England, from the UK Health Security Agency. It also covers influenza,
- * RSV and COVID-19 in the United States, from the CDC National Healthcare
- * Safety Network (NHSN)."
+ * What the site covers now, one item for each place and publisher, built
+ * from the registry so that it updates itself when a dataset is added. For
+ * example "England: COVID-19 and measles, from the UK Health Security Agency"
+ * and "United States: influenza, RSV and COVID-19, from the CDC National
+ * Healthcare Safety Network (NHSN)".
  */
-export function coverageSentence(): string {
+export function coverageItems(): CoverageItem[] {
   const groups = new Map<string, { place: string; publisher: string; diseases: string[] }>();
   for (const dataset of datasetList) {
     const key = `${dataset.place.slug}|${dataset.publisher}`;
     const group = groups.get(key) ?? {
-      place: dataset.place.phrase ?? dataset.place.name,
+      place: dataset.place.name,
       publisher: dataset.publisher,
       diseases: [],
     };
@@ -384,14 +399,11 @@ export function coverageSentence(): string {
     if (inSentence && !group.diseases.includes(inSentence)) group.diseases.push(inSentence);
     groups.set(key, group);
   }
-  const parts = [...groups.values()].map(
-    ({ diseases, place, publisher }) => `${joinList(diseases)} in ${place}, from the ${publisher}`,
-  );
-  // One sentence for each place and publisher: with several, a run of
-  // semicolons is hard to read.
-  return parts
-    .map((part, index) => (index === 0 ? `Currently covers ${part}.` : `It also covers ${part}.`))
-    .join(" ");
+  return [...groups.values()].map(({ place, publisher, diseases }) => ({
+    place,
+    publisher,
+    diseases: joinList(diseases),
+  }));
 }
 
 /** True if `period` is one of the choices that a dataset offers. */

@@ -56,7 +56,7 @@ async function DiseaseContent({ params }: PageProps<"/diseases/[slug]">) {
   if (!disease) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-8 sm:px-6 sm:pt-5 sm:pb-12">
       <Breadcrumbs
         items={[
           { label: "Diseases", href: "/diseases" },
@@ -64,10 +64,12 @@ async function DiseaseContent({ params }: PageProps<"/diseases/[slug]">) {
         ]}
       />
       <h1 className="mt-4 text-3xl font-medium tracking-tight sm:text-4xl">{disease.name}</h1>
+      {/* Only what the disease is. What each dataset shows is with the dataset, below. */}
       <div className="mt-3 grid max-w-2xl gap-3">
-        <p className="text-lg text-muted">{disease.summary}</p>
-        {disease.about.map((paragraph) => (
-          <p key={paragraph}>{paragraph}</p>
+        {disease.about.map((paragraph, index) => (
+          <p key={paragraph} className={index === 0 ? "text-lg text-muted" : undefined}>
+            {paragraph}
+          </p>
         ))}
       </div>
 

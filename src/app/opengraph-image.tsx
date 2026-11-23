@@ -1,4 +1,4 @@
-import { coverageSentence } from "@/lib/datasets/registry";
+import { coverageItems } from "@/lib/datasets/registry";
 import { renderOgImage } from "@/lib/og-image";
 
 export const alt = "Disease Observer: maps and charts for infectious disease surveillance";
@@ -9,6 +9,9 @@ export const contentType = "image/png";
 export default function Image() {
   return renderOgImage({
     title: "Maps and charts for infectious disease surveillance",
-    description: coverageSentence(),
+    // "England: COVID-19 and measles. United States: influenza, RSV and COVID-19."
+    description: coverageItems()
+      .map(({ place, diseases }) => `${place}: ${diseases}.`)
+      .join(" "),
   });
 }

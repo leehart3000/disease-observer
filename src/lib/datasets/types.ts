@@ -82,6 +82,12 @@ export type DatasetDef = {
   howToRead: string;
   /** The heading for the map, the legend and the table. */
   title: string;
+  /**
+   * What the map shows and how to read its colours, a sentence or two. Shown on
+   * the dataset's page and next to the map on its map page (not on the disease
+   * page, which says only what the disease is). British English.
+   */
+  mapExplanation: string;
   /** The metric name in the `observations` table. */
   metric: string;
   /** `rate` values can have decimals; `count` values are whole numbers. */
@@ -137,10 +143,13 @@ export type DatasetDef = {
     legendBelow?: boolean;
     /**
      * Places the map can fly to, each with a "Show <label>" button above the
-     * map, and a "Show all <areas>" button that returns to `bounds`. For areas
-     * that the opening view leaves out (Alaska and Hawaii).
+     * map, and a button that returns to `bounds`, "Show <openingView>" ("Show
+     * all <areas>" if `openingView` is left out). For areas that the opening
+     * view leaves out (Alaska and Hawaii).
      */
     views?: readonly { label: string; bounds: LngLatBounds }[];
+    /** What the button that returns to the opening view calls it, such as "contiguous states". */
+    openingView?: string;
     /**
      * A notice shown under the map about where its boundaries come from.
      * `natural-earth` is for maps drawn from Natural Earth's country and
@@ -180,9 +189,16 @@ export type DiseaseDef = {
   /** Stable, URL-safe identifier. It is in `/diseases/covid-19`. */
   slug: string;
   name: string;
-  /** One sentence for the cards and the page description. British English. */
+  /**
+   * One sentence for the cards and the page's description (what the site shows
+   * for the disease). It is not shown on the disease page itself. British English.
+   */
   summary: string;
-  /** Short paragraphs for the disease page. British English. */
+  /**
+   * What the disease is: short paragraphs, shown under the disease page's
+   * heading. Only the disease, not what any dataset shows (that is the dataset's
+   * `description` and `mapExplanation`). British English.
+   */
   about: readonly string[];
   /**
    * The figure shown on the disease's card and page: the latest value for

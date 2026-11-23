@@ -40,6 +40,8 @@ it.
 
 - Keep each change small and focused on one thing.
 - Discuss new, removed or upgraded dependencies before making the change.
+- The code is under the GNU AGPL v3.0 only (`LICENSE`, `"license"` in
+  `package.json`). Data keeps each source's own terms.
 - Never commit secrets. Local values go in `.env.local`, which Git
   ignores. Keep `.env.example` up to date with placeholder values only.
 - Write commit messages as a short summary line in the imperative mood,
@@ -210,7 +212,14 @@ The header and footer are in the root layout (`src/app/layout.tsx`), so
 every page has them. The header links are listed in `NavLinks.tsx`.
 
 - `/`, `/diseases` and `/diseases/[slug]` are generated from the diseases
-  in the registry (name, summary and description). Adding a disease to the
+  in the registry (name, summary and description). Under its heading a
+  disease page shows only the disease's own description (`about`): text that
+  belongs to one dataset is not written there. The `summary` is for the
+  cards and the page's metadata, a dataset's `description` goes with its item
+  in the Datasets section, and its `mapExplanation` ("The map shows …") is
+  shown on the dataset page and beside the map. The home and About pages
+  list what the site covers, one item for each place, from `coverageItems()`
+  (`CoverageList`). Adding a disease to the
   registry adds its card and its page. Their text and links do not need the
   database. An unknown disease slug gets a real 404 from `src/proxy.ts`,
   because with Cache Components the page cannot change the status once its
@@ -382,7 +391,14 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   that a registry dataset uses (`sourceSlugs`), read from the `sources`
   table, plus the base map credit in `src/lib/credits.ts`. If the table
   can't be read, they show "Sources unavailable".
-- `/about` is static text.
+- `/about` and `/privacy` are static text. The footer links to Sources,
+  About and Privacy.
+- **Analytics.** Cloudflare Web Analytics (a cookie-free page view counter,
+  described on `/privacy`) is added by `Analytics` (`next/script`, after the
+  page is interactive) only when `VERCEL_ENV` is `production` (`analyticsEnabled`
+  in `src/lib/analytics.ts`). Previews, `pnpm dev`, the end-to-end tests and the
+  axe checks never load it. If the privacy page's claims change (a new
+  service, a cookie), change the page in the same commit.
 - **The 404 page** (`src/app/not-found.tsx`) is the site's own page, with its
   header and footer, saying the page could not be found and offering the home
   page, the main sections and each disease (from the registry). An address
@@ -537,7 +553,8 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   and Texas) has it under the map on a wide screen too, at most 24 rem wide. A
   dataset with `map.views` (the US: Alaska and Hawaii, which the opening view
   leaves out) has a row of buttons above the map, "Show Alaska", "Show
-  Hawaii" and "Show all states" (`MapViewButtons`), which move the map there
+  Hawaii" and "Show contiguous states" (`MapViewButtons`; the last label is the
+  dataset's `map.openingView`), which move the map there
   (`fitBounds`, or a jump with a reduced-motion preference). They are real
   buttons outside the canvas, grouped as "Move the map", with a status line
   that says where the map went. The canvas's `data-map-center` says where the
@@ -570,7 +587,10 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   readout is compact, and moves to the bottom if the pinned area would be
   under it.
 - The table can be searched, sorted and paged (25 rows by default), and
-  choosing an area's name in it pins the area. The credits under it are only
+  choosing anywhere on a row pins the area (the row has a pointer cursor and
+  a hover colour; clicks on links, buttons and selected text are ignored). The
+  area's name stays a real button that fills its cell, for the keyboard and
+  screen readers. The credits under it are only
   those of the dataset that is shown.
 - The server renders the first page of the table into the HTML. React
   streams the data-dependent part of the page, and a script reveals it, so

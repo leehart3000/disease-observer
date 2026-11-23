@@ -51,7 +51,7 @@ async function DatasetContent({ params }: PageProps<"/diseases/[slug]/[dataset]"
   if (!disease || !dataset) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-8 sm:px-6 sm:pt-5 sm:pb-12">
       <Breadcrumbs
         items={[
           { label: "Diseases", href: "/diseases" },
@@ -64,6 +64,11 @@ async function DatasetContent({ params }: PageProps<"/diseases/[slug]/[dataset]"
 
       <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">How to read it</h2>
       <p className="max-w-2xl">{dataset.howToRead}</p>
+      {dataset.views.includes("map") ? (
+        <p className="mt-3 max-w-2xl" data-testid="map-explanation">
+          {dataset.mapExplanation}
+        </p>
+      ) : null}
 
       {dataset.caveats && dataset.caveats.length > 0 ? (
         <>

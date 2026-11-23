@@ -2,6 +2,7 @@
   "name": "disease-observer",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "pnpm boundaries:web && pnpm maplibre:worker && NEXT_TELEMETRY_DISABLED=1 next dev",
     "build": "pnpm boundaries:web && pnpm maplibre:worker && NEXT_TELEMETRY_DISABLED=1 next build",

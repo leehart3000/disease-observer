@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 /** The diseases the site covers, one card for each disease in the registry. */
 export default function DiseasesPage() {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-8 sm:px-6 sm:pt-5 sm:pb-12">
       <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">Diseases</h1>
       <p className="mt-3 mb-8 max-w-2xl text-lg text-muted">
         A disease appears here once the site has data for it.

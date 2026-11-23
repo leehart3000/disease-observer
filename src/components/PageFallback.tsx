@@ -7,7 +7,7 @@
  */
 export function PageFallback() {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-8 sm:px-6 sm:pt-5 sm:pb-12">
       <p role="status" className="text-muted">
         Loading the page&hellip;
       </p>

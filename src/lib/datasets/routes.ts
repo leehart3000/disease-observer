@@ -106,5 +106,6 @@ export function sitePaths(): string[] {
     ]),
     "/sources",
     "/about",
+    "/privacy",
   ];
 }

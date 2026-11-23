@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { strongLink } from "@/components/link-styles";
-import { coverageSentence } from "@/lib/datasets/registry";
+import { CoverageList } from "@/components/CoverageList";
 import { canonicalFor } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 /** What the site is, where its figures come from, and what they cannot tell you. */
 export default function AboutPage() {
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full max-w-5xl flex-1 px-4 pt-3 pb-8 sm:px-6 sm:pt-5 sm:pb-12">
       <h1 className="text-3xl font-medium tracking-tight sm:text-4xl">About</h1>
       <div className="mt-6 grid max-w-2xl gap-8">
         <section aria-labelledby="what">
@@ -23,8 +23,11 @@ export default function AboutPage() {
           </h2>
           <p className="mt-2">
             Disease Observer shows maps and charts of infectious disease cases, so that anyone
-            can see what is being reported and where. {coverageSentence()}
+            can see what is being reported and where.
           </p>
+          <div className="mt-3">
+            <CoverageList />
+          </div>
         </section>
         <section aria-labelledby="data">
           <h2 id="data" className="text-xl font-medium tracking-tight">
