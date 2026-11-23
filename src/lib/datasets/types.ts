@@ -145,6 +145,13 @@ export type DatasetDef = {
   };
   scale: ScaleConfig;
   /**
+   * The slugs of the places that this dataset has figures for, such as
+   * `["england"]`. Each is a page under `/locations` (see `src/lib/locations.ts`),
+   * which lists the dataset. A place is England or one of the Natural Earth
+   * countries. A dataset's own `place` is one of them.
+   */
+  locations: readonly string[];
+  /**
    * The place the data covers as a whole, such as England. Its `name` is used
    * in the coverage line and wherever the whole place is named (the charts,
    * the headline). Its row in the `areas` table (`scheme` and `code`) holds the

@@ -142,8 +142,8 @@ test("the home page has one card for each disease, and one for the map", async (
   await page.goto("/");
 
   const cards = page.getByRole("article");
-  await expect(cards).toHaveCount(5);
-  await expect(cards.getByRole("link")).toHaveText(["COVID-19", "Measles", "Influenza", "RSV", "Maps"]);
+  await expect(cards).toHaveCount(6);
+  await expect(cards.getByRole("link")).toHaveText(["COVID-19", "Measles", "Influenza", "RSV", "Maps", "Locations"]);
   await expect(cards.getByRole("link", { name: "Maps" })).toHaveAttribute("href", "/maps");
 
   await cards.getByRole("link", { name: "Measles" }).click();

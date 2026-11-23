@@ -95,6 +95,45 @@ async function queryHeadline(dataset: DatasetDef): Promise<Headline | null> {
 }
 
 /**
+ * One dataset's latest figure for its whole place, as `queryHeadline` reads
+ * it, for a place's page (which shows every dataset that covers the place,
+ * not only each disease's headline dataset). Not cached.
+ *
+ * @throws {NoDataError} If the place has no values, so an empty result is not
+ *   cached for a day.
+ */
+async function queryDatasetHeadline(dataset: DatasetDef): Promise<Headline> {
+  const headline = await queryHeadline(dataset);
+  if (!headline) throw new NoDataError(`headline of ${dataset.id}`);
+  return headline;
+}
+
+/**
+ * The same figure, from the shared runtime cache (refreshed about once a
+ * day). The dataset id is the cache key, so callers must pass the id of a
+ * registered dataset: there is one entry for each dataset.
+ */
+async function getCachedDatasetHeadline(datasetId: string): Promise<Headline> {
+  "use cache: remote";
+  cacheLife("days");
+  const dataset = getDataset(datasetId);
+  if (!dataset) throw new Error(`Unknown dataset ${datasetId}`);
+  return queryDatasetHeadline(dataset);
+}
+
+/**
+ * Loads one dataset's headline without ever throwing: from the cache, else
+ * from the database, else as an "error" or "empty" result.
+ */
+export function loadDatasetHeadline(dataset: DatasetDef): Promise<LoadResult<Headline>> {
+  return loadWithFallback(
+    "Dataset headline",
+    () => getCachedDatasetHeadline(dataset.id),
+    () => queryDatasetHeadline(dataset),
+  );
+}
+
+/**
  * The headline of every disease that has one and has data for its place. Not
  * cached.
  *

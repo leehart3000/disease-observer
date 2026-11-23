@@ -136,6 +136,7 @@ const NHSN_DATASET = {
     areaNounOne: "state",
   },
   scale: { classes: 6, rounding: "2sf", zeroClass: false },
+  locations: ["united-states"],
   place: UNITED_STATES,
   publisher: "CDC National Healthcare Safety Network (NHSN)",
   sourceSlugs: ["cdc-nhsn", "natural-earth"],
@@ -197,6 +198,7 @@ export const DATASETS = [
       areaNounOne: "local authority",
     },
     scale: { classes: 6, rounding: "2sf", zeroClass: false },
+    locations: ["england"],
     place: ENGLAND,
     publisher: "UK Health Security Agency",
     sourceSlugs: ["ukhsa", "ons-geography"],
@@ -236,6 +238,7 @@ export const DATASETS = [
       areaNounOne: "region",
     },
     scale: { classes: 6, rounding: "integer", zeroClass: true },
+    locations: ["england"],
     place: ENGLAND,
     publisher: "UK Health Security Agency",
     sourceSlugs: ["ukhsa", "ons-geography"],
@@ -332,9 +335,14 @@ export function usedSourceSlugs(): string[] {
 }
 
 /** Joins items as "a", "a and b" or "a, b and c". */
-function joinList(items: readonly string[]): string {
+export function joinList(items: readonly string[]): string {
   if (items.length <= 1) return items.join("");
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+/** A disease's name in the middle of a sentence: "Measles" becomes "measles", but "COVID-19" and "RSV" stay as they are. */
+export function diseaseInSentence(name: string): string {
+  return /[A-Z]/.test(name.slice(1)) ? name : name.toLowerCase();
 }
 
 /**
@@ -353,8 +361,7 @@ export function coverageSentence(): string {
       diseases: [],
     };
     const name = getDisease(dataset.diseaseSlug)?.name;
-    // Mid-sentence, "Measles" becomes "measles", but "COVID-19" stays as it is.
-    const inSentence = name && /[A-Z]/.test(name.slice(1)) ? name : name?.toLowerCase();
+    const inSentence = name && diseaseInSentence(name);
     if (inSentence && !group.diseases.includes(inSentence)) group.diseases.push(inSentence);
     groups.set(key, group);
   }

@@ -251,6 +251,29 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   dataset with `caveats` has a "Things to know" section (reporting changes,
   coverage, why the latest week is provisional), and its map, chart and table
   pages have a line that links to it (`CaveatsLink`).
+- **Locations.** `/locations` lists every place the site has figures for
+  (England and the United States so far), one card each, with its diseases,
+  and each has a page, `/locations/<slug>` (`/locations/england`), with every
+  disease that has data for it: the disease's name (a link to its page), each
+  of its datasets for the place (a link to the dataset's page, its description,
+  its latest figure for the place with its period and a "Provisional" tag, and
+  links to its map, chart and table). The header has a "Locations" link, and
+  the home page a card for it. The Locations pages have no database in their
+  text and links: they come from the registry, and only the figures stream in
+  (`DatasetHeadline`, cached like the headlines, one entry for each dataset).
+  A dataset says which places it has figures for in `locations` (place slugs;
+  its own `place` is one of them), and a place appears when some dataset lists
+  it (`src/lib/locations.ts`): England, or one of the countries in
+  `data/natural-earth/countries.json`, so a later dataset for other countries
+  adds their pages by listing their slugs. Slugs come from the country names
+  (see `data/natural-earth/README.md`; England is `england`) and are fixed in
+  that file, because they are addresses. The links from a place's page to a
+  dataset's views carry `?areas=<code>` when the place is one of the dataset's
+  areas rather than its whole place (`placeViewHref`), which pins it on the map
+  and the table and chooses it on the chart. A place with no data, such as
+  `/locations/germany` today, is a real 404 from `src/proxy.ts`, like an
+  unknown disease. The breadcrumb is Locations > England; `/locations` itself
+  has none.
 - **The chart view** (`…/chart`) exists for a dataset that lists `chart` in
   its `views`. The time range is in the address as `?range=all` (left out for
   the last 12 months); any other `range` is ignored. **The address is the only
@@ -327,11 +350,11 @@ every page has them. The header links are listed in `NavLinks.tsx`.
 - Next.js keeps the page you navigated from, hidden, so after a link
   inside the site both pages can be in the document. In tests, use role
   queries (which skip hidden elements), not label or text queries.
-- `src/proxy.ts` runs only for `/map` and `/diseases/…` addresses (its
-  matcher). `decideRoute` in `src/lib/routing.ts` makes the decision: an
-  unknown disease, dataset or view is a 404 (a Cache Components page cannot
-  change its status once its shell is sent), and `/map` redirects to the
-  dataset's map page. A request that carries on is marked with an
+- `src/proxy.ts` runs only for `/map`, `/diseases/…` and `/locations/<place>`
+  addresses (its matcher). `decideRoute` in `src/lib/routing.ts` makes the
+  decision: an unknown disease, dataset, view or place is a 404 (a Cache
+  Components page cannot change its status once its shell is sent), and `/map`
+  redirects to the dataset's map page. A request that carries on is marked with an
   `x-disease-checked` header so the tests can see where it ran.
 - A trail of two or more steps is shown as a breadcrumb (`Breadcrumbs.tsx`:
   a `nav` named "Breadcrumb" with an ordered list, the current page last

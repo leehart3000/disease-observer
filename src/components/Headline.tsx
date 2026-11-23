@@ -2,7 +2,8 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { formatPeriod, formatValue } from "@/lib/format";
 import { getDataset } from "@/lib/datasets/registry";
-import { loadHeadlines, type Headline as HeadlineData } from "@/lib/data/headlines";
+import type { DatasetDef } from "@/lib/datasets/types";
+import { loadDatasetHeadline, loadHeadlines, type Headline as HeadlineData } from "@/lib/data/headlines";
 import { Sparkline } from "./Sparkline";
 
 /**
@@ -12,15 +13,25 @@ import { Sparkline } from "./Sparkline";
  * says what it shows.
  *
  * @param id - A unique id, so a link can describe itself with this text.
+ * @param showPlace - Whether to name the place above the figure (not needed
+ *   on the place's own page).
  */
-function HeadlineFigure({ headline, id }: { headline: HeadlineData; id: string }) {
+function HeadlineFigure({
+  headline,
+  id,
+  showPlace = true,
+}: {
+  headline: HeadlineData;
+  id: string;
+  showPlace?: boolean;
+}) {
   const dataset = getDataset(headline.datasetId);
   if (!dataset) return null;
   const first = headline.points[0];
   const weeks = headline.points.length;
   return (
     <div id={id} className="mt-4" data-testid="headline">
-      <p className="text-sm text-muted">{dataset.place.name}</p>
+      {showPlace ? <p className="text-sm text-muted">{dataset.place.name}</p> : null}
       <p className="flex flex-wrap items-center gap-x-2">
         <span className="text-2xl font-medium tracking-tight">
           {formatValue(dataset, headline.value)}
@@ -69,6 +80,33 @@ async function HeadlineData({ slug, id }: { slug: string; id: string }) {
     );
   }
   return <HeadlineFigure headline={headline} id={id} />;
+}
+
+/** The data-driven part of one dataset's figure. It waits for a real request first. */
+async function DatasetHeadlineData({ dataset, id }: { dataset: DatasetDef; id: string }) {
+  await connection();
+  const result = await loadDatasetHeadline(dataset);
+  if (result.status !== "ok") {
+    return (
+      <p id={id} className="mt-4 text-sm text-muted">
+        {result.status === "error" ? "Figure unavailable" : "No figure yet"}
+      </p>
+    );
+  }
+  return <HeadlineFigure headline={result.data} id={id} showPlace={false} />;
+}
+
+/**
+ * The latest figure of one dataset for its whole place, for the page of a
+ * place. Like the disease headline it streams in, so a slow database never
+ * delays the page.
+ */
+export function DatasetHeadline({ dataset, id }: { dataset: DatasetDef; id: string }) {
+  return (
+    <Suspense fallback={<HeadlineFallback />}>
+      <DatasetHeadlineData dataset={dataset} id={id} />
+    </Suspense>
+  );
 }
 
 /**

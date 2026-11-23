@@ -12,6 +12,8 @@ import { decideRoute } from "@/lib/routing";
  * - The old map address `/map?d=…` is a permanent redirect (308) to the
  *   dataset's map page, so shared links keep working.
  *
+ * It also gives a real 404 to a place that has no data (`/locations/<place>`).
+ *
  * It runs only for the addresses in `config.matcher`, never for other pages,
  * assets or images. A request that carries on is marked with an
  * `x-disease-checked` header, which the tests use to see where it ran.
@@ -31,5 +33,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/map", "/diseases/:slug", "/diseases/:slug/:dataset", "/diseases/:slug/:dataset/:view"],
+  matcher: [
+    "/map",
+    "/diseases/:slug",
+    "/diseases/:slug/:dataset",
+    "/diseases/:slug/:dataset/:view",
+    "/locations/:slug",
+  ],
 };

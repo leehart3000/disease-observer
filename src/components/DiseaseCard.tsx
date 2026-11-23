@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { MAPS_HREF } from "@/lib/datasets/routes";
+import { LOCATIONS_HREF, MAPS_HREF } from "@/lib/datasets/routes";
 import { DiseaseHeadline } from "./Headline";
 
 type CardProps = {
@@ -70,6 +70,15 @@ export function DiseaseCard({
       footer={<DiseaseHeadline slug={slug} id={figureId} />}
     >
       {summary}
+    </Card>
+  );
+}
+
+/** A card that links to the list of places. */
+export function LocationsCard({ headingLevel }: { headingLevel: "h2" | "h3" }) {
+  return (
+    <Card href={LOCATIONS_HREF} title="Locations" headingLevel={headingLevel}>
+      See every disease with figures for a place, such as England or the United States.
     </Card>
   );
 }

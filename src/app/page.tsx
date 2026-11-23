@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { DiseaseCard, MapCard } from "@/components/DiseaseCard";
+import { DiseaseCard, LocationsCard, MapCard } from "@/components/DiseaseCard";
 import { DISEASES, coverageSentence } from "@/lib/datasets/registry";
 import { canonicalFor } from "@/lib/seo";
 
 export const metadata: Metadata = { alternates: canonicalFor("/") };
 
-/** The home page: one card for each disease in the registry, and one for the map. */
+/** The home page: one card for each disease in the registry, and one each for the maps and the locations. */
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-12 sm:px-6 sm:py-16">
@@ -22,6 +22,7 @@ export default function Home() {
           <DiseaseCard key={disease.slug} {...disease} headingLevel="h3" />
         ))}
         <MapCard headingLevel="h3" />
+        <LocationsCard headingLevel="h3" />
       </div>
     </main>
   );

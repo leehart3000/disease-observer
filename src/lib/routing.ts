@@ -15,6 +15,7 @@ import {
   offersPeriod,
 } from "./datasets/registry.ts";
 import { viewHref } from "./datasets/routes.ts";
+import { getLocation } from "./locations.ts";
 import type { DatasetDef } from "./datasets/types.ts";
 
 /** What to do with a request. */
@@ -59,6 +60,8 @@ function oldMapRedirect(searchParams: URLSearchParams): string {
  *   `/diseases/<disease>/<dataset>/<view>` continue only if each part is in
  *   the registry (and the view is one the dataset has a page for). Anything
  *   else is a 404.
+ * - `/locations/<place>` continues only for a place that some dataset
+ *   covers. Anything else is a 404.
  * - Everything else continues.
  *
  * @param pathname - The request's path.
@@ -66,6 +69,13 @@ function oldMapRedirect(searchParams: URLSearchParams): string {
  */
 export function decideRoute(pathname: string, searchParams: URLSearchParams): RouteDecision {
   if (pathname === "/map") return { action: "redirect", to: oldMapRedirect(searchParams) };
+  if (pathname.startsWith("/locations/")) {
+    const [slug, ...extra] = pathname.split("/").filter(Boolean).slice(1).map(safeDecode);
+    // A place that has no data (an unknown slug, or a country no dataset covers) is a 404.
+    return extra.length === 0 && slug && getLocation(slug)
+      ? { action: "continue" }
+      : { action: "not-found" };
+  }
   if (!pathname.startsWith("/diseases/")) return { action: "continue" };
 
   const [diseaseSlug, datasetSlug, view, ...extra] = pathname

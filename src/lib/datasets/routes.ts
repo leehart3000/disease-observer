@@ -6,8 +6,9 @@
  * Erasable TypeScript only, with relative imports that end in `.ts`, so
  * tests can import it too.
  */
+import { allLocations } from "../locations.ts";
 import { DATASETS, DISEASES } from "./registry.ts";
-import type { DatasetDef, View } from "./types.ts";
+import type { DatasetDef, Place, View } from "./types.ts";
 
 /** The names of the views, as they are written in links, tabs and breadcrumbs. */
 export const VIEW_LABELS: Record<View, string> = {
@@ -60,6 +61,31 @@ export const PERIOD_VIEWS: readonly View[] = ["map", "table"];
 /** The page that lists every map: `/maps`. */
 export const MAPS_HREF = "/maps";
 
+/** The page that lists every place: `/locations`. */
+export const LOCATIONS_HREF = "/locations";
+
+/** The page of a place: `/locations/england`. */
+export function locationHref(slug: string): string {
+  return `${LOCATIONS_HREF}/${slug}`;
+}
+
+/**
+ * The address of a view of a dataset, for the page of a place. For the
+ * dataset's whole place (England in the UKHSA datasets) it is the view
+ * itself. For a place that is one of the dataset's areas (same code scheme, and
+ * not the whole place) it carries `?areas=<code>`, which pins the area on the
+ * map and the table and chooses it on the chart.
+ */
+export function placeViewHref(
+  dataset: Pick<DatasetDef, "diseaseSlug" | "slug" | "place" | "map">,
+  view: View,
+  place: Pick<Place, "code" | "scheme">,
+): string {
+  const base = viewHref(dataset, view);
+  const isArea = place.code !== dataset.place.code && place.scheme === dataset.map.areaScheme;
+  return isArea ? `${base}?areas=${place.code}` : base;
+}
+
 /**
  * Every page the site has, as paths, for the sitemap. Generated from the
  * registry, so a new disease, dataset or view is listed without more work:
@@ -72,6 +98,8 @@ export function sitePaths(): string[] {
     "/diseases",
     ...DISEASES.map((disease) => diseaseHref(disease.slug)),
     MAPS_HREF,
+    LOCATIONS_HREF,
+    ...allLocations().map((place) => locationHref(place.slug)),
     ...DATASETS.flatMap((dataset) => [
       datasetHref(dataset),
       ...dataset.views.map((view) => viewHref(dataset, view)),
