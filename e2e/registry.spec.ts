@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { BASE_MAP_CREDIT, creditsFor, SOURCES } from "../src/lib/credits.ts";
 import { chartAreas, DATASETS, DISEASES, headlineDatasets } from "../src/lib/datasets/registry.ts";
 import type { LngLatBounds } from "../src/lib/datasets/types.ts";
 
@@ -147,6 +149,62 @@ test.describe("a disease with datasets for more than one place", () => {
     for (const disease of DISEASES) {
       expect(disease.summary, disease.slug).not.toMatch(/local authorit|hospital admissions|by state|by region/i);
     }
+  });
+});
+
+test.describe("the place in a dataset's words", () => {
+  test("every dataset's name, label and title contain its place's name", () => {
+    for (const dataset of DATASETS) {
+      expect(dataset.name, dataset.id).toContain(dataset.place.name);
+      expect(dataset.label, dataset.id).toContain(dataset.place.name);
+      expect(dataset.title, dataset.id).toContain(dataset.place.name);
+    }
+  });
+
+  test("every description and map explanation says its place, and no placeholder is left", () => {
+    for (const dataset of DATASETS) {
+      const place = dataset.place.phrase ?? dataset.place.name;
+      expect(dataset.description, dataset.id).toContain(place);
+      expect(dataset.mapExplanation, dataset.id).toContain(place);
+      for (const text of [dataset.name, dataset.label, dataset.title, dataset.description, dataset.mapExplanation, dataset.howToRead]) {
+        expect(text, dataset.id).not.toContain("{place}");
+      }
+    }
+  });
+
+  test("names and labels stay unique", () => {
+    expect(new Set(DATASETS.map((d) => d.label)).size).toBe(DATASETS.length);
+    expect(new Set(DATASETS.map((d) => `${d.diseaseSlug}/${d.name}`)).size).toBe(DATASETS.length);
+  });
+});
+
+test.describe("source credits in code", () => {
+  test("every dataset's source has a credit, and slugs are unique", () => {
+    const slugs = SOURCES.map((source) => source.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
+    for (const dataset of DATASETS) {
+      for (const slug of dataset.sourceSlugs) expect(slugs, dataset.id).toContain(slug);
+    }
+    expect(creditsFor(["natural-earth", "ukhsa"]).map((c) => c.slug)).toEqual(["natural-earth", "ukhsa"]);
+  });
+
+  test("each credit has a name, an attribution and secure links", () => {
+    for (const credit of [...SOURCES, BASE_MAP_CREDIT]) {
+      expect(credit.name, credit.slug).not.toBe("");
+      expect(credit.attribution, credit.slug).not.toBe("");
+      expect(credit.licenceName, credit.slug).not.toBe("");
+      expect(credit.url, credit.slug).toMatch(/^https:\/\//);
+      expect(credit.licenceUrl, credit.slug).toMatch(/^https:\/\//);
+    }
+  });
+
+  test("the seed writes the credits from code, with no copy of its own", () => {
+    const seed = readFileSync("scripts/seed.mts", "utf8");
+    expect(seed).toContain('from "../src/lib/credits.ts"');
+    expect(seed).toContain("[...SOURCES]");
+    // No credit written out here (a URL in quotes), only the columns to update.
+    expect(seed).not.toMatch(/licenceUrl:\s*\n?\s*"/);
+    expect(seed).not.toContain("https://");
   });
 });
 

@@ -7,7 +7,7 @@ import { DiseaseChart } from "@/components/DiseaseChart";
 import { DiseaseHeadline } from "@/components/Headline";
 import { strongLink, textLink } from "@/components/link-styles";
 import { PageFallback } from "@/components/PageFallback";
-import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
+import { SourcesSection } from "@/components/SourcesSection";
 import {
   DISEASES,
   datasetsForDisease,
@@ -115,9 +115,7 @@ async function DiseaseContent({ params }: PageProps<"/diseases/[slug]">) {
 
       <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Sources</h2>
       <div className="max-w-2xl text-sm text-muted">
-        <Suspense fallback={<SourcesFallback />}>
-          <SourcesSection slugs={sourceSlugsForDisease(disease.slug)} />
-        </Suspense>
+        <SourcesSection slugs={sourceSlugsForDisease(disease.slug)} />
       </div>
     </main>
   );

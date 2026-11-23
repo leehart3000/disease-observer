@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
+import { SourcesSection } from "@/components/SourcesSection";
 import { BASE_MAP_CREDIT } from "@/lib/credits";
 import { usedSourceSlugs } from "@/lib/datasets/registry";
 import { canonicalFor } from "@/lib/seo";
@@ -26,9 +25,7 @@ export default function SourcesPage() {
         credit each one asks for and the licence that applies.
       </p>
       <div className="max-w-2xl text-muted">
-        <Suspense fallback={<SourcesFallback />}>
-          <SourcesSection slugs={usedSourceSlugs()} extra={[BASE_MAP_CREDIT]} />
-        </Suspense>
+        <SourcesSection slugs={usedSourceSlugs()} extra={[BASE_MAP_CREDIT]} />
       </div>
     </main>
   );

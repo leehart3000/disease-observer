@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { PageFallback } from "@/components/PageFallback";
-import { SourcesFallback, SourcesSection } from "@/components/SourcesSection";
+import { SourcesSection } from "@/components/SourcesSection";
 import { ViewCards } from "@/components/ViewCards";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
 import { datasetHref, diseaseHref } from "@/lib/datasets/routes";
@@ -88,9 +88,7 @@ async function DatasetContent({ params }: PageProps<"/diseases/[slug]/[dataset]"
 
       <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Sources</h2>
       <div className="max-w-2xl text-sm text-muted">
-        <Suspense fallback={<SourcesFallback />}>
-          <SourcesSection slugs={dataset.sourceSlugs} />
-        </Suspense>
+        <SourcesSection slugs={dataset.sourceSlugs} />
       </div>
     </main>
   );

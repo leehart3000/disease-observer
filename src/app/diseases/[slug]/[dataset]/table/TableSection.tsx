@@ -4,7 +4,7 @@ import { Sources } from "@/components/map/Sources";
 import { PeriodPicker } from "@/components/PeriodPicker";
 import { ValuesTable } from "@/components/ValuesTable";
 import { loadMapValues } from "@/lib/data/map-values";
-import { loadSources } from "@/lib/data/sources";
+import { creditsFor } from "@/lib/credits";
 import { viewHref } from "@/lib/datasets/routes";
 import type { DatasetDef } from "@/lib/datasets/types";
 import { parseMapSelection, type SearchParams } from "@/lib/datasets/url";
@@ -28,7 +28,7 @@ export async function TableSection({
 }) {
   const { period, areas } = parseMapSelection(dataset, await searchParams);
   await connection();
-  const [values, sources] = await Promise.all([loadMapValues(dataset, period), loadSources()]);
+  const values = await loadMapValues(dataset, period);
   // The choice of period stays even if the values can't be loaded, so another can be tried.
   const picker = <PeriodPicker periods={dataset.periods} period={period} note={dataset.periodNote} />;
   if (values.status !== "ok") {
@@ -41,10 +41,6 @@ export async function TableSection({
   }
 
   const inData = new Set(values.data.values.map((area) => area.code));
-  const credits =
-    sources.status === "ok"
-      ? dataset.sourceSlugs.flatMap((slug) => sources.data.filter((source) => source.slug === slug))
-      : null;
   return (
     <>
       <div className="mb-4">{picker}</div>
@@ -58,7 +54,7 @@ export async function TableSection({
           selected: areas.filter((code) => inData.has(code)),
         }}
       />
-      <Sources credits={credits} />
+      <Sources credits={creditsFor(dataset.sourceSlugs)} />
     </>
   );
 }

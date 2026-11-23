@@ -66,7 +66,12 @@ export type DatasetDef = {
    * in `/diseases/covid-19/rate-by-local-authority`. Unique within a disease.
    */
   slug: string;
-  /** The short name for breadcrumbs and headings, such as "Rate by local authority". */
+  /**
+   * The short name for breadcrumbs and headings, such as "Rate by local
+   * authority". Written without the place: the registry adds it (", England"),
+   * as it does to `label` and `title`, and replaces `{place}` in `description`,
+   * `mapExplanation` and `howToRead` with the place's name (see `withPlace`).
+   */
   name: string;
   /**
    * The views that have a page for this dataset. Empty until the dataset

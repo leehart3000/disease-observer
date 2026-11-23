@@ -69,7 +69,7 @@ test.describe("the card text and pictures", () => {
 
   test("a dataset page has its own, and so do its map, chart and table pages", async ({ page, request }) => {
     await page.goto(DATASET);
-    expect(await meta(page, "og:title")).toBe("Influenza hospital admissions by US state | Disease Observer");
+    expect(await meta(page, "og:title")).toBe("Influenza hospital admissions by state, United States | Disease Observer");
     expect(await meta(page, "og:image")).toContain(`${DATASET}/opengraph-image`);
     await expectCardImage(request, (await meta(page, "og:image"))!);
 

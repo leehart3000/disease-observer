@@ -80,7 +80,9 @@ export default defineConfig({
     // A server that is already running might use the development database,
     // so it is only reused when the tests do not point it at the test one.
     reuseExistingServer: !isCI && Object.keys(testDatabaseEnv).length === 0,
-    env: testDatabaseEnv,
+    // ERROR_PAGE_TEST turns on /error-test, which fails on purpose so the error
+    // page can be tested. Without it (the live site) that address is a 404.
+    env: { ...testDatabaseEnv, ERROR_PAGE_TEST: "1" },
     // Locally, this includes the build.
     timeout: isCI ? 120_000 : 300_000,
   },

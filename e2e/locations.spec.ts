@@ -228,10 +228,10 @@ test.describe("a place's page", () => {
       "/diseases/covid-19",
     );
     await expect(page.getByRole("heading", { level: 3 })).toHaveText([
-      "COVID-19 rate by local authority",
-      "Measles cases by region",
+      "COVID-19 rate by local authority, England",
+      "Measles cases by region, England",
     ]);
-    await expect(page.getByRole("link", { name: "COVID-19 rate by local authority", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "COVID-19 rate by local authority, England", exact: true })).toHaveAttribute(
       "href",
       COVID,
     );
@@ -249,8 +249,8 @@ test.describe("a place's page", () => {
 
     // The views of each dataset, for the whole place: no area in the address.
     for (const [label, base] of [
-      ["COVID-19 rate by local authority", COVID],
-      ["Measles cases by region", MEASLES],
+      ["COVID-19 rate by local authority, England", COVID],
+      ["Measles cases by region, England", MEASLES],
     ]) {
       const views = page.getByRole("list", { name: `Views of ${label}` });
       await expect(views.getByRole("link")).toHaveText(["Map", "Chart", "Table"]);
@@ -270,9 +270,9 @@ test.describe("a place's page", () => {
     await expect(page.getByText("Every disease the site has figures for in the United States")).toBeVisible();
     await expect(page.getByRole("heading", { level: 2 })).toHaveText(["COVID-19", "Influenza", "RSV"]);
     await expect(page.getByRole("heading", { level: 3 })).toHaveText([
-      "COVID-19 hospital admissions by US state",
-      "Influenza hospital admissions by US state",
-      "RSV hospital admissions by US state",
+      "COVID-19 hospital admissions by state, United States",
+      "Influenza hospital admissions by state, United States",
+      "RSV hospital admissions by state, United States",
     ]);
 
     await expect(page.locator("#figure-influenza-hospital-admissions")).toContainText(
@@ -286,27 +286,27 @@ test.describe("a place's page", () => {
     await expect(page.locator("#figure-covid-19-hospital-admissions-us")).toContainText(/7 days to \d+ \w+ \d{4}/);
 
     await expect(
-      page.getByRole("link", { name: "Chart: Influenza hospital admissions by US state" }),
+      page.getByRole("link", { name: "Chart: Influenza hospital admissions by state, United States" }),
     ).toHaveAttribute("href", `${INFLUENZA}/chart`);
-    await expect(page.getByRole("link", { name: "Map: RSV hospital admissions by US state" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Map: RSV hospital admissions by state, United States" })).toHaveAttribute(
       "href",
       `${RSV}/map`,
     );
     await expect(
-      page.getByRole("link", { name: "Table: COVID-19 hospital admissions by US state" }),
+      page.getByRole("link", { name: "Table: COVID-19 hospital admissions by state, United States" }),
     ).toHaveAttribute("href", `${COVID_US}/table`);
     // England's datasets are not here.
-    await expect(page.getByText("Rate by local authority")).toHaveCount(0);
+    await expect(page.getByText("Rate by local authority, England")).toHaveCount(0);
   });
 
   test("the links go to the dataset's views", async ({ page }) => {
     await page.goto("/locations/united-states");
-    await page.getByRole("link", { name: "Table: Influenza hospital admissions by US state" }).click();
+    await page.getByRole("link", { name: "Table: Influenza hospital admissions by state, United States" }).click();
     await expect(page).toHaveURL(`${INFLUENZA}/table`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Influenza hospital admissions by US state");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Influenza hospital admissions by state, United States");
 
     await page.goBack();
-    await page.getByRole("link", { name: "Influenza hospital admissions by US state", exact: true }).click();
+    await page.getByRole("link", { name: "Influenza hospital admissions by state, United States", exact: true }).click();
     await expect(page).toHaveURL(INFLUENZA);
   });
 
@@ -327,7 +327,7 @@ test.describe("a place's page", () => {
     // registry, so a slow or missing database leaves the rest of the page intact.
     const response = await page.request.get("/locations/england");
     const html = await response.text();
-    expect(html).toContain("COVID-19 rate by local authority");
+    expect(html).toContain("COVID-19 rate by local authority, England");
     expect(html).toContain(`href="${COVID}/map"`);
   });
 });

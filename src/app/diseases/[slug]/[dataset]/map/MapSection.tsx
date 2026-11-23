@@ -3,7 +3,7 @@ import { DataUnavailable } from "@/components/map/DataUnavailable";
 import { MapExplorer } from "@/components/map/MapExplorer";
 import { PeriodPicker } from "@/components/PeriodPicker";
 import { loadMapValues } from "@/lib/data/map-values";
-import { loadSources } from "@/lib/data/sources";
+import { creditsFor } from "@/lib/credits";
 import { parseMapSelection, type SearchParams } from "@/lib/datasets/url";
 import type { DatasetDef } from "@/lib/datasets/types";
 
@@ -26,7 +26,7 @@ export async function MapSection({
 }) {
   const { period } = parseMapSelection(dataset, await searchParams);
   await connection();
-  const [values, sources] = await Promise.all([loadMapValues(dataset, period), loadSources()]);
+  const values = await loadMapValues(dataset, period);
 
   // The choice of period stays even if the values can't be loaded, so another can be tried.
   const picker = <PeriodPicker periods={dataset.periods} period={period} note={dataset.periodNote} />;
@@ -45,7 +45,7 @@ export async function MapSection({
       <MapExplorer
         datasetId={dataset.id}
         values={values.data}
-        sources={sources.status === "ok" ? sources.data : null}
+        sources={creditsFor(dataset.sourceSlugs)}
       />
     </div>
   );

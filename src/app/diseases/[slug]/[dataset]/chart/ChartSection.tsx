@@ -5,7 +5,7 @@ import { DataUnavailable } from "@/components/map/DataUnavailable";
 import { Sources } from "@/components/map/Sources";
 import { loadAreaIndex, loadAreaSeries } from "@/lib/data/areas";
 import { loadDiseaseSeries } from "@/lib/data/series";
-import { loadSources } from "@/lib/data/sources";
+import { creditsFor } from "@/lib/credits";
 import type { DatasetDef, DiseaseDef } from "@/lib/datasets/types";
 import { parseAreaCodes, type SearchParams } from "@/lib/datasets/url";
 import { composeSeries, MAX_COMPARED_AREAS } from "@/lib/series-compose";
@@ -111,12 +111,7 @@ async function AllAreasChart({ disease }: { disease: DiseaseDef }) {
   );
 }
 
-/** The credits of the dataset's sources, or a note if they can't be loaded. */
-async function ChartSources({ dataset }: { dataset: DatasetDef }) {
-  const sources = await loadSources();
-  const credits =
-    sources.status === "ok"
-      ? dataset.sourceSlugs.flatMap((slug) => sources.data.filter((source) => source.slug === slug))
-      : null;
-  return <Sources credits={credits} />;
+/** The credits of the dataset's sources. */
+function ChartSources({ dataset }: { dataset: DatasetDef }) {
+  return <Sources credits={creditsFor(dataset.sourceSlugs)} />;
 }

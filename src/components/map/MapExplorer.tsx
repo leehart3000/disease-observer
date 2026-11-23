@@ -90,8 +90,8 @@ export function MapExplorer({
   datasetId: string;
   /** Every area's value for the period. */
   values: MapDataset;
-  /** All the credits from the `sources` table, or `null` if they could not be loaded. */
-  sources: SourceCredit[] | null;
+  /** The credits of this dataset's sources, in the registry's order (`creditsFor`). */
+  sources: SourceCredit[];
 }) {
   const dataset = getDataset(datasetId);
   if (!dataset) throw new Error(`Unknown dataset ${datasetId}`);
@@ -132,11 +132,7 @@ export function MapExplorer({
     () => buildScale(numbers, dataset.scale, dataset.decimals),
     [numbers, dataset.scale, dataset.decimals],
   );
-  // Only this dataset's sources, in the registry's order.
-  const credits =
-    sources === null
-      ? null
-      : dataset.sourceSlugs.flatMap((slug) => sources.filter((source) => source.slug === slug));
+  const credits = sources;
   const lowest = numbers.length ? Math.min(...numbers) : 0;
   const highest = numbers.length ? Math.max(...numbers) : 0;
 

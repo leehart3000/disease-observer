@@ -7,6 +7,7 @@
  */
 import { sql } from "drizzle-orm";
 import { createDb } from "../src/db/client.ts";
+import { SOURCES } from "../src/lib/credits.ts";
 import { diseases, sources } from "../src/db/schema.ts";
 
 try {
@@ -19,55 +20,9 @@ if (!process.env.DATABASE_URL_UNPOOLED) {
   throw new Error("DATABASE_URL_UNPOOLED is not set");
 }
 
-const sourceRows = [
-  {
-    slug: "ukhsa",
-    name: "UKHSA data dashboard",
-    url: "https://ukhsa-dashboard.data.gov.uk/",
-    licenceName: "Open Government Licence v3.0",
-    licenceUrl:
-      "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-    attribution:
-      "Contains public sector information licensed under the Open Government Licence v3.0.",
-  },
-  {
-    slug: "ons-geography",
-    name: "Office for National Statistics: Open Geography Portal",
-    url: "https://geoportal.statistics.gov.uk/",
-    licenceName: "Open Government Licence v3.0",
-    licenceUrl:
-      "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-    attribution:
-      "Source: Office for National Statistics licensed under the Open Government Licence v.3.0. Contains OS data © Crown copyright and database right 2022.",
-  },
-  {
-    slug: "cdc-nhsn",
-    name: "CDC National Healthcare Safety Network (NHSN)",
-    url: "https://data.cdc.gov/d/ua7e-t2fy",
-    licenceName: "Public Domain U.S. Government",
-    licenceUrl: "https://www.usa.gov/government-works",
-    attribution:
-      "Source: CDC National Healthcare Safety Network (NHSN), Weekly Hospital Respiratory Data (HRD) Metrics by Jurisdiction, from data.cdc.gov.",
-  },
-  {
-    slug: "natural-earth",
-    name: "Natural Earth",
-    url: "https://www.naturalearthdata.com/",
-    licenceName: "Public domain",
-    licenceUrl: "https://www.naturalearthdata.com/about/terms-of-use/",
-    attribution: "Made with Natural Earth.",
-  },
-  {
-    slug: "who-flunet",
-    name: "WHO FluNet",
-    url: "https://www.who.int/tools/flunet",
-    licenceName: "WHO terms and conditions for datasets",
-    licenceUrl:
-      "https://www.who.int/about/policies/publishing/data-policy/terms-and-conditions",
-    attribution:
-      "Data from WHO FluNet, Global Influenza Surveillance and Response System (GISRS), World Health Organization.",
-  },
-];
+// The credits are written once, in code (`src/lib/credits.ts`), which the
+// pages read; this writes the same rows into the `sources` table.
+const sourceRows = [...SOURCES];
 
 const diseaseRows = [
   { slug: "covid-19", name: "COVID-19" },

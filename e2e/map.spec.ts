@@ -58,18 +58,18 @@ const bottomPages = (page: Page) => page.getByRole("navigation", { name: "Table 
 
 /** The map page of each dataset, by the dataset's label. */
 const MAP_PATHS: Record<string, { path: string; id: string }> = {
-  "COVID-19 rate by local authority": {
+  "COVID-19 rate by local authority, England": {
     path: "/diseases/covid-19/rate-by-local-authority/map",
     id: "covid-19-rate",
   },
-  "Measles cases by region": {
+  "Measles cases by region, England": {
     path: "/diseases/measles/cases-by-region/map",
     id: "measles-cases",
   },
 };
 
 /** Opens a map page (COVID-19 by default) and waits until the map has drawn it. */
-async function openMap(page: Page, path = MAP_PATHS["COVID-19 rate by local authority"].path) {
+async function openMap(page: Page, path = MAP_PATHS["COVID-19 rate by local authority, England"].path) {
   await page.goto(path);
   await expect(mapCanvas(page)).toHaveAttribute("data-map-ready", "true", { timeout: 30_000 });
 }
@@ -227,7 +227,7 @@ test("the area name button fills the name cell, so every row lines up", async ({
 
 test("each dataset has its own map page, with no dataset picker", async ({ page }) => {
   await openMap(page);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority, England");
   await expect(page.getByRole("list", { name: /COVID-19 cases per 100,000/ })).toBeVisible();
   await expect(table(page).locator("caption")).toContainText("COVID-19");
   // Choosing another dataset is now a link to its page, not a picker on this one.
@@ -235,9 +235,9 @@ test("each dataset has its own map page, with no dataset picker", async ({ page 
   await expect(page.getByRole("combobox", { name: "Dataset" })).toHaveCount(0);
   await expect(page.getByRole("radio")).toHaveCount(0);
 
-  await openMap(page, MAP_PATHS["Measles cases by region"].path);
+  await openMap(page, MAP_PATHS["Measles cases by region, England"].path);
   await expect(mapCanvas(page)).toHaveAttribute("data-dataset", "measles-cases");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region, England");
   await expect(table(page).locator("caption")).toContainText("Measles");
   await expect(table(page).locator("caption")).toContainText("Week of onset");
   await expect(page.getByRole("list", { name: /Measles cases/ })).toBeVisible();
@@ -288,7 +288,7 @@ test("a pinned area is kept in the address, without a new page load", async ({ p
 test("a pinned area in the address is pinned on load, and unknown codes are ignored", async ({
   page,
 }) => {
-  await openMap(page, `${MAP_PATHS["COVID-19 rate by local authority"].path}?areas=E06000001`);
+  await openMap(page, `${MAP_PATHS["COVID-19 rate by local authority, England"].path}?areas=E06000001`);
   await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
   await expect(readout(page)).toContainText("Hartlepool");
   await expect(readout(page)).toContainText("Pinned");
@@ -298,13 +298,13 @@ test("a pinned area in the address is pinned on load, and unknown codes are igno
   // is skipped; the first one that is in the data is pinned.
   await openMap(
     page,
-    `${MAP_PATHS["COVID-19 rate by local authority"].path}?areas=not-a-code,E99999999,E06000002`,
+    `${MAP_PATHS["COVID-19 rate by local authority, England"].path}?areas=not-a-code,E99999999,E06000002`,
   );
   await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000002");
   await expect(readout(page)).toContainText("Middlesbrough");
 
   // An area of another dataset (a region on the local authority map) pins nothing.
-  await openMap(page, `${MAP_PATHS["COVID-19 rate by local authority"].path}?areas=E45000001`);
+  await openMap(page, `${MAP_PATHS["COVID-19 rate by local authority, England"].path}?areas=E45000001`);
   await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
   await expect(readout(page)).toHaveAttribute("data-empty", "true");
 });
@@ -316,15 +316,15 @@ test("the map page has a breadcrumb back to the dataset, the disease and the lis
   const crumbs = page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem");
 
   // Earlier steps are followed by a separator that is hidden from screen readers.
-  await expect(crumbs).toHaveText([/^Diseases/, /^COVID-19/, /^Rate by local authority/, /^Map$/]);
+  await expect(crumbs).toHaveText([/^Diseases/, /^COVID-19/, /^Rate by local authority, England/, /^Map$/]);
   await expect(crumbs.nth(3).locator('[aria-current="page"]')).toHaveText("Map");
   await crumbs.nth(2).getByRole("link").click();
   await expect(page).toHaveURL("/diseases/covid-19/rate-by-local-authority");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority, England");
 });
 
 test("the server sends the chosen dataset in the HTML", async ({ request }) => {
-  const html = await (await request.get(MAP_PATHS["Measles cases by region"].path)).text();
+  const html = await (await request.get(MAP_PATHS["Measles cases by region, England"].path)).text();
 
   expect(html).toContain("Week of onset");
   expect(html).toContain("Cases (week)");
@@ -474,7 +474,7 @@ test("the server sends the first page of the table in the HTML", async ({ reques
   // streams it into a hidden element that a script reveals, so a browser
   // with JavaScript turned off does not display it.)
   const html = await (
-    await request.get(MAP_PATHS["COVID-19 rate by local authority"].path)
+    await request.get(MAP_PATHS["COVID-19 rate by local authority, England"].path)
   ).text();
 
   // 25 rows and the heading row.
@@ -486,7 +486,7 @@ test("the server sends the first page of the table in the HTML", async ({ reques
 
 test("the measles layer shows the latest complete week", async ({ page }) => {
   await openMap(page);
-  await chooseLayer(page, "Measles cases by region");
+  await chooseLayer(page, "Measles cases by region, England");
 
   await expect(table(page).locator("caption")).toContainText("Measles");
   await expect(table(page).locator("caption")).toContainText("Week of onset");
@@ -507,7 +507,7 @@ test("only the sources for the selected dataset are shown", async ({ page }) => 
   await openMap(page);
 
   const sources = page.getByRole("region", { name: "Sources" });
-  for (const layer of ["COVID-19 rate by local authority", "Measles cases by region"]) {
+  for (const layer of ["COVID-19 rate by local authority, England", "Measles cases by region, England"]) {
     await chooseLayer(page, layer);
     await expect(sources).toContainText("UKHSA data dashboard");
     await expect(sources).toContainText("Open Government Licence v3.0");
@@ -521,7 +521,7 @@ test("only the sources for the selected dataset are shown", async ({ page }) => 
 
 test("pointing at an area previews it, and clicking or tapping pins it", async ({ page }) => {
   await openMap(page);
-  await chooseLayer(page, "Measles cases by region");
+  await chooseLayer(page, "Measles cases by region, England");
 
   if (!isPhone()) {
     // Pointing previews the area. Moving away clears the preview.
@@ -625,7 +625,7 @@ test("a pin does not carry over to another dataset's map", async ({ page }) => {
 
   await page.getByRole("button", { name: "Pin Hartlepool on the map" }).click();
   await expect(mapCanvas(page)).toHaveAttribute("data-highlight", "E06000001");
-  await chooseLayer(page, "Measles cases by region");
+  await chooseLayer(page, "Measles cases by region, England");
   await expect(mapCanvas(page)).not.toHaveAttribute("data-highlight", /.+/);
 });
 
@@ -879,7 +879,7 @@ test.describe("full screen without the Fullscreen API (CSS mode)", () => {
   test("on a narrow screen the readout is compact and keeps clear of the pinned area", async ({ page }) => {
     test.skip(!isPhone(), "This is about the 375 px layout.");
     await openMap(page);
-    await chooseLayer(page, "Measles cases by region");
+    await chooseLayer(page, "Measles cases by region, England");
     const frame = page.locator(".map-frame");
 
     // North East is at the top of the map, where the readout usually sits.
@@ -961,7 +961,7 @@ test("the attribution is visible and readable in both themes", async ({ page }) 
 
 test("the theme switch changes the base map without reloading", async ({ page }) => {
   await openMap(page);
-  await chooseLayer(page, "Measles cases by region");
+  await chooseLayer(page, "Measles cases by region, England");
   await expect(mapCanvas(page)).toHaveAttribute("data-base-style", "positron");
   await page.evaluate(() => {
     (window as unknown as { stillHere: boolean }).stillHere = true;
@@ -995,7 +995,7 @@ test("the map page has no horizontal scrolling", async ({ page }) => {
   await page.getByLabel("Rows per page").selectOption("all");
   expect(await overflow()).toBeLessThanOrEqual(0);
 
-  await chooseLayer(page, "Measles cases by region");
+  await chooseLayer(page, "Measles cases by region, England");
   expect(await overflow()).toBeLessThanOrEqual(0);
 });
 

@@ -19,16 +19,16 @@ test.beforeEach(async ({ page }) => {
 const isPhone = () => test.info().project.name === "iphone-se";
 const table = (page: Page) => page.getByRole("table");
 const rows = (page: Page) => table(page).locator("tbody tr");
-const views = (page: Page, name = "Rate by local authority") =>
+const views = (page: Page, name = "Rate by local authority, England") =>
   page.getByRole("navigation", { name: `Views of ${name}` });
 
 test("the table page has a breadcrumb, the table and the sources", async ({ page }) => {
   await page.goto(`${COVID}/table`);
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");
-  await expect(page).toHaveTitle("COVID-19 rate by local authority: table | Disease Observer");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority, England");
+  await expect(page).toHaveTitle("COVID-19 rate by local authority, England: table | Disease Observer");
   const crumbs = page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem");
-  await expect(crumbs).toHaveText([/^Diseases/, /^COVID-19/, /^Rate by local authority/, /^Table$/]);
+  await expect(crumbs).toHaveText([/^Diseases/, /^COVID-19/, /^Rate by local authority, England/, /^Table$/]);
   await expect(crumbs.nth(3).locator('[aria-current="page"]')).toHaveText("Table");
 
   await expect(table(page).locator("caption")).toContainText("COVID-19 cases per 100,000 people");
@@ -165,7 +165,7 @@ test("areas in the address are highlighted, and unknown ones are ignored", async
 test("the measles table has nine regions on one page", async ({ page }) => {
   await page.goto(`${MEASLES}/table`);
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region, England");
   await expect(rows(page)).toHaveCount(9);
   await expect(page.getByText("Showing 1 to 9 of 9")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Table pages (top)" })).toHaveCount(0);

@@ -13,12 +13,12 @@ const PAGES = [
   { path: "/diseases/covid-19", h1: "COVID-19" },
   { path: "/diseases/measles", h1: "Measles" },
   { path: "/maps", h1: "Maps" },
-  { path: "/diseases/covid-19/rate-by-local-authority", h1: "COVID-19 rate by local authority" },
-  { path: "/diseases/covid-19/rate-by-local-authority/map", h1: "COVID-19 rate by local authority" },
-  { path: "/diseases/covid-19/rate-by-local-authority/table", h1: "COVID-19 rate by local authority" },
-  { path: "/diseases/measles/cases-by-region/table", h1: "Measles cases by region" },
-  { path: "/diseases/measles/cases-by-region", h1: "Measles cases by region" },
-  { path: "/diseases/measles/cases-by-region/map", h1: "Measles cases by region" },
+  { path: "/diseases/covid-19/rate-by-local-authority", h1: "COVID-19 rate by local authority, England" },
+  { path: "/diseases/covid-19/rate-by-local-authority/map", h1: "COVID-19 rate by local authority, England" },
+  { path: "/diseases/covid-19/rate-by-local-authority/table", h1: "COVID-19 rate by local authority, England" },
+  { path: "/diseases/measles/cases-by-region/table", h1: "Measles cases by region, England" },
+  { path: "/diseases/measles/cases-by-region", h1: "Measles cases by region, England" },
+  { path: "/diseases/measles/cases-by-region/map", h1: "Measles cases by region, England" },
   { path: "/sources", h1: "Sources and licences" },
   { path: "/about", h1: "About" },
   { path: "/privacy", h1: "Privacy" },
@@ -164,6 +164,57 @@ test("disease cards describe the disease, not one dataset", async ({ page }) => 
   await expect(covid).not.toContainText("local authorities");
 });
 
+test("source credits are in the prerendered HTML, with no loading state", async ({ request }) => {
+  const pages: Array<[string, string[]]> = [
+    // Each credit's link and licence link (a link's last word shares a span with its icon,
+    // so the links are checked, with the attribution lines, which are plain text).
+    [
+      "/diseases/covid-19",
+      [
+        "https://ukhsa-dashboard.data.gov.uk/",
+        "https://data.cdc.gov/d/ua7e-t2fy",
+        "https://www.naturalearthdata.com/",
+        "https://www.usa.gov/government-works",
+      ],
+    ],
+    [
+      "/diseases/covid-19/rate-by-local-authority",
+      ["https://ukhsa-dashboard.data.gov.uk/", "https://geoportal.statistics.gov.uk/"],
+    ],
+    [
+      "/diseases/covid-19/rate-by-local-authority/map",
+      [
+        "https://ukhsa-dashboard.data.gov.uk/",
+        "Contains public sector information licensed under the Open Government Licence v3.0.",
+      ],
+    ],
+    ["/diseases/covid-19/rate-by-local-authority/table", ["https://ukhsa-dashboard.data.gov.uk/"]],
+    [
+      "/diseases/influenza/hospital-admissions-by-state/chart",
+      ["https://www.usa.gov/government-works", "Made with Natural Earth."],
+    ],
+    [
+      "/sources",
+      [
+        "https://openfreemap.org/",
+        "https://www.naturalearthdata.com/",
+        "https://www.openstreetmap.org/copyright",
+        "OpenFreeMap © OpenMapTiles.",
+        "Data from OpenStreetMap.",
+      ],
+    ],
+  ];
+  for (const [path, expected] of pages) {
+    // The raw HTML, as sent: no script has run and no database was asked for them.
+    const html = await (await request.get(path)).text();
+    for (const text of expected) {
+      expect(html, `${path}: ${text} (${html.length} bytes, "Sources" at ${html.indexOf("Sources")})`).toContain(text);
+    }
+    expect(html, path).not.toContain("Loading the sources");
+    expect(html, path).not.toContain("Sources unavailable");
+  }
+});
+
 test("no analytics script is loaded outside production", async ({ page }) => {
   const requested: string[] = [];
   page.on("request", (request) => requested.push(request.url()));
@@ -270,30 +321,30 @@ test("a disease page lists its datasets, with a link to each view, and only its 
   await page.goto("/diseases/measles");
 
   await expect(page.getByRole("heading", { level: 2, name: "Datasets" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Cases by region", exact: true })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Cases by region, England", exact: true })).toHaveAttribute(
     "href",
     "/diseases/measles/cases-by-region",
   );
-  await expect(page.getByRole("link", { name: "Map: Cases by region" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Map: Cases by region, England" })).toHaveAttribute(
     "href",
     "/diseases/measles/cases-by-region/map",
   );
   // Only the views that have a page are linked.
-  await expect(page.getByRole("link", { name: "Table: Cases by region" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Table: Cases by region, England" })).toHaveAttribute(
     "href",
     "/diseases/measles/cases-by-region/table",
   );
-  await expect(page.getByRole("link", { name: "Chart: Cases by region" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "Chart: Cases by region, England" })).toHaveAttribute(
     "href",
     "/diseases/measles/cases-by-region/chart",
   );
-  await expect(page.getByRole("link", { name: /Rate by local authority/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Rate by local authority, England/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "UKHSA data dashboard" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Office for National Statistics/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "WHO FluNet" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "OpenFreeMap base map" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Map: Cases by region" }).click();
+  await page.getByRole("link", { name: "Map: Cases by region, England" }).click();
   await expect(page).toHaveURL("/diseases/measles/cases-by-region/map");
 });
 

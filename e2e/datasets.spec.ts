@@ -18,12 +18,12 @@ test("the Maps page lists every map, grouped by disease", async ({ page }) => {
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Maps");
   await expect(page.getByRole("heading", { level: 2 })).toHaveText(["COVID-19", "Measles", "Influenza", "RSV"]);
-  const covid = page.getByRole("link", { name: "COVID-19 rate by local authority" });
-  const measles = page.getByRole("link", { name: "Measles cases by region" });
+  const covid = page.getByRole("link", { name: "COVID-19 rate by local authority, England" });
+  const measles = page.getByRole("link", { name: "Measles cases by region, England" });
   await expect(covid).toHaveAttribute("href", `${COVID}/map`);
   await expect(measles).toHaveAttribute("href", `${MEASLES}/map`);
   // Each map has its description under it.
-  await expect(page.getByText("The number of confirmed cases in each region of the UK Health Security Agency (UKHSA)")).toBeVisible();
+  await expect(page.getByText("The number of confirmed cases in each region of England used by the UK Health Security Agency (UKHSA)")).toBeVisible();
 
   await measles.click();
   await expect(page).toHaveURL(`${MEASLES}/map`);
@@ -32,8 +32,8 @@ test("the Maps page lists every map, grouped by disease", async ({ page }) => {
 test("a dataset page describes the dataset and links to its views", async ({ page }) => {
   await page.goto(COVID);
 
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority");
-  await expect(crumbs(page)).toHaveText([/^Diseases/, /^COVID-19/, /^Rate by local authority$/]);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("COVID-19 rate by local authority, England");
+  await expect(crumbs(page)).toHaveText([/^Diseases/, /^COVID-19/, /^Rate by local authority, England$/]);
   await expect(crumbs(page).nth(2).locator('[aria-current="page"]')).toBeVisible();
   await expect(page.getByText("The rate of newly reported cases in the latest 7 days").first()).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "How to read it" })).toBeVisible();
@@ -61,18 +61,18 @@ test("the dataset and map pages have the dataset in their titles and a breadcrum
   page,
 }) => {
   await page.goto(`${MEASLES}/map`);
-  await expect(page).toHaveTitle("Measles cases by region: map | Disease Observer");
+  await expect(page).toHaveTitle("Measles cases by region, England: map | Disease Observer");
   const data = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent())!);
   expect(data.itemListElement.map((item: { name: string }) => item.name)).toEqual([
     "Diseases",
     "Measles",
-    "Cases by region",
+    "Cases by region, England",
     "Map",
   ]);
   expect(data.itemListElement.at(-1).item).toBe(`${SITE_URL}${MEASLES}/map`);
 
   await page.goto(MEASLES);
-  await expect(page).toHaveTitle("Measles cases by region | Disease Observer");
+  await expect(page).toHaveTitle("Measles cases by region, England | Disease Observer");
 });
 
 test("an unknown dataset or a view that does not exist shows the not-found page with a 404", async ({
@@ -124,6 +124,6 @@ test.describe("the old map address", () => {
     const response = await request.get("/map?d=measles-cases");
     expect(response.status()).toBe(200);
     expect(new URL(response.url()).pathname).toBe(`${MEASLES}/map`);
-    expect(await response.text()).toContain("Measles cases by region");
+    expect(await response.text()).toContain("Measles cases by region, England");
   });
 });

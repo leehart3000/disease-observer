@@ -179,7 +179,11 @@ const ENGLAND_MAX_BOUNDS = [
   [5, 59],
 ] as const satisfies LngLatBounds;
 
-export const DATASETS = [
+/**
+ * The datasets as written, without their place in their names. `DATASETS`
+ * adds it (see `withPlace`), so a place is written once, in `place`.
+ */
+const RAW_DATASETS = [
   {
     id: "covid-19-rate",
     diseaseSlug: "covid-19",
@@ -188,12 +192,12 @@ export const DATASETS = [
     views: ["map", "chart", "table"],
     label: "COVID-19 rate by local authority",
     description:
-      "The rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people.",
+      "The rate of newly reported cases in the latest 7 days for each local authority in {place}, per 100,000 people.",
     howToRead:
       "Each value is the number of newly reported cases in the 7 days ending on the date shown, for every 100,000 people who live in the local authority. The most recent days are provisional, because cases are still being reported.",
-    title: "COVID-19 cases per 100,000 people, by local authority",
+    title: "COVID-19 cases per 100,000 people by local authority",
     mapExplanation:
-      "The map shows the rate of newly reported cases in the latest 7 days for each local authority, per 100,000 people. Rates allow areas of different sizes to be compared.",
+      "The map shows the rate of newly reported cases in the latest 7 days for each local authority in {place}, per 100,000 people. Rates allow areas of different sizes to be compared.",
     // UKHSA documents this as the rate of reported new cases in the 7 days
     // ending on the date shown.
     metric: "rate_per_100k",
@@ -231,12 +235,12 @@ export const DATASETS = [
     views: ["map", "chart", "table"],
     label: "Measles cases by region",
     description:
-      "The number of confirmed cases in each region of the UK Health Security Agency (UKHSA), by the week that symptoms began: for the latest complete week, the last 12 weeks or the year so far.",
+      "The number of confirmed cases in each region of {place} used by the UK Health Security Agency (UKHSA), by the week that symptoms began: for the latest complete week, the last 12 weeks or the year so far.",
     howToRead:
       "Each value is the number of confirmed cases whose symptoms began in the period shown. Weeks run from Monday to Sunday, and only complete weeks are counted. You can show the latest week, the total for the last 12 weeks, or the total for the year to date (the weeks that start in the same year as the latest week). A total is provisional if any week in it is, because cases are still being reported. Where a region has no figure for a week, the total is of the weeks it has, and the page says how many.",
-    title: "Measles cases, by UKHSA region",
+    title: "Measles cases by UKHSA region",
     mapExplanation:
-      "The map shows the number of confirmed cases in each UKHSA region, by the week that symptoms began, for the latest complete week or added up over the last 12 weeks or the year so far. Recent weeks are provisional because cases are still being reported.",
+      "The map shows the number of confirmed cases in each UKHSA region of {place}, by the week that symptoms began, for the latest complete week or added up over the last 12 weeks or the year so far. Recent weeks are provisional because cases are still being reported.",
     metric: "cases",
     valueKind: "count",
     measure: "confirmed cases",
@@ -270,28 +274,28 @@ export const DATASETS = [
     ...NHSN_DATASET,
     id: "influenza-hospital-admissions",
     diseaseSlug: "influenza",
-    label: "Influenza hospital admissions by US state",
+    label: "Influenza hospital admissions by state",
     description:
-      "New hospital admissions of patients with confirmed influenza in the latest week, for each US state, per 100,000 people.",
+      "New hospital admissions of patients with confirmed influenza in the latest week, for each state in {place}, per 100,000 people.",
     howToRead:
       "Each value is the number of new hospital admissions of patients with confirmed influenza in the week shown (Sunday to Saturday), for every 100,000 people who live in the state. The rate is as published: it is not calculated here. The latest week is provisional, because hospitals can still report late.",
-    title: "Influenza hospital admissions per 100,000 people, by US state",
+    title: "Influenza hospital admissions per 100,000 people by state",
     mapExplanation:
-      "The map shows the number of new hospital admissions of patients with confirmed influenza in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
+      "The map shows the number of new hospital admissions of patients with confirmed influenza in the latest week for each state in {place}, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     caveats: NHSN_CAVEATS,
   },
   {
     ...NHSN_DATASET,
     id: "rsv-hospital-admissions",
     diseaseSlug: "rsv",
-    label: "RSV hospital admissions by US state",
+    label: "RSV hospital admissions by state",
     description:
-      "New hospital admissions of patients with confirmed respiratory syncytial virus (RSV) in the latest week, for each US state, per 100,000 people.",
+      "New hospital admissions of patients with confirmed respiratory syncytial virus (RSV) in the latest week, for each state in {place}, per 100,000 people.",
     howToRead:
       "Each value is the number of new hospital admissions of patients with confirmed RSV in the week shown (Sunday to Saturday), for every 100,000 people who live in the state. The rate is as published: it is not calculated here. The latest week is provisional, because hospitals can still report late.",
-    title: "RSV hospital admissions per 100,000 people, by US state",
+    title: "RSV hospital admissions per 100,000 people by state",
     mapExplanation:
-      "The map shows the number of new hospital admissions of patients with confirmed RSV in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
+      "The map shows the number of new hospital admissions of patients with confirmed RSV in the latest week for each state in {place}, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     caveats: [
       ...NHSN_CAVEATS,
       "RSV was reported voluntarily until 1 November 2024, so figures before then (the series starts in October 2023) cover only the hospitals that chose to report.",
@@ -301,26 +305,54 @@ export const DATASETS = [
     ...NHSN_DATASET,
     id: "covid-19-hospital-admissions-us",
     diseaseSlug: "covid-19",
-    label: "COVID-19 hospital admissions by US state",
+    label: "COVID-19 hospital admissions by state",
     description:
-      "New hospital admissions of patients with confirmed COVID-19 in the latest week, for each US state, per 100,000 people.",
+      "New hospital admissions of patients with confirmed COVID-19 in the latest week, for each state in {place}, per 100,000 people.",
     howToRead:
       "Each value is the number of new hospital admissions of patients with confirmed COVID-19 in the week shown (Sunday to Saturday), for every 100,000 people who live in the state. The rate is as published: it is not calculated here. The latest week is provisional, because hospitals can still report late.",
-    title: "COVID-19 hospital admissions per 100,000 people, by US state",
+    title: "COVID-19 hospital admissions per 100,000 people by state",
     mapExplanation:
-      "The map shows the number of new hospital admissions of patients with confirmed COVID-19 in the latest week for each US state, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
+      "The map shows the number of new hospital admissions of patients with confirmed COVID-19 in the latest week for each state in {place}, per 100,000 people. Rates allow states of different sizes to be compared. The latest week is provisional because hospitals can still report late.",
     caveats: NHSN_CAVEATS,
   },
 ] as const satisfies readonly DatasetDef[];
 
+/**
+ * Puts a dataset's place in its words, from its `place`, so that a dataset
+ * always says where its figures are from (England's datasets once didn't,
+ * when the wording was made global):
+ *
+ * - `name`, `label` and `title` end with the place's name:
+ *   "COVID-19 rate by local authority, England".
+ * - `{place}` in `description`, `mapExplanation` and `howToRead` becomes the
+ *   place as it reads in a sentence: "England", "the United States".
+ */
+function withPlace<T extends DatasetDef>(dataset: T): DatasetDef {
+  const { place } = dataset;
+  const inSentence = (text: string) => text.replaceAll("{place}", place.phrase ?? place.name);
+  const named = (text: string) => `${text}, ${place.name}`;
+  return {
+    ...dataset,
+    name: named(dataset.name),
+    label: named(dataset.label),
+    title: named(dataset.title),
+    description: inSentence(dataset.description),
+    mapExplanation: inSentence(dataset.mapExplanation),
+    howToRead: inSentence(dataset.howToRead),
+  };
+}
+
+/** Every dataset, with its place in its name, label, title and text. */
+export const DATASETS: readonly DatasetDef[] = RAW_DATASETS.map(withPlace);
+
 /** The identifier of a registered dataset. A typo in one is a compile error. */
-export type DatasetId = (typeof DATASETS)[number]["id"];
+export type DatasetId = (typeof RAW_DATASETS)[number]["id"];
 
 /** The slug of a registered disease. */
 export type DiseaseSlug = (typeof DISEASES)[number]["slug"];
 
 /** The dataset that `/map` shows when none is chosen. */
-export const DEFAULT_DATASET_ID: DatasetId = DATASETS[0].id;
+export const DEFAULT_DATASET_ID: DatasetId = RAW_DATASETS[0].id;
 
 const datasetList: readonly DatasetDef[] = DATASETS;
 const diseaseList: readonly DiseaseDef[] = DISEASES;

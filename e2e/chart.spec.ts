@@ -331,15 +331,15 @@ test.describe("the chart page of a dataset", () => {
   }) => {
     await page.goto(MEASLES_CHART);
 
-    await expect(page).toHaveTitle("Measles cases by region: chart | Disease Observer");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region");
+    await expect(page).toHaveTitle("Measles cases by region, England: chart | Disease Observer");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Measles cases by region, England");
     await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem")).toHaveText([
       "Diseases›",
       "Measles›",
-      "Cases by region›",
+      "Cases by region, England›",
       "Chart",
     ]);
-    const views = page.getByRole("navigation", { name: "Views of Cases by region" });
+    const views = page.getByRole("navigation", { name: "Views of Cases by region, England" });
     await expect(views.getByRole("link")).toHaveText(["Map", "Chart", "Table"]);
     await expect(views.getByRole("link", { name: "Chart" })).toHaveAttribute("aria-current", "page");
 
@@ -383,7 +383,7 @@ test.describe("the chart page of a dataset", () => {
     await page.goto(`${MEASLES_CHART}?range=all&areas=E12000001`);
     await expect(page.getByTestId("line-chart")).toBeVisible();
 
-    const views = page.getByRole("navigation", { name: "Views of Cases by region" });
+    const views = page.getByRole("navigation", { name: "Views of Cases by region, England" });
     await expect(views.getByRole("link", { name: "Map" })).toHaveAttribute(
       "href",
       "/diseases/measles/cases-by-region/map?areas=E12000001",
@@ -423,14 +423,14 @@ test.describe("the chart page of a dataset with many areas", () => {
   test("draws England on its own, with the picker and the view links", async ({ page }) => {
     await openCovidChart(page);
 
-    await expect(page).toHaveTitle("COVID-19 rate by local authority: chart | Disease Observer");
+    await expect(page).toHaveTitle("COVID-19 rate by local authority, England: chart | Disease Observer");
     await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem")).toHaveText([
       "Diseases›",
       "COVID-19›",
-      "Rate by local authority›",
+      "Rate by local authority, England›",
       "Chart",
     ]);
-    const views = page.getByRole("navigation", { name: "Views of Rate by local authority" });
+    const views = page.getByRole("navigation", { name: "Views of Rate by local authority, England" });
     await expect(views.getByRole("link")).toHaveText(["Map", "Chart", "Table"]);
     await expect(views.getByRole("link", { name: "Chart" })).toHaveAttribute("aria-current", "page");
 
@@ -622,7 +622,7 @@ test.describe("the chart page of a dataset with many areas", () => {
     page,
   }) => {
     await openCovidChart(page, `?areas=${HARTLEPOOL}`);
-    const views = page.getByRole("navigation", { name: "Views of Rate by local authority" });
+    const views = page.getByRole("navigation", { name: "Views of Rate by local authority, England" });
     await expect(views.getByRole("link", { name: "Map" })).toHaveAttribute("href", `${COVID}/map?areas=${HARTLEPOOL}`);
     await expect(views.getByRole("link", { name: "Table" })).toHaveAttribute(
       "href",
@@ -681,7 +681,7 @@ async function expectPageMatchesAddress(page: Page) {
 async function leaveAndReturn(page: Page) {
   await page
     .getByRole("navigation", { name: "Breadcrumb" })
-    .getByRole("link", { name: "Rate by local authority" })
+    .getByRole("link", { name: "Rate by local authority, England" })
     .click();
   await expect(page).toHaveURL(COVID);
   await page.getByRole("article").getByRole("link", { name: "Chart" }).click();
@@ -787,7 +787,7 @@ test.describe("the chosen areas always match the address", () => {
 
     await page
       .getByRole("navigation", { name: "Breadcrumb" })
-      .getByRole("link", { name: "Rate by local authority" })
+      .getByRole("link", { name: "Rate by local authority, England" })
       .click();
     await expect(page).toHaveURL(COVID);
     await page.getByRole("article").getByRole("link", { name: "Map" }).click();

@@ -218,7 +218,7 @@ test("the server sends the chosen period's totals in the HTML", async ({ request
 
 test("the links between views keep the period, and the chart will not", async ({ page }) => {
   await page.goto(`${MEASLES}/table?areas=${GAP_CODE}&p=12w`);
-  const views = page.getByRole("navigation", { name: "Views of Cases by region" });
+  const views = page.getByRole("navigation", { name: "Views of Cases by region, England" });
   await expect(views.getByRole("link", { name: "Map" })).toHaveAttribute(
     "href",
     `${MEASLES}/map?areas=${GAP_CODE}&p=12w`,
@@ -236,7 +236,7 @@ test("the links between views keep the period, and the chart will not", async ({
   await choose(page, "Year to date");
   await expect(page).toHaveURL(`${MEASLES}/map?areas=${GAP_CODE}&p=ytd`);
   await expect(
-    page.getByRole("navigation", { name: "Views of Cases by region" }).getByRole("link", { name: "Table" }),
+    page.getByRole("navigation", { name: "Views of Cases by region, England" }).getByRole("link", { name: "Table" }),
   ).toHaveAttribute("href", `${MEASLES}/table?areas=${GAP_CODE}&p=ytd`);
 });
 

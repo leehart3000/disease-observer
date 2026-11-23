@@ -60,11 +60,11 @@ test.describe("the dataset pages", () => {
   test("explain the data, with the things to know, the views and the credit", async ({ page }) => {
     await page.goto(INFLUENZA);
 
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Influenza hospital admissions by US state");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Influenza hospital admissions by state, United States");
     await expect(page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("listitem")).toHaveText([
       "Diseases›",
       "Influenza›",
-      "Admissions by state",
+      "Admissions by state, United States",
     ]);
     await expect(page.getByText("for every 100,000 people who live in the state")).toBeVisible();
 
@@ -98,7 +98,7 @@ test.describe("the dataset pages", () => {
 
   test("RSV has one more thing to know: it was reported voluntarily until November 2024", async ({ page }) => {
     await page.goto(RSV);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("RSV hospital admissions by US state");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("RSV hospital admissions by state, United States");
     const caveats = page.getByTestId("caveats").getByRole("listitem");
     await expect(caveats).toHaveCount(5);
     await expect(caveats.last()).toContainText("RSV was reported voluntarily until 1 November 2024");
@@ -122,8 +122,8 @@ test.describe("the state table", () => {
   }) => {
     await page.goto(`${INFLUENZA}/table`);
 
-    await expect(page).toHaveTitle("Influenza hospital admissions by US state: table | Disease Observer");
-    await expect(table(page).locator("caption")).toContainText("Influenza hospital admissions per 100,000 people, by US state");
+    await expect(page).toHaveTitle("Influenza hospital admissions by state, United States: table | Disease Observer");
+    await expect(table(page).locator("caption")).toContainText("Influenza hospital admissions per 100,000 people by state, United States");
     await expect(table(page).locator("caption")).toContainText(weekText(0));
     await expect(rows(page)).toHaveCount(NHSN_STATES.length);
     await expect(page.getByText("Showing 1 to 8 of 8")).toBeVisible();
@@ -172,7 +172,7 @@ test.describe("the state map", () => {
     expect(requested.some((url) => url.endsWith("/boundaries/us-states-50m.json"))).toBe(true);
     expect(requested.some((url) => url.includes("lad-dec-2022") || url.includes("rgn-dec-2022"))).toBe(false);
 
-    await expect(page.getByRole("region", { name: /^Map: Influenza hospital admissions per 100,000 people, by US state/ })).toBeVisible();
+    await expect(page.getByRole("region", { name: /^Map: Influenza hospital admissions per 100,000 people by state, United States/ })).toBeVisible();
     // The notice is under the map.
     const notice = page.getByTestId("boundary-notice");
     await expect(notice).toBeVisible();
@@ -326,7 +326,7 @@ test.describe("the state chart", () => {
     await expect(page.getByTestId("line-chart")).toBeVisible();
     await expect(finder(page)).toBeVisible();
 
-    await expect(page).toHaveTitle("Influenza hospital admissions by US state: chart | Disease Observer");
+    await expect(page).toHaveTitle("Influenza hospital admissions by state, United States: chart | Disease Observer");
     await expect(
       page.getByRole("heading", { level: 2, name: "Compare with United States: choose up to 3 states." }),
     ).toBeVisible();
@@ -421,8 +421,8 @@ test.describe("the disease pages", () => {
     await expect(page.getByRole("group", { name: /^Pick up to three/ })).toHaveCount(0);
     await expect(slider(page)).toHaveAccessibleName(/weekly, United States, .* Latest 3\.5 per 100,000 for United States\./);
 
-    await expect(page.getByRole("link", { name: "Admissions by state", exact: true })).toHaveAttribute("href", INFLUENZA);
-    await expect(page.getByRole("link", { name: "Chart: Admissions by state" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Admissions by state, United States", exact: true })).toHaveAttribute("href", INFLUENZA);
+    await expect(page.getByRole("link", { name: "Chart: Admissions by state, United States" })).toHaveAttribute(
       "href",
       `${INFLUENZA}/chart`,
     );
@@ -436,8 +436,8 @@ test.describe("the disease pages", () => {
 
   test("COVID-19 lists its England dataset and its US one, and keeps England's headline", async ({ page }) => {
     await page.goto("/diseases/covid-19");
-    await expect(page.getByRole("link", { name: "Rate by local authority", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Admissions by state", exact: true })).toHaveAttribute("href", COVID_US);
+    await expect(page.getByRole("link", { name: "Rate by local authority, England", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Admissions by state, United States", exact: true })).toHaveAttribute("href", COVID_US);
     await expect(page.getByRole("heading", { level: 2, name: "Latest figure" }).locator("..")).toContainText("England");
   });
 });
@@ -462,9 +462,9 @@ test.describe("the site around them", () => {
   test("the maps list has the three US maps", async ({ page }) => {
     await page.goto("/maps");
     for (const [name, path] of [
-      ["Influenza hospital admissions by US state", INFLUENZA],
-      ["RSV hospital admissions by US state", RSV],
-      ["COVID-19 hospital admissions by US state", COVID_US],
+      ["Influenza hospital admissions by state, United States", INFLUENZA],
+      ["RSV hospital admissions by state, United States", RSV],
+      ["COVID-19 hospital admissions by state, United States", COVID_US],
     ]) {
       await expect(page.getByRole("link", { name })).toHaveAttribute("href", `${path}/map`);
     }

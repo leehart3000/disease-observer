@@ -170,8 +170,9 @@ it. `.env.local` holds local development values only: never put
 production credentials in it. Production values are set in Vercel and
 GitHub, and `.env.example` shows the variable names.
 
-Check that the database is reachable at http://localhost:3000/api/health,
-which returns the PostGIS library version.
+The site has no public route that queries the database on request just to
+check it, so nobody can use one to wake the database. Check it with `psql`
+or any page that shows figures.
 
 The build, lint and type check must pass without `DATABASE_URL`, so
 nothing may query the database at build time. Only the end-to-end tests use
@@ -400,9 +401,14 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   knows the site's address). States such as `?d=…` are views of the same
   page, not separate pages to index.
 - `/sources` and the sources on each disease page list only the sources
-  that a registry dataset uses (`sourceSlugs`), read from the `sources`
-  table, plus the base map credit in `src/lib/credits.ts`. If the table
-  can't be read, they show "Sources unavailable".
+  that a registry dataset uses (`sourceSlugs`), plus the base map credit.
+  **Credits are written in code** (`SOURCES` and `BASE_MAP_CREDIT` in
+  `src/lib/credits.ts`: name, link, attribution, licence name and licence
+  URL), so every page has them in its prerendered HTML, with no database
+  and no loading state. `pnpm db:seed` writes the same `SOURCES` rows into
+  the `sources` table (the ETL records which source each observation
+  came from), and a test checks that the seed uses them and that every
+  `sourceSlugs` entry has a credit. To add a source, add it to `SOURCES`.
 - `/about` and `/privacy` are static text. The footer links to Sources,
   About and Privacy.
 - **Analytics.** Cloudflare Web Analytics (a cookie-free page view counter,
@@ -415,6 +421,33 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   header and footer, saying the page could not be found and offering the home
   page, the main sections and each disease (from the registry). An address
   with no page answers with a real 404 (see `src/proxy.ts`) and this page.
+- **The error page** (`src/app/error.tsx`, with `ErrorPanel`) is shown when a
+  page fails while it renders. It sits inside the root layout, so the header and
+  footer are there, and has a short message, a "Try again" button (`retry`) and
+  links to the main sections. It never shows details of the error.
+  `src/app/global-error.tsx` is the last resort when the layout itself fails
+  (it has no header or footer). `/error-test` fails on purpose so the page can be
+  tested and looked at, but only when `ERROR_PAGE_TEST=1` (the Playwright server
+  and your own `pnpm dev` can set it); on the live site it is a 404.
+- **Dataset names say their place.** The registry writes `name`, `label`,
+  `title`, `description`, `mapExplanation` and `howToRead` without a place and
+  adds it from the dataset's `place` (`withPlace`): `name`, `label` and `title` end
+  with ", England" or ", United States", and `{place}` in the text becomes
+  "England" or "the United States". Write `{place}` in a new dataset's
+  description and map explanation; a registry test checks every name and title.
+- **Security headers** (`next.config.ts`, every route): `X-Content-Type-Options:
+  nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, a
+  `Permissions-Policy` that turns off the camera, microphone, location and other
+  features the site does not use, and a **report-only**
+  `Content-Security-Policy`. It allows `'self'`, `tiles.openfreemap.org`
+  (the base map), `static.cloudflareinsights.com` and `cloudflareinsights.com`
+  (analytics), `blob:` (MapLibre's worker) and `data:` pictures, and sets
+  `frame-ancestors 'none'`. Scripts and styles also need `'unsafe-inline'`: the
+  pages are prerendered, so Next.js's own inline scripts cannot carry a nonce,
+  and MapLibre sets `style` attributes. `e2e/security.spec.ts` loads the maps,
+  charts and pictures and fails on any report. Add a host there when the site
+  starts to use one. Nothing is blocked yet: check the live site's console for
+  reports before turning the policy on.
 - **Files that the code reads at run time are a risk** (this once took every
   page down in production). A host runs the site from the build output and the
   files its tracing found, not from the source folder or `node_modules`.
