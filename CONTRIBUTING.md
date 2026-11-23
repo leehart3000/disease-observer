@@ -59,6 +59,8 @@ Run these from the repository root:
   [The map page](#the-map-page)).
 - `pnpm build`: create a production build. It builds the same files first.
 - `pnpm start`: serve the production build (run `pnpm build` first).
+- `pnpm smoke:standalone`: build the standalone output and request pages and
+  pictures from it (see "Files that the code reads at run time").
 - `pnpm lint`: run ESLint.
 - `pnpm typecheck`: generate the Next.js route types and run the
   TypeScript compiler without emitting files.
@@ -385,10 +387,40 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   header and footer, saying the page could not be found and offering the home
   page, the main sections and each disease (from the registry). An address
   with no page answers with a real 404 (see `src/proxy.ts`) and this page.
+- **Files that the code reads at run time are a risk** (this once took every
+  page down in production). A host runs the site from the build output and the
+  files its tracing found, not from the source folder or `node_modules`.
+  Next.js also loads an `opengraph-image` module to render *any* page, to read
+  its `alt` and `size`. So: nothing in `src/` reads from `node_modules` or
+  `process.cwd()`, nothing has a top-level `await` (it runs when the module
+  loads, for every page), and the only code that reads a file is the picture
+  code, which reads its fonts inside a `"use cache"` function that is called when
+  a picture is made, with `new URL("…", import.meta.url)` in the `readFile` call so
+  that the bundler builds the file into `.next/server/assets`. (The cache is
+  needed because Cache Components refuses a route that reads an uncached file
+  at run time.) Add a file the same way, never at the start of a module.
+  `e2e/runtime-files.spec.ts` checks these rules on `src/`, and
+  `pnpm smoke:standalone` checks the build output (see below).
+- **`pnpm smoke:standalone`** builds with `NEXT_STANDALONE=1` (Next.js's
+  standalone output, which has only the traced files; the normal build is not
+  changed), deletes every font file under `node_modules` in that output (the
+  running site needs none), starts it with no database, and requests pages and
+  sharing pictures, in two rounds: as built (including pictures that it deletes
+  first, so that the server makes them at run time), and with the picture fonts
+  deleted, when every page must still work and only a picture that has to be made
+  may fail. CI runs it as the "standalone smoke test" job. It fails, with the
+  same `ENOENT` as in production, on the code that broke the site (checked by
+  putting that code back). Its limit: the standalone output copies traced files
+  in its own way, so it is a stand-in for Vercel's, not the same thing, and a
+  file that the output has but Vercel lacks would only be caught by the rules
+  above (`e2e/runtime-files.spec.ts`), which is why both exist.
 - **Sharing.** Every page has Open Graph and Twitter card text, and a picture
   (`opengraph-image` and `twitter-image`, 1200 by 630 PNGs made with
   `ImageResponse` in `src/lib/og-image.tsx`: the mark, the site name and the
-  page's title, in IBM Plex Sans on the site's colours). The home page, each
+  page's title, in IBM Plex Sans on the site's colours). The fonts are copies
+  in `src/assets/fonts` (with their licence, the SIL Open Font License), and
+  the mark is text in `src/lib/og-mark.ts` (a test keeps it the same as
+  `public/brand/mark-light.svg`). The home page, each
   disease page and each dataset page (shared by its map, chart and table
   pages) have their own picture; every other page shows the home page's. They
   are made when the site is built from the registry, and read no database. The

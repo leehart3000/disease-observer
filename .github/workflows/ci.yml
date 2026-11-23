@@ -49,6 +49,38 @@ jobs:
       - name: Build
         run: pnpm build
 
+  # Runs the site from Next.js's standalone output, which has only the files that
+  # the build and its file tracing put there (what a serverless host runs from), and
+  # requests pages and sharing pictures. It catches a file that the code reads at run
+  # time but that the output lacks, which once took every page down in production.
+  # It builds with NEXT_STANDALONE=1 (the normal build is not changed), with no
+  # database URL.
+  standalone:
+    name: standalone smoke test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the standalone output and request pages and pictures from it
+        run: pnpm smoke:standalone
+
   e2e:
     name: e2e
     runs-on: ubuntu-24.04

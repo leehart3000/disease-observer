@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // `pnpm smoke:standalone` builds with NEXT_STANDALONE=1. The standalone output
+  // holds only the files that Next.js's file tracing found, which is what a
+  // serverless host (Vercel) has at run time, so a file that is read from disk but
+  // not traced is missing there, as it would be in production. The normal build is
+  // unchanged.
+  output: process.env.NEXT_STANDALONE === "1" ? "standalone" : undefined,
   devIndicators: false,
   cacheComponents: true,
   partialPrefetching: true,

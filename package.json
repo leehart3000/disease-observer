@@ -19,6 +19,7 @@
     "boundaries:prepare": "node scripts/boundaries/prepare.mts",
     "boundaries:prepare:natural-earth": "node scripts/boundaries/prepare-natural-earth.mts",
     "boundaries:web": "node scripts/boundaries/web.mts",
+    "smoke:standalone": "NEXT_STANDALONE=1 pnpm build && node scripts/smoke-standalone.mts",
     "maplibre:worker": "node scripts/maplibre-worker.mts",
     "etl:ukhsa": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/etl/ukhsa.mts",
     "etl:cdc-nhsn": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/etl/cdc-nhsn.mts"
