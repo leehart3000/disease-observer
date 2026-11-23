@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { CaveatsLink } from "@/components/CaveatsLink";
 import { PageFallback } from "@/components/PageFallback";
 import { ViewTabs } from "@/components/ViewTabs";
 import { DATASETS, getDatasetBySlug, getDisease } from "@/lib/datasets/registry";
@@ -73,6 +74,7 @@ async function ChartViewContent({
       <div className="mb-6">
         <ViewTabs datasetName={dataset.name} tabs={viewTabs(dataset)} current="chart" />
       </div>
+      <CaveatsLink dataset={dataset} />
       <Suspense
         fallback={
           <div

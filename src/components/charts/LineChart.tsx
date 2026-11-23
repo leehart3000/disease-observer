@@ -35,13 +35,15 @@ export function LineChart({
   rangeInUrl?: boolean;
 }) {
   const dataset = getDataset(series.datasetId);
-  const chartConfig = getDisease(series.diseaseSlug)?.chart;
+  const disease = getDisease(series.diseaseSlug);
+  // The areas drawn with the place (the regions), or none if it is drawn alone.
+  const areas = disease?.chart.areas ?? null;
   const [picked, setPicked] = useState<Highlight[]>([]);
   const [range, chooseRange] = useChartRange(rangeInUrl);
 
-  // The whole place first (England), then its areas (the regions).
+  // The whole place first (England), then its areas.
   const [whole, ...regions] = series.lines;
-  if (!dataset || !chartConfig || !whole) return null;
+  if (!dataset || !disease || !whole) return null;
 
   function togglePicked(code: string) {
     setPicked((old) => {
@@ -71,9 +73,10 @@ export function LineChart({
         className="mt-3"
       />
 
+      {areas ? (
       <fieldset className="mt-4">
         <legend className="mb-2 text-sm font-medium text-muted">
-          Pick up to three {chartConfig.areaNoun} to highlight.
+          Pick up to three {areas.noun} to highlight.
         </legend>
         <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm sm:flex sm:flex-wrap sm:gap-x-5">
           <li className="flex min-h-11 items-center gap-3">
@@ -115,17 +118,18 @@ export function LineChart({
         </ul>
         {full && (
           <p className="mt-1 text-sm text-muted">
-            Three {chartConfig.areaNoun} are highlighted, the most the chart can show. Untick one to pick another.
+            Three {areas.noun} are highlighted, the most the chart can show. Untick one to pick another.
           </p>
         )}
       </fieldset>
+      ) : null}
 
       <LineChartPlot
         series={series}
         diseaseName={diseaseName}
         highlights={picked}
         range={range}
-        scope={`${dataset.place.name} and ${chartConfig.areasLabel}`}
+        scope={areas ? `${dataset.place.name} and ${areas.label}` : dataset.place.name}
       />
     </figure>
   );

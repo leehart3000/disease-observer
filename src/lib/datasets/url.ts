@@ -17,8 +17,12 @@ function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
-/** The longest an area code can be, and the characters it can have: ONS codes such as `E06000001`. */
-const AREA_CODE = /^[A-Z0-9]{9}$/;
+/**
+ * The shapes an area code can have: ONS codes such as `E06000001`, ISO 3166-1
+ * alpha-3 country codes such as `USA`, and ISO 3166-2 subdivision codes such as
+ * `US-AL`. Whether a code is a real area of the dataset is checked later.
+ */
+const AREA_CODE = /^(?:[A-Z0-9]{9}|[A-Z]{3}|[A-Z]{2}-[A-Z0-9]{1,3})$/;
 
 /**
  * Reads a list of area codes, such as `?areas=E06000001,E06000002`. Anything

@@ -16,6 +16,7 @@ import { parseAreaCodes } from "@/lib/datasets/url";
 import { buildScale } from "@/lib/map/scale";
 import type { MapDataset, SourceCredit } from "@/lib/map/types";
 import { AreaReadout } from "./AreaReadout";
+import { BoundaryNotice } from "./BoundaryNotice";
 import { ChoroplethMap, type AreaRect, type SelectedArea } from "./ChoroplethMap";
 import { Legend } from "./Legend";
 import { MapErrorBoundary } from "./MapErrorBoundary";
@@ -122,7 +123,10 @@ export function MapExplorer({
 
   const shown = pinned ?? hovered;
   const numbers = useMemo(() => values.values.map((area) => area.value), [values]);
-  const scale = useMemo(() => buildScale(numbers, dataset.scale), [numbers, dataset.scale]);
+  const scale = useMemo(
+    () => buildScale(numbers, dataset.scale, dataset.decimals),
+    [numbers, dataset.scale, dataset.decimals],
+  );
   // Only this dataset's sources, in the registry's order.
   const credits =
     sources === null
@@ -240,6 +244,7 @@ export function MapExplorer({
             <Legend
               scale={scale}
               heading={dataset.title}
+              decimals={dataset.decimals}
               lowest={lowest}
               highest={highest}
               collapsed={legendCollapsed}
@@ -248,6 +253,8 @@ export function MapExplorer({
           </div>
         </div>
       </div>
+
+      {dataset.map.boundaryNotice ? <BoundaryNotice kind={dataset.map.boundaryNotice} /> : null}
 
       <section
         id="values-table"

@@ -1,7 +1,7 @@
 /**
  * A disease's weekly series for the chart: its headline dataset's whole place
- * (England) and the areas at the disease's `chart.areaLevel` (the nine UKHSA
- * regions), one point a week. Server-side only.
+ * (England) and the areas at the disease's `chart.areas` level (the nine UKHSA
+ * regions, if it has any), one point a week. Server-side only.
  *
  * Nothing here may run at build time, because the build has no database:
  * callers wait for a real request first (`connection()`).
@@ -40,6 +40,12 @@ export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
   const dataset = disease && getDataset(disease.headline.datasetId);
   if (!disease || !dataset) throw new Error(`Unknown disease ${slug}`);
   const { place } = dataset;
+  // The whole place, and (unless the disease charts the place alone) its areas.
+  const onlyPlace = sql`a.code_scheme = ${place.scheme} and a.code = ${place.code}`;
+  const { areas } = disease.chart;
+  const placeOrAreas = areas
+    ? sql`(${onlyPlace}) or (a.code_scheme = ${dataset.map.areaScheme} and a.level = ${areas.level})`
+    : onlyPlace;
 
   const ended = dataset.completePeriodsOnly ? sql`and o.period_end < current_date` : sql``;
   const result = await getDb().execute<Row>(sql`
@@ -74,8 +80,7 @@ export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
       and o.metric = ${dataset.metric}
       and o.stratum = 'all'
       and o.period_type = ${dataset.periodType}
-      and ((a.code_scheme = ${place.scheme} and a.code = ${place.code})
-        or (a.code_scheme = ${dataset.map.areaScheme} and a.level = ${disease.chart.areaLevel}))
+      and (${placeOrAreas})
     order by o.period_end, a.name`);
 
   const whole = result.rows.filter((row) => row.code === place.code);

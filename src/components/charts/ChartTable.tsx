@@ -118,7 +118,7 @@ export function ChartTable({ series, from }: { series: DiseaseSeries; from: numb
                       const value = line.values[index];
                       return (
                         <td key={line.code} className="py-2 pr-4 text-right tabular-nums">
-                          {value === null ? "–" : formatNumber(value)}
+                          {value === null ? "–" : formatNumber(value, dataset.decimals)}
                         </td>
                       );
                     })}

@@ -19,6 +19,7 @@ export function addDays(date: string, days: number): string {
  * - COVID-19: a week ending three days ago (the latest), and the week before.
  * - Measles: the last complete week (Monday to Sunday, ended before today),
  *   and the week after it, which has not ended yet and so must be ignored.
+ * - US hospital admissions: the last Sunday to Saturday week that ended before today.
  */
 export function fixtureDates(now: Date = new Date()) {
   const today = now.toISOString().slice(0, 10);
@@ -26,12 +27,67 @@ export function fixtureDates(now: Date = new Date()) {
   // Days back to the most recent Sunday that is before today.
   const dayOfWeek = now.getUTCDay();
   const measlesEnd = addDays(today, -(dayOfWeek === 0 ? 7 : dayOfWeek));
+  // The NHSN weeks run Sunday to Saturday: the latest is the Saturday before today.
+  const nhsnEnd = addDays(today, -(((dayOfWeek - 6 + 7) % 7) || 7));
   return {
     covidLatest: { start: addDays(covidEnd, -6), end: covidEnd },
     covidPrevious: { start: addDays(covidEnd, -13), end: addDays(covidEnd, -7) },
     measlesComplete: { start: addDays(measlesEnd, -6), end: measlesEnd },
     measlesIncomplete: { start: addDays(measlesEnd, 1), end: addDays(measlesEnd, 7) },
+    nhsnLatest: { start: addDays(nhsnEnd, -6), end: nhsnEnd },
   };
+}
+
+/**
+ * The US hospital admission fixtures (see `nhsnRate`): the diseases, the states
+ * that have figures (in alphabetical order of their names, as the table lists
+ * them) and the week they are for. The other 43 states have no row, so they show
+ * as "No data" on the map.
+ */
+export const NHSN_STATES = [
+  { code: "US-AL", name: "Alabama" },
+  { code: "US-AK", name: "Alaska" },
+  { code: "US-CA", name: "California" },
+  { code: "US-DC", name: "District of Columbia" },
+  { code: "US-FL", name: "Florida" },
+  { code: "US-NY", name: "New York" },
+  { code: "US-TX", name: "Texas" },
+  { code: "US-WA", name: "Washington" },
+] as const;
+
+/** The diseases with US hospital admission fixtures, and the rate each starts from in the latest week. */
+export const NHSN_DISEASES = [
+  { slug: "influenza", latest: 3.5, fall: 0.05 },
+  { slug: "rsv", latest: 0.5, fall: 0.01 },
+  { slug: "covid-19", latest: 1.5, fall: 0.01 },
+] as const;
+
+/**
+ * A US hospital admission rate (per 100,000) `weeksBack` weeks before the
+ * latest. The national row falls a little each week (influenza 3.5, 3.45, 3.4,
+ * and so on). A state is the national value times 2 for the first state, 3
+ * for the second, and so on up to 9, so every state is above the nation and
+ * every value has at most two decimal places (the pages show two).
+ * `stateIndex` is `null` for the nation.
+ */
+export function nhsnRate(
+  disease: (typeof NHSN_DISEASES)[number]["slug"],
+  stateIndex: number | null,
+  weeksBack: number,
+): number {
+  const config = NHSN_DISEASES.find((entry) => entry.slug === disease)!;
+  const national = config.latest - config.fall * weeksBack;
+  const multiplier = stateIndex === null ? 1 : 2 + stateIndex;
+  return Math.round(national * multiplier * 100) / 100;
+}
+
+/** The District of Columbia (index 3) has no influenza row for the week 5 weeks before the latest. */
+export function isMissingNhsnWeek(
+  disease: string,
+  stateIndex: number | null,
+  weeksBack: number,
+): boolean {
+  return disease === "influenza" && stateIndex === 3 && weeksBack === 5;
 }
 
 /** How many weekly England values the fixtures hold, counting the latest. */

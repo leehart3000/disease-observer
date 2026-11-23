@@ -126,7 +126,8 @@ test("the footer has the copyright on the left and the links on the right on a w
 test("the home page and the about page say what the site covers now, from the registry", async ({
   page,
 }) => {
-  const line = "Currently covers COVID-19 and measles in England, from the UK Health Security Agency.";
+  const line =
+    "Currently covers COVID-19 and measles in England, from the UK Health Security Agency; influenza, RSV and COVID-19 in the United States, from the CDC National Healthcare Safety Network (NHSN).";
   await page.goto("/");
   await expect(page.getByText(line)).toBeVisible();
   await expect(page.getByText("shown as soon as they are published")).toHaveCount(0);
@@ -141,8 +142,8 @@ test("the home page has one card for each disease, and one for the map", async (
   await page.goto("/");
 
   const cards = page.getByRole("article");
-  await expect(cards).toHaveCount(3);
-  await expect(cards.getByRole("link")).toHaveText(["COVID-19", "Measles", "Maps"]);
+  await expect(cards).toHaveCount(5);
+  await expect(cards.getByRole("link")).toHaveText(["COVID-19", "Measles", "Influenza", "RSV", "Maps"]);
   await expect(cards.getByRole("link", { name: "Maps" })).toHaveAttribute("href", "/maps");
 
   await cards.getByRole("link", { name: "Measles" }).click();
@@ -152,7 +153,7 @@ test("the home page has one card for each disease, and one for the map", async (
 test("the diseases page lists the same diseases", async ({ page }) => {
   await page.goto("/diseases");
 
-  await expect(page.getByRole("article").getByRole("link")).toHaveText(["COVID-19", "Measles"]);
+  await expect(page.getByRole("article").getByRole("link")).toHaveText(["COVID-19", "Measles", "Influenza", "RSV"]);
 });
 
 test("a disease page lists its datasets, with a link to each view, and only its sources", async ({

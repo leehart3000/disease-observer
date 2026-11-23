@@ -341,7 +341,7 @@ export function ValuesTable({
                         Provisional
                       </span>
                     ) : null}
-                    {formatNumber(area.value)}
+                    {formatNumber(area.value, config.decimals)}
                     {formatCoverage(area.weeks, dataset.weeksExpected) ? (
                       <span className="block text-xs text-muted">
                         {formatCoverage(area.weeks, dataset.weeksExpected)}

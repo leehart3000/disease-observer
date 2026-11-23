@@ -131,14 +131,17 @@ export function AreaPicker({
 
   const countId = `${ids}-count`;
   const regionCount = groups.length;
+  // Areas that all have the same parent (the 51 US states have one country) need no headings.
+  const grouped = new Set(options.map((option) => option.region)).size > 1;
+  const inRegions = grouped ? ` in ${regionCount} ${regionCount === 1 ? "region" : "regions"}` : "";
   const countText =
     matches.length === 0
       ? `No ${nounPlural} match.`
       : typed
         ? matches.length === 1
           ? "1 match."
-          : `${matches.length} matches in ${regionCount} ${regionCount === 1 ? "region" : "regions"}.`
-        : `${matches.length} ${nounPlural} in ${regionCount} ${regionCount === 1 ? "region" : "regions"}.`;
+          : `${matches.length} matches${inRegions}.`
+        : `${matches.length} ${nounPlural}${inRegions}.`;
 
   return (
     <section aria-labelledby={`${ids}-heading`} className="mt-4">
@@ -215,19 +218,25 @@ export function AreaPicker({
           {matches.length > 0 ? (
             <div
               role="group"
-              aria-label={`${nounPlural[0].toUpperCase()}${nounPlural.slice(1)} by region`}
+              aria-label={`${nounPlural[0].toUpperCase()}${nounPlural.slice(1)}${grouped ? " by region" : ""}`}
               // `relative` keeps the buttons' hidden "Add " text (absolutely positioned) inside the
               // panel: without it, each one sits outside the scroller and makes the page as tall as the list.
               className="relative max-h-72 overflow-y-auto rounded-md border border-line bg-surface"
             >
               {groups.map((group, index) => (
-                <div key={group.region} role="group" aria-labelledby={`${ids}-region-${index}`}>
-                  <h3
-                    id={`${ids}-region-${index}`}
-                    className="sticky top-0 border-b border-line bg-paper px-3 py-1.5 text-xs font-medium tracking-wide text-muted uppercase"
-                  >
-                    {group.region}
-                  </h3>
+                <div
+                  key={group.region}
+                  role={grouped ? "group" : undefined}
+                  aria-labelledby={grouped ? `${ids}-region-${index}` : undefined}
+                >
+                  {grouped ? (
+                    <h3
+                      id={`${ids}-region-${index}`}
+                      className="sticky top-0 border-b border-line bg-paper px-3 py-1.5 text-xs font-medium tracking-wide text-muted uppercase"
+                    >
+                      {group.region}
+                    </h3>
+                  ) : null}
                   <ul>
                     {group.areas.map((option) => (
                       <li key={option.code}>

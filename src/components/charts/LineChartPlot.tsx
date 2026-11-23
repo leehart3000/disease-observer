@@ -211,7 +211,7 @@ export function LineChartPlot({
                 strokeWidth={1}
               />
               <text x={MARGIN.left - 6} y={geometry.y(tick)} textAnchor="end" dominantBaseline="middle" style={axisText}>
-                {formatNumber(tick)}
+                {formatNumber(tick, dataset.decimals)}
               </text>
             </g>
           ))}

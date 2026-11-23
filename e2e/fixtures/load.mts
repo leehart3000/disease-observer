@@ -14,7 +14,7 @@
  *
  * Erasable TypeScript only, with relative imports that end in `.ts`.
  */
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { createDb } from "../../src/db/client.ts";
 import { areas, diseases, observations, sources } from "../../src/db/schema.ts";
 import {
@@ -23,8 +23,12 @@ import {
   englandRows,
   fixtureDates,
   isMissingLaWeek,
+  isMissingNhsnWeek,
   LA_WITH_HISTORY,
   laCovidRate,
+  NHSN_DISEASES,
+  NHSN_STATES,
+  nhsnRate,
   regionCovidRate,
   isMissingMeaslesWeek,
   MEASLES_LATEST_CASES,
@@ -238,6 +242,57 @@ async function main() {
           }
         }
       });
+
+      // US hospital admissions (NHSN): the nation and eight states, for three diseases.
+      const [nhsn] = await tx.select().from(sources).where(eq(sources.slug, "cdc-nhsn"));
+      const usDiseaseRows = await tx
+        .select()
+        .from(diseases)
+        .where(inArray(diseases.slug, NHSN_DISEASES.map((entry) => entry.slug)));
+      const usAreaRows = await tx
+        .select({ id: areas.id, scheme: areas.codeScheme, code: areas.code })
+        .from(areas)
+        .where(
+          or(
+            and(eq(areas.codeScheme, "iso3166-1-alpha3"), eq(areas.code, "USA")),
+            and(
+              eq(areas.codeScheme, "iso3166-2"),
+              inArray(areas.code, NHSN_STATES.map((state) => state.code)),
+            ),
+          ),
+        );
+      const usAreaId = new Map(usAreaRows.map((row) => [row.code, row.id]));
+      if (!nhsn || usDiseaseRows.length !== NHSN_DISEASES.length || usAreaId.size !== 1 + NHSN_STATES.length) {
+        throw new Error(
+          "Run `pnpm db:seed` and `pnpm db:boundaries` first: the NHSN source, a disease, USA or a state is missing",
+        );
+      }
+      for (const { slug } of NHSN_DISEASES) {
+        const diseaseId = usDiseaseRows.find((row) => row.slug === slug)!.id;
+        // `null` is the nation (`USA`); 0 to 7 are the states, in the order of `NHSN_STATES`.
+        const places: Array<{ code: string; index: number | null }> = [
+          { code: "USA", index: null },
+          ...NHSN_STATES.map((state, index) => ({ code: state.code, index })),
+        ];
+        for (const { code, index } of places) {
+          for (let back = 0; back < ENGLAND_WEEKS; back++) {
+            if (isMissingNhsnWeek(slug, index, back)) continue;
+            rows.push({
+              sourceId: nhsn.id,
+              diseaseId,
+              areaId: usAreaId.get(code)!,
+              metric: "admissions_per_100k",
+              stratum: "all",
+              periodType: "week",
+              periodStart: addDays(dates.nhsnLatest.start, -7 * back),
+              periodEnd: addDays(dates.nhsnLatest.end, -7 * back),
+              value: nhsnRate(slug, index, back),
+              // The latest week of each series is provisional, as the ETL marks it.
+              provisional: back === 0,
+            });
+          }
+        }
+      }
 
       // England is not in the boundary files, so the loader creates it, as the ETL does.
       const [england] = await tx

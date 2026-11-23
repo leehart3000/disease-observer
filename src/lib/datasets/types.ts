@@ -39,6 +39,8 @@ export type LngLatBounds = readonly [readonly [number, number], readonly [number
 export type Place = {
   /** What it is called, such as "England". */
   name: string;
+  /** How it reads in a sentence, if that is not just the name: "the United States". */
+  phrase?: string;
   /** Its part of an address, such as `england`. */
   slug: string;
   /** Its code in the `areas` table, such as `E92000001`. */
@@ -84,6 +86,12 @@ export type DatasetDef = {
   metric: string;
   /** `rate` values can have decimals; `count` values are whole numbers. */
   valueKind: "rate" | "count";
+  /**
+   * The most decimal places shown for a value (the map key, the table, the
+   * chart and the readouts). One if left out; small rates such as admissions
+   * per 100,000 need two.
+   */
+  decimals?: number;
   /** The unit. Counts use `one` and `many` ("case", "cases"). */
   unit: { label: string; one?: string; many?: string };
   /** How a period is written: "7 days to 18 November 2026", or a week of onset. */
@@ -96,6 +104,12 @@ export type DatasetDef = {
   completePeriodsOnly: boolean;
   /** The heading of the value column in the table, for each period choice on offer. */
   columnHeading: { latest: string; "12w"?: string; ytd?: string };
+  /**
+   * Things a reader should know before relying on the figures, one sentence
+   * or two each (reporting changes, coverage, provisional values). Shown on the
+   * dataset's page. British English.
+   */
+  caveats?: readonly string[];
   /**
    * Shown on the map and table pages when the dataset offers only one
    * period, to say why there is no choice. British English.
@@ -116,6 +130,12 @@ export type DatasetDef = {
     bounds: LngLatBounds;
     /** The farthest the map can be moved: it stops the visitor getting lost far from the data. Contains `bounds`. */
     maxBounds: LngLatBounds;
+    /**
+     * A notice shown under the map about where its boundaries come from.
+     * `natural-earth` is for maps drawn from Natural Earth's country and
+     * state boundaries (see `BoundaryNotice`).
+     */
+    boundaryNotice?: "natural-earth";
     /** The `code_scheme` of the codes of these areas in the `areas` table, such as `ons`. */
     areaScheme: string;
     /** What the areas are called, in the plural. */
@@ -153,11 +173,19 @@ export type DiseaseDef = {
   headline: { datasetId: string };
   /**
    * The chart on the disease page shows the headline dataset's metric for its
-   * whole place (England) and the areas at `areaLevel` (the regions), one
+   * whole place (England) and the `areas` at one level (the regions), one
    * point a week, from `since` (`YYYY-MM-DD`). The areas are of the headline
-   * dataset's `map.areaScheme`. `areaNoun` is what they are called in the
-   * plural ("regions", in the chart's checkboxes) and `areasLabel` names them
-   * for people using a screen reader ("UKHSA regions").
+   * dataset's `map.areaScheme`. `noun` is what they are called in the plural
+   * ("regions", in the chart's checkboxes) and `label` names them for people
+   * using a screen reader ("UKHSA regions").
    */
-  chart: { since: string; areaLevel: AreaLevel; areaNoun: string; areasLabel: string };
+  chart: {
+    since: string;
+    /**
+     * The areas drawn with the whole place, or `null` for the whole place on
+     * its own (when there are too many areas for a chart of them all, such
+     * as the 51 US states).
+     */
+    areas: { level: AreaLevel; noun: string; label: string } | null;
+  };
 };

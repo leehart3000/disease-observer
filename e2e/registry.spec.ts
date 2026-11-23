@@ -34,7 +34,9 @@ test.describe("each dataset's place", () => {
   }
 
   test("the England datasets use the ONS code for England, as the figures were always read", () => {
-    for (const dataset of DATASETS) {
+    const england = DATASETS.filter((dataset) => dataset.sourceSlugs[0] === "ukhsa");
+    expect(england.map((dataset) => dataset.id)).toEqual(["covid-19-rate", "measles-cases"]);
+    for (const dataset of england) {
       expect(dataset.place).toEqual({
         name: "England",
         slug: "england",
@@ -45,11 +47,39 @@ test.describe("each dataset's place", () => {
     }
   });
 
-  test("each disease's chart says which areas it draws with the whole place", () => {
+  test("the hospital admission datasets are for the United States, with states in their own scheme", () => {
+    const us = DATASETS.filter((dataset) => dataset.sourceSlugs[0] === "cdc-nhsn");
+    expect(us.map((dataset) => dataset.id)).toEqual([
+      "influenza-hospital-admissions",
+      "rsv-hospital-admissions",
+      "covid-19-hospital-admissions-us",
+    ]);
+    for (const dataset of us) {
+      // The national row is an ISO 3166-1 country; the states are ISO 3166-2.
+      expect(dataset.place.code, dataset.id).toBe("USA");
+      expect(dataset.place.scheme, dataset.id).toBe("iso3166-1-alpha3");
+      expect(dataset.place.slug, dataset.id).toBe("united-states");
+      expect(dataset.map.areaScheme, dataset.id).toBe("iso3166-2");
+      expect(dataset.map.areaLevel, dataset.id).toBe("region");
+      expect((dataset.map as { boundaryNotice?: string }).boundaryNotice, dataset.id).toBe("natural-earth");
+      expect(dataset.sourceSlugs, dataset.id).toEqual(["cdc-nhsn", "natural-earth"]);
+      // CDC's name is only in the credit, never in what the site calls the data.
+      expect(`${dataset.label} ${dataset.name} ${dataset.title} ${dataset.description}`, dataset.id).not.toMatch(/CDC/);
+    }
+  });
+
+  test("each disease's chart says which areas it draws with the whole place, if any", () => {
     for (const disease of DISEASES) {
-      expect(disease.chart.areaLevel, disease.slug).toBe("region");
-      expect(disease.chart.areaNoun, disease.slug).toBe("regions");
-      expect(disease.chart.areasLabel, disease.slug).toBe("UKHSA regions");
+      if (["covid-19", "measles"].includes(disease.slug)) {
+        expect(disease.chart.areas, disease.slug).toEqual({
+          level: "region",
+          noun: "regions",
+          label: "UKHSA regions",
+        });
+      } else {
+        // Too many states for a chart of them all: the whole country on its own.
+        expect(disease.chart.areas, disease.slug).toBeNull();
+      }
       // The headline dataset is one of the registry's.
       expect(DATASETS.map((dataset) => dataset.id), disease.slug).toContain(disease.headline.datasetId);
     }
@@ -67,7 +97,7 @@ test.describe("each dataset's map bounds", () => {
   }
 
   test("the England datasets open on England, as the map always did", () => {
-    for (const dataset of DATASETS) {
+    for (const dataset of DATASETS.filter((d) => d.place.slug === "england")) {
       expect(dataset.map.bounds).toEqual([
         [-6.2, 49.8],
         [2.1, 55.9],
@@ -76,6 +106,21 @@ test.describe("each dataset's map bounds", () => {
         [-10, 48],
         [5, 59],
       ]);
+    }
+  });
+
+  test("the US datasets open on the contiguous United States, and can reach Alaska and Hawaii", () => {
+    for (const dataset of DATASETS.filter((d) => d.place.slug === "united-states")) {
+      const [[west, south], [east, north]] = dataset.map.bounds;
+      expect(west).toBeLessThan(-120);
+      expect(east).toBeGreaterThan(-70);
+      expect(south).toBeLessThan(26);
+      expect(north).toBeGreaterThan(48);
+      const [[maxWest, maxSouth], [, maxNorth]] = dataset.map.maxBounds;
+      // Hawaii is at about 19 degrees north and 155 west, Alaska reaches 71 north and 170 west.
+      expect(maxWest).toBeLessThan(-170);
+      expect(maxSouth).toBeLessThan(18);
+      expect(maxNorth).toBeGreaterThan(71);
     }
   });
 });

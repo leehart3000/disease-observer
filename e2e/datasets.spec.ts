@@ -17,7 +17,7 @@ test("the Maps page lists every map, grouped by disease", async ({ page }) => {
   await page.goto("/maps");
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Maps");
-  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["COVID-19", "Measles"]);
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["COVID-19", "Measles", "Influenza", "RSV"]);
   const covid = page.getByRole("link", { name: "COVID-19 rate by local authority" });
   const measles = page.getByRole("link", { name: "Measles cases by region" });
   await expect(covid).toHaveAttribute("href", `${COVID}/map`);

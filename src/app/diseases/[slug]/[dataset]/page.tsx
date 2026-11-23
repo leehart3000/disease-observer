@@ -64,6 +64,19 @@ async function DatasetContent({ params }: PageProps<"/diseases/[slug]/[dataset]"
       <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">How to read it</h2>
       <p className="max-w-2xl">{dataset.howToRead}</p>
 
+      {dataset.caveats && dataset.caveats.length > 0 ? (
+        <>
+          <h2 id="things-to-know" className="mt-10 mb-3 scroll-mt-4 text-2xl font-medium tracking-tight">
+            Things to know
+          </h2>
+          <ul className="grid max-w-2xl list-disc gap-2 pl-5" data-testid="caveats">
+            {dataset.caveats.map((caveat) => (
+              <li key={caveat}>{caveat}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+
       <h2 className="mt-10 mb-3 text-2xl font-medium tracking-tight">Ways to look at it</h2>
       <ViewCards dataset={dataset} />
 

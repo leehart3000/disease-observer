@@ -110,6 +110,18 @@ Run these from the repository root:
   still reports more than 2,000 rows. The command exits with an error if
   the run is marked failed.
 
+- `pnpm etl:cdc-nhsn`: load the CDC National Healthcare Safety Network
+  (NHSN) hospital respiratory data: new hospital admissions per 100,000 for
+  influenza, RSV and COVID-19, for the United States and each state (and the
+  District of Columbia), one value a week (data.cdc.gov dataset
+  `ua7e-t2fy`, "Public Domain U.S. Government"). It needs
+  `DATABASE_URL_UNPOOLED`, `pnpm db:seed` (the source and the diseases) and
+  `pnpm db:boundaries` (the country and state areas) first. It makes one
+  request and loads weeks from 2023; `--from=YYYY` loads from that year (the
+  dataset starts in 2020). It leaves out the territories and HHS regions,
+  stops on a jurisdiction it does not know, and marks the latest week of each
+  series provisional.
+
 Commands for unit tests, formatting and documentation will be added when
 those tools are set up.
 
@@ -172,7 +184,9 @@ The map page tests need data, so they use a separate database called
   local authorities for COVID-19, enough for a second page of the table, and
   the 9 regions for measles, plus 70 weeks of England values for both, and
   a weekly history for three local authorities for the chart, one with a
-  missing week; dates are worked out from today). `pnpm test:e2e` then points the site at that
+  missing week; and US hospital admissions for the nation and eight states
+  for influenza, RSV and COVID-19, 70 weeks each, with one missing week;
+  dates are worked out from today). `pnpm test:e2e` then points the site at that
   database. Because of this, it starts its own server, so stop `pnpm dev`
   first.
 - The fixture loader (`e2e/fixtures/load.mts`) deletes every observation
@@ -233,7 +247,10 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   (a view is added to the list when its page is built, and the cards, the
   disease page's links and the sitemap follow).
   The disease page lists its datasets, with a link to each view. `/maps`
-  lists every map, grouped by disease, and replaces "Map" in the header.
+  lists every map, grouped by disease, and replaces "Map" in the header. A
+  dataset with `caveats` has a "Things to know" section (reporting changes,
+  coverage, why the latest week is provisional), and its map, chart and table
+  pages have a line that links to it (`CaveatsLink`).
 - **The chart view** (`…/chart`) exists for a dataset that lists `chart` in
   its `views`. The time range is in the address as `?range=all` (left out for
   the last 12 months); any other `range` is ignored. **The address is the only
@@ -368,7 +385,12 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   `iso3166-2`). The headlines, the series, the area index, the charts and the
   wording of the charts ("Compare with England") all read these. A disease's
   `chart` says which areas its overview chart draws with the place
-  (`areaLevel`, `areaNoun`, `areasLabel`)
+  (`areas`: `level`, `noun` and `label`, or `null` to draw the place alone,
+  as for the 51 US states). A dataset can also set `decimals` (the most
+  decimal places shown for a value: one by default, two for small rates such
+  as admissions per 100,000), `caveats` (shown on the dataset's page under
+  "Things to know", with a link from its map, chart and table pages) and
+  `map.boundaryNotice`
   (and the disease to `DISEASES`, if it is new). A disease appears only when
   the site has data for it. The registry is erasable TypeScript with no `@/`
   imports, so scripts can import it too.
@@ -412,8 +434,12 @@ and `decideRoute` in `src/lib/routing.ts`), so shared links keep working.
   `us-states-50m.json` (about 195 KB). Countries use ISO 3166-1 alpha-3
   codes (code scheme `iso3166-1-alpha3`, level `country`) and US states ISO
   3166-2 codes (`US-AL`, scheme `iso3166-2`, level `region`, parent the `USA`
-  country). No dataset uses them yet. The files are only loaded by a map
-  whose dataset names them as its `boundaryUrl`.
+  country). The US datasets use the states file. The files are only loaded
+  by a map whose dataset names them as its `boundaryUrl`. A dataset that sets
+  `map.boundaryNotice: "natural-earth"` shows a notice under its map
+  (`BoundaryNotice`): the boundaries and names are from Natural Earth, are for
+  display only and imply no view on the status of a country or the position
+  of its borders.
 - `pnpm maplibre:worker` copies MapLibre's web worker to `public/maplibre/`
   (ignored by Git), because the bundler moves the library and it can no
   longer find the worker beside it.
@@ -475,6 +501,18 @@ it by hand:
 Each target is a GitHub environment that holds its own
 `DATABASE_URL_UNPOOLED` secret. The workflow passes it only to the
 migrate and seed steps.
+
+### Running the CDC NHSN ETL on GitHub
+
+The "ETL: CDC NHSN" workflow runs `pnpm etl:cdc-nhsn` every Saturday at 06:17
+UTC against the `etl-prod` environment (after the data is published, which
+was on a Friday afternoon, and at a different time from the UKHSA ETL). It
+makes one request and needs no token. To run it by hand, open the Actions tab,
+choose "ETL: CDC NHSN" and select "Run workflow" on `main`: `target` is
+`db-dev` or `etl-prod`, and `from` is a year from 2020 (empty for 2023). Run
+"Database: migrate and seed" on that environment first: it adds the `cdc-nhsn`
+source, the `rsv` disease and the state areas that the ETL needs (the ETL stops
+with a clear message if they are missing).
 
 ### Running the UKHSA ETL on GitHub
 

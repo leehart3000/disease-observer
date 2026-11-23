@@ -20,7 +20,8 @@
     "boundaries:prepare:natural-earth": "node scripts/boundaries/prepare-natural-earth.mts",
     "boundaries:web": "node scripts/boundaries/web.mts",
     "maplibre:worker": "node scripts/maplibre-worker.mts",
-    "etl:ukhsa": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/etl/ukhsa.mts"
+    "etl:ukhsa": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/etl/ukhsa.mts",
+    "etl:cdc-nhsn": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/etl/cdc-nhsn.mts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",

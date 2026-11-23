@@ -41,6 +41,15 @@ const sourceRows = [
       "Source: Office for National Statistics licensed under the Open Government Licence v.3.0. Contains OS data © Crown copyright and database right 2022.",
   },
   {
+    slug: "cdc-nhsn",
+    name: "CDC National Healthcare Safety Network (NHSN)",
+    url: "https://data.cdc.gov/d/ua7e-t2fy",
+    licenceName: "Public Domain U.S. Government",
+    licenceUrl: "https://www.usa.gov/government-works",
+    attribution:
+      "Source: CDC National Healthcare Safety Network (NHSN), Weekly Hospital Respiratory Data (HRD) Metrics by Jurisdiction, from data.cdc.gov.",
+  },
+  {
     slug: "natural-earth",
     name: "Natural Earth",
     url: "https://www.naturalearthdata.com/",
@@ -64,6 +73,7 @@ const diseaseRows = [
   { slug: "covid-19", name: "COVID-19" },
   { slug: "measles", name: "Measles" },
   { slug: "influenza", name: "Influenza" },
+  { slug: "rsv", name: "RSV" },
 ];
 
 const { db, pool } = createDb(process.env.DATABASE_URL_UNPOOLED, { max: 1 });

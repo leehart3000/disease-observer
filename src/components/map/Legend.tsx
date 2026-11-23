@@ -19,6 +19,7 @@ const buttonClass =
 export function Legend({
   scale,
   heading,
+  decimals,
   lowest,
   highest,
   collapsed,
@@ -26,6 +27,8 @@ export function Legend({
 }: {
   scale: Scale;
   heading: string;
+  /** The most decimal places shown for the lowest and highest value (the dataset's `decimals`). */
+  decimals?: number;
   /** The smallest value on the map, for the collapsed bar. */
   lowest: number;
   /** The largest value on the map, for the collapsed bar. */
@@ -53,11 +56,11 @@ export function Legend({
       {collapsed ? (
         <div
           role="group"
-          aria-label={`Legend, lowest value ${formatNumber(lowest)}, highest value ${formatNumber(highest)}`}
+          aria-label={`Legend, lowest value ${formatNumber(lowest, decimals)}, highest value ${formatNumber(highest, decimals)}`}
           className="flex items-center gap-2"
         >
           <span aria-hidden="true" className="tabular-nums">
-            {formatNumber(lowest)}
+            {formatNumber(lowest, decimals)}
           </span>
           <span
             aria-hidden="true"
@@ -68,7 +71,7 @@ export function Legend({
             ))}
           </span>
           <span aria-hidden="true" className="tabular-nums">
-            {formatNumber(highest)}
+            {formatNumber(highest, decimals)}
           </span>
           {toggle}
         </div>

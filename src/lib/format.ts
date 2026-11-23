@@ -4,18 +4,28 @@
  */
 import type { DatasetDef, PeriodChoice } from "./datasets/types.ts";
 
-const numberFormat = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
+const numberFormats = new Map<number, Intl.NumberFormat>();
 
-/** Formats a number for display, with thousands separators and at most one decimal place. */
-export function formatNumber(value: number): string {
-  return numberFormat.format(value);
+/**
+ * Formats a number for display, with thousands separators and at most
+ * `decimals` decimal places (one by default; a dataset whose values are small,
+ * such as admissions per 100,000, asks for two with its `decimals`).
+ */
+export function formatNumber(value: number, decimals = 1): string {
+  let format = numberFormats.get(decimals);
+  if (!format) {
+    format = new Intl.NumberFormat("en-GB", { maximumFractionDigits: decimals });
+    numberFormats.set(decimals, format);
+  }
+  return format.format(value);
 }
 
 /** Formats a value with its unit, such as "123.4 per 100,000" or "3 cases". */
 export function formatValue(dataset: DatasetDef, value: number): string {
-  if (dataset.valueKind === "rate") return `${formatNumber(value)} ${dataset.unit.label}`;
+  const text = formatNumber(value, dataset.decimals);
+  if (dataset.valueKind === "rate") return `${text} ${dataset.unit.label}`;
   const noun = value === 1 ? dataset.unit.one : dataset.unit.many;
-  return `${formatNumber(value)} ${noun ?? dataset.unit.label}`;
+  return `${text} ${noun ?? dataset.unit.label}`;
 }
 
 const dayFormat = new Intl.DateTimeFormat("en-GB", {

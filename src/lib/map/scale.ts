@@ -80,31 +80,39 @@ function chooseThresholds(values: number[], config: ScaleConfig): number[] {
 }
 
 /** Describes the range of one class in words. */
-function labelFor(index: number, thresholds: number[], config: ScaleConfig): string {
+function labelFor(
+  index: number,
+  thresholds: number[],
+  config: ScaleConfig,
+  decimals: number,
+): string {
   const low = index === 0 ? undefined : thresholds[index - 1];
   const high = index === thresholds.length ? undefined : thresholds[index];
+  const format = (value: number) => formatNumber(value, decimals);
   if (low === undefined) {
     if (config.zeroClass && high === 1) return "0";
-    return `Under ${formatNumber(high!)}`;
+    return `Under ${format(high!)}`;
   }
-  if (high === undefined) return `${formatNumber(low)} or more`;
+  if (high === undefined) return `${format(low)} or more`;
   if (config.rounding === "integer") {
-    return high - 1 === low ? formatNumber(low) : `${formatNumber(low)} to ${formatNumber(high - 1)}`;
+    return high - 1 === low ? format(low) : `${format(low)} to ${format(high - 1)}`;
   }
-  return `${formatNumber(low)} to under ${formatNumber(high)}`;
+  return `${format(low)} to under ${format(high)}`;
 }
 
 /**
  * Builds the colour scale for a set of values, with the settings of the
  * dataset. There are at most `config.classes` classes, fewer if the values
  * don't vary enough. If `config.zeroClass` is set, zero is its own class.
+ *
+ * @param decimals - The most decimal places in the class labels (the dataset's `decimals`).
  */
-export function buildScale(values: number[], config: ScaleConfig): Scale {
+export function buildScale(values: number[], config: ScaleConfig, decimals = 1): Scale {
   const thresholds = chooseThresholds(values, config);
   const count = thresholds.length + 1;
   const classes: LegendClass[] = Array.from({ length: count }, (_, index) => ({
     colour: viridisAt(count === 1 ? 0.5 : index / (count - 1)),
-    label: count === 1 ? "All values" : labelFor(index, thresholds, config),
+    label: count === 1 ? "All values" : labelFor(index, thresholds, config, decimals),
   }));
   return {
     thresholds,

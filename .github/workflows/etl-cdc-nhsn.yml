@@ -1,0 +1,70 @@
+name: "ETL: CDC NHSN"
+
+on:
+  schedule:
+    # Saturdays at 06:17 UTC: after the data is published (it was last updated
+    # on a Friday afternoon), and at a different time from the UKHSA ETL
+    # (Fridays at 07:37). Scheduled runs always use etl-prod.
+    - cron: "17 6 * * 6"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Database environment to load into"
+        type: choice
+        required: true
+        default: db-dev
+        options:
+          - db-dev
+          - etl-prod
+      from:
+        description: "Load weeks from this year (four digits, 2020 or later). Leave empty for 2023."
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etl-cdc-nhsn-${{ github.event_name == 'schedule' && 'etl-prod' || inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  etl:
+    name: load NHSN data (${{ github.event_name == 'schedule' && 'etl-prod' || inputs.target }})
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ${{ github.event_name == 'schedule' && 'etl-prod' || inputs.target }}
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Load NHSN data
+        run: |
+          args=()
+          if [ -n "$FROM" ]; then
+            if ! [[ "$FROM" =~ ^20[2-9][0-9]$ ]]; then
+              echo "::error::The 'from' input must be a four-digit year from 2020, such as 2023."
+              exit 1
+            fi
+            args+=("--from=$FROM")
+          fi
+          pnpm etl:cdc-nhsn "${args[@]}"
+        env:
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          FROM: ${{ inputs.from }}
