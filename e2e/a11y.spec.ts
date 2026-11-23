@@ -37,7 +37,7 @@ async function settle(page: Page, path: string) {
   } else if (path.startsWith("/locations/")) {
     await expect(page.getByTestId("headline").first()).toBeVisible();
   } else if (/^\/diseases\/[^/]+$/.test(path)) {
-    await expect(page.getByTestId("headline")).toBeVisible();
+    await expect(page.getByTestId("headline").first()).toBeVisible();
     await expect(page.getByTestId("line-chart")).toBeVisible();
   } else if (path === "/" || path === "/diseases") {
     await expect(page.getByTestId("headline").first()).toBeVisible();

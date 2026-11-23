@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getDataset, getDisease } from "@/lib/datasets/registry";
+import { chartAreas, getDataset, getDisease } from "@/lib/datasets/registry";
 import type { DiseaseSeries } from "@/lib/series-types";
 import { SegmentedChoice } from "@/components/SegmentedChoice";
 import { LineChartPlot, slotColour, type ChartRange, type Highlight } from "./LineChartPlot";
@@ -37,7 +37,7 @@ export function LineChart({
   const dataset = getDataset(series.datasetId);
   const disease = getDisease(series.diseaseSlug);
   // The areas drawn with the place (the regions), or none if it is drawn alone.
-  const areas = disease?.chart.areas ?? null;
+  const areas = dataset ? chartAreas(dataset) : null;
   const [picked, setPicked] = useState<Highlight[]>([]);
   const [range, chooseRange] = useChartRange(rangeInUrl);
 

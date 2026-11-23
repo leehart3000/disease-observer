@@ -238,7 +238,7 @@ test.describe("a place's page", () => {
 
     // The figures stream in: England's latest value, its period and the provisional tag.
     const covid = page.locator("#figure-covid-19-rate");
-    await expect(covid).toContainText("12.6 per 100,000");
+    await expect(covid).toContainText("12.6 cases per 100,000");
     await expect(covid).toContainText(/7 days to \d+ \w+ \d{4}/);
     await expect(covid).toContainText("Provisional");
     // The place is the page's, so the figure does not repeat it.
@@ -275,10 +275,14 @@ test.describe("a place's page", () => {
       "RSV hospital admissions by US state",
     ]);
 
-    await expect(page.locator("#figure-influenza-hospital-admissions")).toContainText("3.5 per 100,000");
+    await expect(page.locator("#figure-influenza-hospital-admissions")).toContainText(
+      "3.5 hospital admissions per 100,000",
+    );
     await expect(page.locator("#figure-influenza-hospital-admissions")).toContainText("Provisional");
-    await expect(page.locator("#figure-rsv-hospital-admissions")).toContainText("0.5 per 100,000");
-    await expect(page.locator("#figure-covid-19-hospital-admissions-us")).toContainText("1.5 per 100,000");
+    await expect(page.locator("#figure-rsv-hospital-admissions")).toContainText("0.5 hospital admissions per 100,000");
+    await expect(page.locator("#figure-covid-19-hospital-admissions-us")).toContainText(
+      "1.5 hospital admissions per 100,000",
+    );
     await expect(page.locator("#figure-covid-19-hospital-admissions-us")).toContainText(/7 days to \d+ \w+ \d{4}/);
 
     await expect(

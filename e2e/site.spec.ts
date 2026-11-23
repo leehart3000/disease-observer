@@ -125,6 +125,45 @@ test("the privacy page says what is collected, with links to the two policies", 
   );
 });
 
+test("the wordmark's text is disease.observer once, with no doubled i", async ({ page }) => {
+  await page.goto("/");
+  const text = (await page.getByRole("banner").evaluate((header) => header.textContent)) ?? "";
+  expect(text.split("disease.observer")).toHaveLength(2);
+  expect(text).not.toContain("diisease");
+  // The red dot is drawn by CSS, so the page's own text has no extra "i".
+  expect((await page.locator("body").evaluate((body) => body.textContent)) ?? "").not.toContain("diisease");
+});
+
+test("the footer links are in the order Sources, Privacy, About", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("navigation", { name: "Footer" }).getByRole("link")).toHaveText([
+    "Sources",
+    "Privacy",
+    "About",
+  ]);
+});
+
+test("the home page has the diseases under one heading and Maps and Locations under Explore", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 2 })).toHaveText(["Diseases", "Explore"]);
+  const diseases = page.getByRole("heading", { level: 2, name: "Diseases" }).locator("xpath=following-sibling::div[1]");
+  await expect(diseases.getByRole("article")).toHaveCount(4);
+  const explore = page.getByRole("heading", { level: 2, name: "Explore" }).locator("xpath=following-sibling::div[1]");
+  await expect(explore.getByRole("article").getByRole("link")).toHaveText(["Maps", "Locations"]);
+  await expect(page.getByText("public figures")).toHaveCount(0);
+  await expect(page.getByText("published data")).toBeVisible();
+});
+
+test("disease cards describe the disease, not one dataset", async ({ page }) => {
+  await page.goto("/");
+  const covid = page.getByRole("article").filter({ hasText: "COVID-19" });
+  await expect(covid).toContainText("SARS-CoV-2");
+  await expect(covid).not.toContainText("local authority");
+  await expect(covid).not.toContainText("local authorities");
+});
+
 test("no analytics script is loaded outside production", async ({ page }) => {
   const requested: string[] = [];
   page.on("request", (request) => requested.push(request.url()));

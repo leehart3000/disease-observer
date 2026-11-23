@@ -21,17 +21,20 @@ export default function Home() {
         Maps and charts for infectious disease surveillance
       </h1>
       <p className="mt-4 max-w-xl text-lg text-muted">
-        Disease Observer brings public figures on infectious diseases together
+        Disease Observer brings published data on infectious diseases together
         in one place.
       </p>
       <div className="mt-4 max-w-xl text-muted">
         <CoverageList />
       </div>
-      <h2 className="mt-10 mb-4 text-2xl font-medium tracking-tight">Explore</h2>
+      <h2 className="mt-10 mb-4 text-2xl font-medium tracking-tight">Diseases</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {DISEASES.map((disease) => (
           <DiseaseCard key={disease.slug} {...disease} headingLevel="h3" />
         ))}
+      </div>
+      <h2 className="mt-10 mb-4 text-2xl font-medium tracking-tight">Explore</h2>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MapCard headingLevel="h3" />
         <LocationsCard headingLevel="h3" />
       </div>

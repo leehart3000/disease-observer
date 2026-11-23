@@ -31,12 +31,12 @@ for (const path of ["/", "/diseases"]) {
     await page.goto(path);
 
     const covid = page.getByRole("article").filter({ hasText: "COVID-19" });
-    await expect(covid.getByTestId("headline")).toContainText("England");
-    await expect(covid.getByTestId("headline")).toContainText("12.6 per 100,000");
-    await expect(covid.getByTestId("headline")).toContainText(
+    await expect(covid.getByTestId("headline").first()).toContainText("England");
+    await expect(covid.getByTestId("headline").first()).toContainText("12.6 cases per 100,000");
+    await expect(covid.getByTestId("headline").first()).toContainText(
       `7 days to ${longDay(dates.covidLatest.end)}`,
     );
-    await expect(covid.getByTestId("headline")).toContainText("Provisional");
+    await expect(covid.getByTestId("headline").first()).toContainText("Provisional");
 
     const measles = page.getByRole("article").filter({ hasText: "Measles" });
     await expect(measles.getByTestId("headline")).toContainText(`${englandMeaslesCases(0)} cases`);
@@ -53,7 +53,7 @@ test("a card's link is described by its figure, and the map card has none", asyn
   await page.goto("/");
 
   await expect(page.getByRole("link", { name: "COVID-19" })).toHaveAccessibleDescription(
-    /England 12\.6 per 100,000 Provisional 7 days to/,
+    /England 12\.6 cases per 100,000 Provisional 7 days to/,
   );
   await expect(page.getByRole("article").filter({ hasText: "Map" }).getByTestId("headline")).toHaveCount(0);
 });
@@ -64,7 +64,7 @@ test("the sparkline is decorative and has 26 weekly points with a text equivalen
   await page.goto("/");
   const covid = page.getByRole("article").filter({ hasText: "COVID-19" });
 
-  const sparkline = covid.getByTestId("sparkline");
+  const sparkline = covid.getByTestId("sparkline").first();
   await expect(sparkline).toHaveAttribute("aria-hidden", "true");
   const points = await sparkline.locator("polyline").getAttribute("points");
   expect(points?.trim().split(" ")).toHaveLength(26);
@@ -83,6 +83,38 @@ test("a disease page shows the same figure and sparkline", async ({ page }) => {
   await expect(headline).toContainText(`${englandMeaslesCases(0)} cases`);
   await expect(headline).toContainText("Provisional");
   await expect(headline.getByTestId("sparkline")).toBeVisible();
+});
+
+for (const path of ["/", "/diseases/covid-19"]) {
+  test(`${path}: COVID-19 has one headline for each place, in its own measure, with a note that they differ`, async ({
+    page,
+  }) => {
+    await page.goto(path);
+    const scope = path === "/" ? page.getByRole("article").filter({ hasText: "COVID-19" }) : page.getByRole("main");
+    const headlines = scope.getByTestId("headline");
+    await expect(headlines).toHaveCount(2);
+
+    await expect(headlines.nth(0)).toContainText("England");
+    await expect(headlines.nth(0)).toContainText("12.6 cases per 100,000");
+    await expect(headlines.nth(0)).toContainText(`7 days to ${longDay(dates.covidLatest.end)}`);
+
+    await expect(headlines.nth(1)).toContainText("United States");
+    await expect(headlines.nth(1)).toContainText("1.5 hospital admissions per 100,000");
+    await expect(headlines.nth(1)).toContainText(`7 days to ${longDay(dates.nhsnLatest.end)}`);
+
+    await expect(scope.getByTestId("not-comparable")).toHaveText(
+      "These figures measure different things, so they can’t be compared.",
+    );
+  });
+}
+
+test("a disease with one place has one headline and no note", async ({ page }) => {
+  for (const path of ["/", "/diseases/measles", "/diseases/influenza"]) {
+    await page.goto(path);
+    const scope = path === "/" ? page.getByRole("article").filter({ hasText: "Measles" }) : page.getByRole("main");
+    await expect(scope.getByTestId("headline")).toHaveCount(1);
+    await expect(scope.getByTestId("not-comparable")).toHaveCount(0);
+  }
 });
 
 test("the figures do not make the cards overflow at any width", async ({ page }) => {

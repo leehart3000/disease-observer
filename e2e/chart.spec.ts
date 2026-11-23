@@ -959,3 +959,33 @@ test.describe("the browsable list of areas", () => {
     expect(extra).toBeLessThanOrEqual(2);
   });
 });
+
+test.describe("a disease with more than one place", () => {
+  test("COVID-19 starts on England, and a choice of place switches to the United States", async ({ page }) => {
+    await openCovid(page);
+    const places = page.getByRole("group", { name: "Place" });
+    await expect(places.getByRole("radio")).toHaveCount(2);
+    await expect(places.getByRole("radio", { name: "England" })).toBeChecked();
+    await expect(page.getByTestId("line-chart")).toContainText("Cases per 100,000 (7 days), weekly");
+    await expect(regionGroup(page).getByRole("checkbox")).toHaveCount(9);
+
+    await places.getByText("United States", { exact: true }).click();
+    await expect(places.getByRole("radio", { name: "United States" })).toBeChecked();
+    // The United States has its own measure, and is drawn alone (no regions to highlight).
+    await expect(page.getByTestId("line-chart")).toContainText("Admissions per 100,000 (week), weekly");
+    await expect(page.getByTestId("line-chart")).not.toContainText("Cases per 100,000");
+    await expect(regionGroup(page)).toHaveCount(0);
+    await expect(chartPaths(page)).toHaveCount(1);
+    await expect(readout(page)).toContainText("United States 1.5 per 100,000");
+
+    // And back again.
+    await places.getByText("England", { exact: true }).click();
+    await expect(regionGroup(page).getByRole("checkbox")).toHaveCount(9);
+  });
+
+  test("a disease with one place has no choice of place", async ({ page }) => {
+    await page.goto("/diseases/measles");
+    await expect(page.getByTestId("line-chart")).toBeVisible();
+    await expect(page.getByRole("group", { name: "Place" })).toHaveCount(0);
+  });
+});

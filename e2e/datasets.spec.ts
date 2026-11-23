@@ -23,7 +23,7 @@ test("the Maps page lists every map, grouped by disease", async ({ page }) => {
   await expect(covid).toHaveAttribute("href", `${COVID}/map`);
   await expect(measles).toHaveAttribute("href", `${MEASLES}/map`);
   // Each map has its description under it.
-  await expect(page.getByText("The number of confirmed cases in each UKHSA region")).toBeVisible();
+  await expect(page.getByText("The number of confirmed cases in each region of the UK Health Security Agency (UKHSA)")).toBeVisible();
 
   await measles.click();
   await expect(page).toHaveURL(`${MEASLES}/map`);

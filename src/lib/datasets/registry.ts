@@ -17,7 +17,8 @@ export const DISEASES = [
   {
     slug: "covid-19",
     name: "COVID-19",
-    summary: "Reported COVID-19 case rates for every local authority in England.",
+    summary:
+      "An infectious disease caused by the SARS-CoV-2 virus, with a range of symptoms from a mild cough to serious breathing problems.",
     about: [
       "COVID-19 is an infectious disease caused by the SARS-CoV-2 virus. It spreads mainly through the air and can cause illness ranging from a mild cough to serious breathing problems.",
     ],
@@ -27,7 +28,8 @@ export const DISEASES = [
   {
     slug: "measles",
     name: "Measles",
-    summary: "Confirmed measles cases in England, by UKHSA region and week.",
+    summary:
+      "A highly infectious viral illness that two doses of the MMR vaccine protect against.",
     about: [
       "Measles is a highly infectious viral illness. Two doses of the MMR vaccine give lasting protection, and outbreaks can follow when vaccination rates fall.",
     ],
@@ -37,7 +39,8 @@ export const DISEASES = [
   {
     slug: "influenza",
     name: "Influenza",
-    summary: "New hospital admissions for confirmed influenza in the United States, by state and week.",
+    summary:
+      "A contagious respiratory illness, often called flu, and a common cause of hospital admission in the winter months.",
     about: [
       "Influenza, or flu, is a contagious respiratory illness caused by influenza viruses. It spreads mainly through droplets and can cause mild or severe illness. It is a common cause of hospital admission in the winter months.",
     ],
@@ -48,7 +51,7 @@ export const DISEASES = [
     slug: "rsv",
     name: "RSV",
     summary:
-      "New hospital admissions for confirmed respiratory syncytial virus (RSV) in the United States, by state and week.",
+      "A common respiratory virus that usually causes mild, cold-like illness but can be serious in babies, young children and older adults.",
     about: [
       "Respiratory syncytial virus (RSV) is a common respiratory virus. It usually causes mild, cold-like illness, but it can be serious in babies, young children and older adults.",
     ],
@@ -125,6 +128,7 @@ const NHSN_DATASET = {
   valueKind: "rate",
   // The rates are small (0.06 in a quiet week), so one decimal place would hide them.
   decimals: 2,
+  measure: "hospital admissions per 100,000",
   unit: { label: "per 100,000" },
   periodStyle: "trailing-week",
   periodType: "week",
@@ -194,6 +198,7 @@ export const DATASETS = [
     // ending on the date shown.
     metric: "rate_per_100k",
     valueKind: "rate",
+    measure: "cases per 100,000",
     unit: { label: "per 100,000" },
     periodStyle: "trailing-week",
     periodType: "week",
@@ -226,7 +231,7 @@ export const DATASETS = [
     views: ["map", "chart", "table"],
     label: "Measles cases by region",
     description:
-      "The number of confirmed cases in each UKHSA region, by the week that symptoms began: for the latest complete week, the last 12 weeks or the year so far.",
+      "The number of confirmed cases in each region of the UK Health Security Agency (UKHSA), by the week that symptoms began: for the latest complete week, the last 12 weeks or the year so far.",
     howToRead:
       "Each value is the number of confirmed cases whose symptoms began in the period shown. Weeks run from Monday to Sunday, and only complete weeks are counted. You can show the latest week, the total for the last 12 weeks, or the total for the year to date (the weeks that start in the same year as the latest week). A total is provisional if any week in it is, because cases are still being reported. Where a region has no figure for a week, the total is of the weeks it has, and the page says how many.",
     title: "Measles cases, by UKHSA region",
@@ -234,6 +239,7 @@ export const DATASETS = [
       "The map shows the number of confirmed cases in each UKHSA region, by the week that symptoms began, for the latest complete week or added up over the last 12 weeks or the year so far. Recent weeks are provisional because cases are still being reported.",
     metric: "cases",
     valueKind: "count",
+    measure: "confirmed cases",
     unit: { label: "cases", one: "case", many: "cases" },
     periodStyle: "onset-week",
     periodType: "week",
@@ -334,6 +340,38 @@ export function getDatasetBySlug(diseaseSlug: string, slug: string): DatasetDef 
   return datasetList.find(
     (dataset) => dataset.diseaseSlug === diseaseSlug && dataset.slug === slug,
   );
+}
+
+/**
+ * The datasets that give a disease its headline figures, one for each place
+ * the disease has data for: the disease's own headline dataset first (the
+ * default place), then the first dataset of every other place, in registry
+ * order. Figures from different places can be in different measures (COVID-19
+ * is cases in England and hospital admissions in the United States), so they
+ * are shown side by side, never combined.
+ */
+export function headlineDatasets(slug: string): DatasetDef[] {
+  const disease = getDisease(slug);
+  const first = disease && getDataset(disease.headline.datasetId);
+  if (!first) return [];
+  const places = new Set([first.place.slug]);
+  const result = [first];
+  for (const dataset of datasetsForDisease(slug)) {
+    if (places.has(dataset.place.slug)) continue;
+    places.add(dataset.place.slug);
+    result.push(dataset);
+  }
+  return result;
+}
+
+/**
+ * The areas that a dataset's chart on the disease page draws with its whole
+ * place: the disease's `chart.areas` for its headline dataset, and none (the
+ * place alone) for the datasets of other places.
+ */
+export function chartAreas(dataset: DatasetDef): DiseaseDef["chart"]["areas"] {
+  const disease = getDisease(dataset.diseaseSlug);
+  return disease && disease.headline.datasetId === dataset.id ? disease.chart.areas : null;
 }
 
 /** The datasets of one disease, in registry order. */

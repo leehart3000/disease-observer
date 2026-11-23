@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DATASETS, DISEASES } from "../src/lib/datasets/registry.ts";
+import { chartAreas, DATASETS, DISEASES, headlineDatasets } from "../src/lib/datasets/registry.ts";
 import type { LngLatBounds } from "../src/lib/datasets/types.ts";
 
 /** Checks on the registry itself, with no browser. */
@@ -121,6 +121,31 @@ test.describe("each dataset's map bounds", () => {
       expect(maxWest).toBeLessThan(-170);
       expect(maxSouth).toBeLessThan(18);
       expect(maxNorth).toBeGreaterThan(71);
+    }
+  });
+});
+
+test.describe("a disease with datasets for more than one place", () => {
+  test("has a headline dataset for each place, the default place first", () => {
+    expect(headlineDatasets("covid-19").map((d) => d.id)).toEqual([
+      "covid-19-rate",
+      "covid-19-hospital-admissions-us",
+    ]);
+    expect(headlineDatasets("measles").map((d) => d.id)).toEqual(["measles-cases"]);
+    for (const disease of DISEASES) {
+      expect(headlineDatasets(disease.slug)[0].id, disease.slug).toBe(disease.headline.datasetId);
+    }
+  });
+
+  test("only the headline dataset's chart draws areas, and every dataset names its measure", () => {
+    expect(chartAreas(DATASETS.find((d) => d.id === "covid-19-rate")!)?.noun).toBe("regions");
+    expect(chartAreas(DATASETS.find((d) => d.id === "covid-19-hospital-admissions-us")!)).toBeNull();
+    for (const dataset of DATASETS) expect(dataset.measure, dataset.id).not.toBe("");
+  });
+
+  test("disease summaries do not describe a dataset", () => {
+    for (const disease of DISEASES) {
+      expect(disease.summary, disease.slug).not.toMatch(/local authorit|hospital admissions|by state|by region/i);
     }
   });
 });

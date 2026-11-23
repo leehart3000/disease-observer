@@ -53,7 +53,7 @@ test.describe("the card text and pictures", () => {
   test("a disease page has its own title, description and picture", async ({ page, request }) => {
     await page.goto(INFLUENZA);
     expect(await meta(page, "og:title")).toBe("Influenza | Disease Observer");
-    expect(await meta(page, "og:description")).toContain("influenza in the United States");
+    expect(await meta(page, "og:description")).toContain("contagious respiratory illness");
     expect(await meta(page, "og:url")).toBe("https://disease.observer/diseases/influenza");
     expect(await meta(page, "twitter:card")).toBe("summary_large_image");
     expect(await meta(page, "twitter:title")).toBe("Influenza | Disease Observer");

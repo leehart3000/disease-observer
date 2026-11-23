@@ -10,7 +10,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife } from "next/cache";
 import { getDb } from "@/db";
-import { getDataset, getDisease } from "@/lib/datasets/registry";
+import { chartAreas, getDataset, getDisease } from "@/lib/datasets/registry";
 import type { DiseaseSeries, SeriesLine, SeriesPeriod } from "@/lib/series-types";
 import { loadWithFallback, NoDataError, type LoadResult } from "./load";
 
@@ -35,14 +35,19 @@ type Row = {
  *   cached for a day.
  * @throws On any database error, so a failure is never cached.
  */
-export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
+export async function queryDiseaseSeries(
+  slug: string,
+  datasetId?: string,
+): Promise<DiseaseSeries> {
   const disease = getDisease(slug);
-  const dataset = disease && getDataset(disease.headline.datasetId);
-  if (!disease || !dataset) throw new Error(`Unknown disease ${slug}`);
+  const dataset = disease && getDataset(datasetId ?? disease.headline.datasetId);
+  if (!disease || !dataset || dataset.diseaseSlug !== slug) {
+    throw new Error(`Unknown disease ${slug}`);
+  }
   const { place } = dataset;
-  // The whole place, and (unless the disease charts the place alone) its areas.
+  // The whole place, and (unless the dataset's chart draws the place alone) its areas.
   const onlyPlace = sql`a.code_scheme = ${place.scheme} and a.code = ${place.code}`;
-  const { areas } = disease.chart;
+  const areas = chartAreas(dataset);
   const placeOrAreas = areas
     ? sql`(${onlyPlace}) or (a.code_scheme = ${dataset.map.areaScheme} and a.level = ${areas.level})`
     : onlyPlace;
@@ -119,20 +124,24 @@ export async function queryDiseaseSeries(slug: string): Promise<DiseaseSeries> {
  * day). The slug is the cache key, so callers must only pass slugs that
  * were checked against the registry.
  */
-async function getCachedDiseaseSeries(slug: string): Promise<DiseaseSeries> {
+async function getCachedDiseaseSeries(slug: string, datasetId: string): Promise<DiseaseSeries> {
   "use cache: remote";
   cacheLife("days");
-  return queryDiseaseSeries(slug);
+  return queryDiseaseSeries(slug, datasetId);
 }
 
 /**
  * Loads the series without ever throwing: from the cache, else from the
  * database, else as an "error" or "empty" result.
  */
-export function loadDiseaseSeries(slug: string): Promise<LoadResult<DiseaseSeries>> {
+export function loadDiseaseSeries(
+  slug: string,
+  datasetId?: string,
+): Promise<LoadResult<DiseaseSeries>> {
+  const id = datasetId ?? getDisease(slug)?.headline.datasetId ?? "";
   return loadWithFallback(
     "Disease series",
-    () => getCachedDiseaseSeries(slug),
-    () => queryDiseaseSeries(slug),
+    () => getCachedDiseaseSeries(slug, id),
+    () => queryDiseaseSeries(slug, id),
   );
 }

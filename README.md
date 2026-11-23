@@ -3,7 +3,7 @@
 **Maps and charts for infectious disease surveillance.**
 Live at **<https://disease.observer>**.
 
-Disease Observer brings public figures on infectious diseases together in one
+Disease Observer brings published data on infectious diseases together in one
 place, so that anyone can see what is being reported and where. It shows
 the latest figures on maps, how they have changed over time in charts, and
 every figure in a table.

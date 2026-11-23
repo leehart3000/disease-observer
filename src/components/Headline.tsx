@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
-import { formatPeriod, formatValue } from "@/lib/format";
-import { getDataset } from "@/lib/datasets/registry";
+import { formatMeasureValue, formatPeriod, formatValue } from "@/lib/format";
+import { getDataset, headlineDatasets } from "@/lib/datasets/registry";
 import type { DatasetDef } from "@/lib/datasets/types";
 import { loadDatasetHeadline, loadHeadlines, type Headline as HeadlineData } from "@/lib/data/headlines";
 import { Sparkline } from "./Sparkline";
@@ -22,7 +22,7 @@ function HeadlineFigure({
   showPlace = true,
 }: {
   headline: HeadlineData;
-  id: string;
+  id?: string;
   showPlace?: boolean;
 }) {
   const dataset = getDataset(headline.datasetId);
@@ -34,7 +34,7 @@ function HeadlineFigure({
       {showPlace ? <p className="text-sm text-muted">{dataset.place.name}</p> : null}
       <p className="flex flex-wrap items-center gap-x-2">
         <span className="text-2xl font-medium tracking-tight">
-          {formatValue(dataset, headline.value)}
+          {formatMeasureValue(dataset, headline.value)}
         </span>
         {headline.provisional && (
           <span className="rounded-sm border border-line px-1.5 py-0.5 text-xs">Provisional</span>
@@ -55,12 +55,16 @@ function HeadlineFigure({
   );
 }
 
-/** What stands in for the figure while it loads. */
-function HeadlineFallback() {
-  return <div className="mt-4 h-[8.5rem]" aria-hidden="true" />;
+/** What stands in for the figure(s) while loading: the height of one figure for each place. */
+function HeadlineFallback({ count = 1 }: { count?: number }) {
+  return <div className="mt-4" style={{ height: `${8.5 * count}rem` }} aria-hidden="true" />;
 }
 
-/** The data-driven part. It waits for a real request before it touches the database. */
+/**
+ * The data-driven part: one figure for each place the disease has data for,
+ * each with its place and its own measure. It waits for a real request before
+ * it touches the database.
+ */
 async function HeadlineData({ slug, id }: { slug: string; id: string }) {
   await connection();
   const result = await loadHeadlines();
@@ -71,15 +75,29 @@ async function HeadlineData({ slug, id }: { slug: string; id: string }) {
       </p>
     );
   }
-  const headline = result.data.find((entry) => entry.diseaseSlug === slug);
-  if (!headline) {
+  // In the order of the places (the default place first), whichever have data.
+  const headlines = headlineDatasets(slug).flatMap((dataset) =>
+    result.data.filter((entry) => entry.datasetId === dataset.id),
+  );
+  if (headlines.length === 0) {
     return (
       <p id={id} className="mt-4 text-sm text-muted">
         No figure yet
       </p>
     );
   }
-  return <HeadlineFigure headline={headline} id={id} />;
+  return (
+    <div id={id}>
+      {headlines.map((headline) => (
+        <HeadlineFigure key={headline.datasetId} headline={headline} />
+      ))}
+      {headlines.length > 1 ? (
+        <p className="mt-4 text-sm text-muted" data-testid="not-comparable">
+          These figures measure different things, so they can’t be compared.
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 /** The data-driven part of one dataset's figure. It waits for a real request first. */
@@ -115,7 +133,7 @@ export function DatasetHeadline({ dataset, id }: { dataset: DatasetDef; id: stri
  */
 export function DiseaseHeadline({ slug, id }: { slug: string; id: string }) {
   return (
-    <Suspense fallback={<HeadlineFallback />}>
+    <Suspense fallback={<HeadlineFallback count={headlineDatasets(slug).length} />}>
       <HeadlineData slug={slug} id={id} />
     </Suspense>
   );

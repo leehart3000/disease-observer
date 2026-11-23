@@ -4,8 +4,8 @@ const linkClass =
   "inline-flex min-h-11 items-center rounded-md hover:text-ink hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
 
 /**
- * The site footer: the copyright line, and links to the sources, about and
- * privacy pages. On wide screens they share one line, with the links at the right.
+ * The site footer: the copyright line, and links to the sources, privacy and
+ * about pages (About is last, at the right). On wide screens they share one line, with the links at the right.
  * On narrow screens the links wrap beneath the copyright line.
  */
 export function SiteFooter() {
@@ -21,13 +21,13 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link href="/about" className={linkClass}>
-                About
+              <Link href="/privacy" className={linkClass}>
+                Privacy
               </Link>
             </li>
             <li>
-              <Link href="/privacy" className={linkClass}>
-                Privacy
+              <Link href="/about" className={linkClass}>
+                About
               </Link>
             </li>
           </ul>

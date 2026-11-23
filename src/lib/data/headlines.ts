@@ -11,7 +11,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife } from "next/cache";
 import { cache } from "react";
 import { getDb } from "@/db";
-import { DISEASES, getDataset } from "@/lib/datasets/registry";
+import { DISEASES, getDataset, headlineDatasets } from "@/lib/datasets/registry";
 import type { DatasetDef } from "@/lib/datasets/types";
 import { loadWithFallback, NoDataError, type LoadResult } from "./load";
 
@@ -142,10 +142,8 @@ export function loadDatasetHeadline(dataset: DatasetDef): Promise<LoadResult<Hea
  * @throws On any database error, so a failure is never cached.
  */
 export async function queryHeadlines(): Promise<Headline[]> {
-  const datasets = DISEASES.flatMap(({ headline }) => {
-    const dataset = getDataset(headline.datasetId);
-    return dataset ? [dataset] : [];
-  });
+  // One for each place of each disease (COVID-19 has England and the United States).
+  const datasets = DISEASES.flatMap(({ slug }) => headlineDatasets(slug));
   const found = await Promise.all(datasets.map(queryHeadline));
   const headlines = found.filter((headline) => headline !== null);
   if (headlines.length === 0) throw new NoDataError("headlines");

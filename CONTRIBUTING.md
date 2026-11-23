@@ -224,6 +224,18 @@ every page has them. The header links are listed in `NavLinks.tsx`.
   database. An unknown disease slug gets a real 404 from `src/proxy.ts`,
   because with Cache Components the page cannot change the status once its
   shell is sent.
+- **A disease in more than one place** (COVID-19: England and the United
+  States) shows one headline for each place (`headlineDatasets`: the disease's
+  `headline` dataset first, then the first dataset of every other place), each
+  with its place and its own measure (a dataset's `measure`, so "12.6 cases per
+  100,000" and "1.5 hospital admissions per 100,000"), and a line saying the
+  figures can't be compared. Never combine or compare figures of different
+  measures. The disease page's chart has a "Place" choice (the same segmented
+  control as the time range) with a chart for each place, England first; only
+  the headline dataset's chart draws areas (`chartAreas`). Summaries and
+  `about` describe the disease, never one dataset.
+- The wordmark's red dot on the `i` is a CSS `::after`, not text, so the page's
+  text reads "disease.observer" (a test checks it).
 - Each card and disease page shows the disease's headline: the latest
   England value of its `headline` dataset, its period, a "Provisional" tag
   when the source may still revise it, and a sparkline of the last 26

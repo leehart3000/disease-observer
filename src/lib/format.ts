@@ -28,6 +28,17 @@ export function formatValue(dataset: DatasetDef, value: number): string {
   return `${text} ${noun ?? dataset.unit.label}`;
 }
 
+/**
+ * A value with what it measures, for a headline: "3.1 cases per 100,000" or
+ * "2.4 hospital admissions per 100,000" for a rate, "80 cases" for a count.
+ * Different places can report one disease in different measures, so the
+ * measure is always in the words.
+ */
+export function formatMeasureValue(dataset: DatasetDef, value: number): string {
+  if (dataset.valueKind !== "rate") return formatValue(dataset, value);
+  return `${formatNumber(value, dataset.decimals)} ${dataset.measure}`;
+}
+
 const dayFormat = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "long",

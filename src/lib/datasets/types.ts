@@ -98,6 +98,12 @@ export type DatasetDef = {
    * per 100,000 need two.
    */
   decimals?: number;
+  /**
+   * What the figure measures, in words that follow the number in a headline:
+   * "cases per 100,000", "hospital admissions per 100,000". Two places can
+   * report the same disease in different measures, so a headline always says it.
+   */
+  measure: string;
   /** The unit. Counts use `one` and `many` ("case", "cases"). */
   unit: { label: string; one?: string; many?: string };
   /** How a period is written: "7 days to 18 November 2026", or a week of onset. */
@@ -201,8 +207,10 @@ export type DiseaseDef = {
    */
   about: readonly string[];
   /**
-   * The figure shown on the disease's card and page: the latest value for
-   * the dataset's whole place (England), in the dataset's metric and unit.
+   * The figure shown first on the disease's card and page: the latest value for
+   * the dataset's whole place (England), in the dataset's metric and unit. If
+   * the disease has datasets for other places, each place's first dataset gets
+   * a headline too (`headlineDatasets`), after this one.
    */
   headline: { datasetId: string };
   /**
@@ -211,7 +219,9 @@ export type DiseaseDef = {
    * point a week, from `since` (`YYYY-MM-DD`). The areas are of the headline
    * dataset's `map.areaScheme`. `noun` is what they are called in the plural
    * ("regions", in the chart's checkboxes) and `label` names them for people
-   * using a screen reader ("UKHSA regions").
+   * using a screen reader ("UKHSA regions"). Only the headline dataset's chart
+   * draws areas: the chart of another place's dataset shows the place alone
+   * (`chartAreas`).
    */
   chart: {
     since: string;
